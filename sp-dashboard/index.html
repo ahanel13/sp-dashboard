@@ -632,8 +632,10 @@
 
       const CHART_HEIGHT = 250, BOTTOM_OFFSET = 20, TOP_OFFSET = 16;
       const BAR_AREA = CHART_HEIGHT - TOP_OFFSET - BOTTOM_OFFSET;
-      const seen = new Set();
-      [0.25, 0.5, 0.75, 1.0].forEach(fraction => {
+      const fractions = [0.25, 0.5, 0.75, 1.0];
+      const dataLabels = fractions.map(f => yFormatFn(maxVal * f));
+      const useDataLabels = new Set(dataLabels).size === 4 && dataLabels.every(l => parseFloat(l) !== 0);
+      fractions.forEach((fraction, i) => {
         const bottomPx = BOTTOM_OFFSET + fraction * BAR_AREA;
 
         const line = document.createElement('div');
@@ -641,15 +643,11 @@
         line.style.bottom = bottomPx + 'px';
         parentEl.appendChild(line);
 
-        const label = yFormatFn(maxVal * fraction);
-        if (!seen.has(label) && parseFloat(label) !== 0) {
-          seen.add(label);
-          const lbl = document.createElement('div');
-          lbl.className = 'y-axis-label';
-          lbl.style.bottom = bottomPx + 'px';
-          lbl.textContent = label;
-          parentEl.appendChild(lbl);
-        }
+        const lbl = document.createElement('div');
+        lbl.className = 'y-axis-label';
+        lbl.style.bottom = bottomPx + 'px';
+        lbl.textContent = useDataLabels ? dataLabels[i] : `${fraction * 100}%`;
+        parentEl.appendChild(lbl);
       });
       // adjust bars for preset: monthly/yearly should cap at 12
       let maxBars = 30;
