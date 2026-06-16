@@ -627,10 +627,12 @@
       parentEl.querySelectorAll('.y-grid-line, .y-axis-label').forEach(el => el.remove());
       if (chartData.data.length === 0) return;
 
-      const maxVal = Math.max(...chartData.data, 1);
+      const realMax = Math.max(...chartData.data);
+      const maxVal = Math.max(realMax, 1);
 
       const CHART_HEIGHT = 250, BOTTOM_OFFSET = 20, TOP_OFFSET = 16;
       const BAR_AREA = CHART_HEIGHT - TOP_OFFSET - BOTTOM_OFFSET;
+      const seen = new Set();
       [0.25, 0.5, 0.75, 1.0].forEach(fraction => {
         const bottomPx = BOTTOM_OFFSET + fraction * BAR_AREA;
 
@@ -639,11 +641,15 @@
         line.style.bottom = bottomPx + 'px';
         parentEl.appendChild(line);
 
-        const lbl = document.createElement('div');
-        lbl.className = 'y-axis-label';
-        lbl.style.bottom = bottomPx + 'px';
-        lbl.textContent = yFormatFn(maxVal * fraction);
-        parentEl.appendChild(lbl);
+        const label = yFormatFn(maxVal * fraction);
+        if (!seen.has(label) && parseFloat(label) !== 0) {
+          seen.add(label);
+          const lbl = document.createElement('div');
+          lbl.className = 'y-axis-label';
+          lbl.style.bottom = bottomPx + 'px';
+          lbl.textContent = label;
+          parentEl.appendChild(lbl);
+        }
       });
       // adjust bars for preset: monthly/yearly should cap at 12
       let maxBars = 30;
