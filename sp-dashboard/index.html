@@ -593,16 +593,17 @@
     const updateBarChart = () => {
       if (!latestMetrics) return;
       const type = document.getElementById('bar-chart-select').value;
-      const shortNum = (v) => `${Math.round(v)}`;
-      const shortTime = (v) => `${(v / 3600000).toFixed(1)}h`;
+      const taskYFn = (v) => `${Math.round(v)}`;
+      const timeYFn = (v) => `${Math.round(v / 3600000)}h`;
+      const HOUR = 3600000;
       if (type === 'time') {
-        renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, shortTime);
+        renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, timeYFn, HOUR);
       } else if (type === 'completed') {
-        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', (v) => `${Math.round(v)} tasks`, shortNum);
+        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', (v) => `${Math.round(v)} tasks`, taskYFn);
       } else if (type === 'overdue') {
-        renderGenericBarChart(latestMetrics.overduePerDay, 'bar-chart-container', '#f87171', (v) => `${Math.round(v)} tasks`, shortNum);
+        renderGenericBarChart(latestMetrics.overduePerDay, 'bar-chart-container', '#f87171', (v) => `${Math.round(v)} tasks`, taskYFn);
       } else if (type === 'late') {
-        renderGenericBarChart(latestMetrics.latePerDay, 'bar-chart-container', '#fbbf24', (v) => `${Math.round(v)} tasks`, shortNum);
+        renderGenericBarChart(latestMetrics.latePerDay, 'bar-chart-container', '#fbbf24', (v) => `${Math.round(v)} tasks`, taskYFn);
       }
     };
 
@@ -620,7 +621,7 @@
       }
     };
 
-    const renderGenericBarChart = (chartData, containerId, color, formatFn, yFormatFn = formatFn) => {
+    const renderGenericBarChart = (chartData, containerId, color, formatFn, yTickFn, unitSize = 1) => {
       const container = document.getElementById(containerId);
       container.innerHTML = '';
       const parentEl = container.parentElement;
@@ -628,15 +629,15 @@
       if (chartData.data.length === 0) return;
 
       const realMax = Math.max(...chartData.data);
-      const maxVal = Math.max(realMax, 1);
+      const yStep = Math.max(Math.ceil(Math.ceil(realMax / unitSize) / 4), 1);
+      const scaleMaxUnits = Math.max(yStep * 4, 4);
+      const scaleMax = scaleMaxUnits * unitSize;
 
       const CHART_HEIGHT = 250, BOTTOM_OFFSET = 20, TOP_OFFSET = 16;
       const BAR_AREA = CHART_HEIGHT - TOP_OFFSET - BOTTOM_OFFSET;
-      const fractions = [0.25, 0.5, 0.75, 1.0];
-      const dataLabels = fractions.map(f => yFormatFn(maxVal * f));
-      const useDataLabels = new Set(dataLabels).size === 4 && dataLabels.every(l => parseFloat(l) !== 0);
-      fractions.forEach((fraction, i) => {
-        const bottomPx = BOTTOM_OFFSET + fraction * BAR_AREA;
+
+      [1, 2, 3, 4].forEach(i => {
+        const bottomPx = BOTTOM_OFFSET + (i / 4) * BAR_AREA;
 
         const line = document.createElement('div');
         line.className = 'y-grid-line';
@@ -646,7 +647,7 @@
         const lbl = document.createElement('div');
         lbl.className = 'y-axis-label';
         lbl.style.bottom = bottomPx + 'px';
-        lbl.textContent = useDataLabels ? dataLabels[i] : `${fraction * 100}%`;
+        lbl.textContent = yTickFn(i * yStep * unitSize);
         parentEl.appendChild(lbl);
       });
       // adjust bars for preset: monthly/yearly should cap at 12
@@ -664,15 +665,15 @@
           chunkCount++;
         }
         
-        const val = step === 1 ? chunkSum : chunkSum / chunkCount; 
+        const val = step === 1 ? chunkSum : chunkSum / chunkCount;
         const label = chartData.labels[i].substring(5);
-        const heightPct = (val / maxVal) * 100;
+        const heightPx = (val / scaleMax) * BAR_AREA;
         const displayVal = formatFn(val);
 
         const col = document.createElement('div');
         col.className = 'bar-col';
         col.innerHTML = `
-          <div class="bar" style="height: ${heightPct}%; background: ${color};" data-val="${displayVal}"></div>
+          <div class="bar" style="height: ${heightPx}px; background: ${color};" data-val="${displayVal}"></div>
           <div class="bar-label" title="${chartData.labels[i]}">${label}</div>
         `;
         container.appendChild(col);
