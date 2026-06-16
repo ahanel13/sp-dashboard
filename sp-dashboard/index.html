@@ -427,8 +427,8 @@
 
     const getDatesInRange = (startDate, endDate) => {
       const dates = [];
-      let currentDate = new Date(startDate + "T00:00:00");
-      const end = new Date(endDate + "T00:00:00");
+      let currentDate = new Date(startDate.split('T')[0] + "T00:00:00");
+      const end = new Date(endDate.split('T')[0] + "T00:00:00");
       while (currentDate <= end) {
         dates.push(toLocalDate(currentDate));
         currentDate.setDate(currentDate.getDate() + 1);
@@ -740,12 +740,17 @@
       let dueStart = null;
       if (task.dueDay) {
         // parse as local midnight so due-window aligns with the user's calendar day
-        const parsed = new Date(task.dueDay + "T00:00:00").getTime();
+        const parsed = new Date(task.dueDay.split('T')[0] + "T00:00:00").getTime();
         if (!isNaN(parsed)) {
           dueStart = parsed;
         }
       }
-      const dueEnd = dueStart !== null ? dueStart + 86400000 - 1 : null;
+      let dueEnd = null;
+      if (dueStart !== null) {
+        const d = new Date(dueStart);
+        d.setDate(d.getDate() + 1);
+        dueEnd = d.getTime() - 1;
+      }
       return { dueStart, dueEnd };
     };
 
@@ -759,7 +764,7 @@
         dateToStr = document.getElementById('date-to').value;
       } else {
         const endObj = new Date();
-        const startObj = new Date();
+        const startObj = new Date(endObj);
         if (preset === 'this-week') {
           const day = endObj.getDay(); // 0=Sun, 1=Mon, …, 6=Sat
           const diff = day === 0 ? 6 : day - 1; // days back to most recent Monday
@@ -768,6 +773,9 @@
           startObj.setDate(endObj.getDate() - 6);
         } else if (preset === 'month') {
           startObj.setMonth(endObj.getMonth() - 1);
+          if (startObj.getDate() !== endObj.getDate()) {
+            startObj.setDate(0); // rewind to last day of previous month
+          }
         } else if (preset === 'year') {
           startObj.setFullYear(endObj.getFullYear() - 1);
         }
@@ -852,7 +860,9 @@
 
         dateRange.forEach((dateStr, index) => {
           const dayStart = new Date(dateStr + "T00:00:00").getTime();
-          const dayEnd = dayStart + 86400000 - 1;
+          const dayEndObj = new Date(dayStart);
+          dayEndObj.setDate(dayEndObj.getDate() + 1);
+          const dayEnd = dayEndObj.getTime() - 1;
 
           // Time Spent Logging
           const spentOnDate = task.timeSpentOnDay && task.timeSpentOnDay[dateStr];
@@ -988,6 +998,7 @@
     window.formatTime = formatTime;
     window.formatDateShort = formatDateShort;
     window.getDatesInRange = getDatesInRange;
+    window.getDueBounds = getDueBounds;
     window.switchTab = switchTab;
     window.processData = processData;
     window.updateBarChart = updateBarChart;

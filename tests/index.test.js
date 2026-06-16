@@ -43,6 +43,43 @@ describe('Date Range Reporter UI', () => {
       const range = window.getDatesInRange('2026-02-20', '2026-02-22');
       expect(range).toEqual(['2026-02-20', '2026-02-21', '2026-02-22']);
     });
+
+    it('getDatesInRange should tolerate full ISO timestamps as inputs', () => {
+      const range = window.getDatesInRange('2026-02-20T10:00:00Z', '2026-02-22T10:00:00Z');
+      expect(range).toEqual(['2026-02-20', '2026-02-21', '2026-02-22']);
+    });
+
+    it('getDueBounds dueEnd should be end-of-day (DST-safe calculation)', () => {
+      const { dueStart, dueEnd } = window.getDueBounds({ dueDay: '2026-03-28' });
+      expect(dueStart).not.toBeNull();
+      expect(dueEnd).toBeGreaterThan(dueStart);
+      expect(dueEnd - dueStart).toBeGreaterThanOrEqual(82800000); // at least 23h
+      expect(dueEnd - dueStart).toBeLessThanOrEqual(90000000);    // at most 25h
+    });
+
+    it('getDueBounds should handle a full ISO timestamp in dueDay', () => {
+      const { dueStart, dueEnd } = window.getDueBounds({ dueDay: '2026-02-20T10:00:00Z' });
+      expect(dueStart).not.toBeNull();
+      expect(dueEnd).not.toBeNull();
+      // dueStart should parse to 2026-02-20 local midnight
+      expect(toLocalDate(new Date(dueStart))).toBe('2026-02-20');
+    });
+
+    it('month preset should not roll over when today is the 31st', () => {
+      // March 31, 2026 at noon — without the fix, setMonth(Feb) on Mar 31 rolls to Mar 3
+      vi.useFakeTimers({ now: new Date('2026-03-31T12:00:00').getTime() });
+      const consoleSpy = vi.spyOn(console, 'log');
+      const presetSelect = document.getElementById('date-preset');
+      presetSelect.value = 'month';
+      presetSelect.dispatchEvent(new Event('change'));
+      window.processData([], []);
+      vi.useRealTimers();
+      const rangeLog = consoleSpy.mock.calls.find(args => String(args[0]).includes('computed date range'));
+      expect(rangeLog).toBeDefined();
+      expect(rangeLog[1]).toBe('2026-02-28'); // should be Feb 28, not Mar 3
+      expect(rangeLog[2]).toBe('2026-03-31');
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('Dashboard State Updates', () => {
