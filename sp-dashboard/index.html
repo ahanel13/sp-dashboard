@@ -228,9 +228,21 @@
 
     /* --- TABLE (DETAILED LIST) --- */
     .details-table { width: 100%; border-collapse: collapse; text-align: left; }
-    .details-table th, .details-table td { 
-      padding: var(--s2, 1rem) var(--s3, 1.5rem); 
-      border-bottom: 1px solid var(--divider-color, #333); 
+    .details-table th, .details-table td {
+      padding: 0.4rem var(--s2, 1rem);
+      border-bottom: 1px solid var(--divider-color, #333);
+    }
+    .overdue-section-header {
+      padding: 0.5rem var(--s2, 1rem);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text-color-muted, #9e9e9e);
+      border-top: 1px solid var(--divider-color, #333);
+      border-bottom: 1px solid var(--divider-color, #333);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     .details-table th { 
       background: var(--card-bg, #1e1e1e); 
@@ -411,6 +423,24 @@
             <!-- Rows injected by JS -->
           </tbody>
         </table>
+        <div id="overdue-section" class="hidden">
+          <div class="overdue-section-header">
+            OVERDUE &amp; LATE
+            <span id="overdue-section-count" class="badge badge-red"></span>
+          </div>
+          <table class="details-table">
+            <thead>
+              <tr>
+                <th>Due Date</th>
+                <th>Project</th>
+                <th>Task</th>
+                <th>Time Spent</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="overdue-table-body"></tbody>
+          </table>
+        </div>
       </div>
 
     </div>
@@ -589,6 +619,7 @@
       updateBarChart();
       updatePieChart();
       renderTable(sortedEntries);
+      renderOverdueSection(metrics.overdueEntries);
       updateSortIndicators();
     };
 
@@ -773,6 +804,32 @@
       `).join('');
     };
 
+    const renderOverdueSection = (entries) => {
+      const section = document.getElementById('overdue-section');
+      const tbody = document.getElementById('overdue-table-body');
+      const countBadge = document.getElementById('overdue-section-count');
+      if (entries.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+      section.classList.remove('hidden');
+      countBadge.textContent = entries.length;
+      tbody.innerHTML = entries.map(entry => `
+        <tr>
+          <td style="white-space: nowrap;">${entry.date ? formatDateShort(entry.date) : '—'}</td>
+          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${entry.projectName}</td>
+          <td style="font-weight: 500;">${entry.taskTitle}</td>
+          <td class="time-cell">${formatTime(entry.timeSpent)}</td>
+          <td>
+            ${entry.late
+              ? `<span class="badge badge-yellow">Late</span>`
+              : `<span class="badge badge-red">Overdue</span>`
+            }
+          </td>
+        </tr>
+      `).join('');
+    };
+
     // helper for normalizing a task's dueDay to day boundaries (UTC)
     const getDueBounds = (task) => {
       let dueStart = null;
@@ -842,7 +899,8 @@
         projectCompletedData: {},
         projectOverdueData: {},
         projectLateData: {},
-        tableEntries: []
+        tableEntries: [],
+        overdueEntries: []
       };
 
       const now = Date.now();
@@ -953,11 +1011,11 @@
           }
         }
         
-        // add a row for overdue or late tasks that had no time entries
+        // add a row for overdue or late tasks that had no time entries — goes to separate section
         if (taskTimeInRange === 0 && (isOverdue || isLate)) {
           const badge = isLate ? 'Late' : 'Overdue';
           const dateStr = dueStart ? toLocalDate(new Date(dueStart)) : '';
-          metrics.tableEntries.push({
+          metrics.overdueEntries.push({
             date: dateStr,
             projectName: pName,
             taskTitle: `${task.title || 'Untitled Task'} (${badge})`,
@@ -1042,6 +1100,7 @@
     window.updateBarChart = updateBarChart;
     window.updatePieChart = updatePieChart;
     window.sortEntries = sortEntries;
+    window.renderOverdueSection = renderOverdueSection;
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
     const pullDataFromSP = async () => {

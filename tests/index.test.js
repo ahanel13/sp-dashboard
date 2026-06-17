@@ -129,8 +129,8 @@ describe('Date Range Reporter UI', () => {
       };
       window.processData([task], []);
       expect(document.getElementById('stat-overdue').innerText).toBe('1');
-      // table should include this task despite zero time
-      const row = document.querySelector('#details-table-body tr');
+      // overdue task with no time goes to the separate overdue section
+      const row = document.querySelector('#overdue-table-body tr');
       expect(row.textContent).toContain('Initial Overdue');
     });
 
@@ -194,8 +194,8 @@ describe('Date Range Reporter UI', () => {
       window.processData([task], []);
       expect(document.getElementById('stat-overdue').innerText).toBe('1');
       expect(document.getElementById('stat-late').innerText).toBe('1');
-      // table should include the task despite zero time
-      const row = document.querySelector('#details-table-body tr');
+      // late task with no time goes to the separate overdue section
+      const row = document.querySelector('#overdue-table-body tr');
       expect(row.textContent).toContain('Done Late');
     });
 
@@ -388,13 +388,13 @@ describe('Date Range Reporter UI', () => {
       const lateTask = { id:'t2', parentId:null, title:'Bar', isDone:true, doneOn: now, dueDay: yesterdayStr, timeSpentOnDay:{} };
       window.processData([overdueTask, lateTask], []);
 
-
-      // verify list badges
-      const rows = document.querySelectorAll('#details-table-body tr');
-      expect(rows.length).toBe(2);
-      const text = Array.from(rows).map(r => r.textContent).join(' ');
+      // verify overdue/late rows appear in the separate overdue section, not the main table
+      const overdueRows = document.querySelectorAll('#overdue-table-body tr');
+      expect(overdueRows.length).toBe(2);
+      const text = Array.from(overdueRows).map(r => r.textContent).join(' ');
       expect(text).toContain('Overdue');
       expect(text).toContain('Late');
+      expect(document.getElementById('overdue-section').classList.contains('hidden')).toBe(false);
 
       const barSelect = document.getElementById('bar-chart-select');
       const pieSelect = document.getElementById('pie-chart-select');
@@ -431,10 +431,51 @@ describe('Date Range Reporter UI', () => {
       expect(pieLegend.querySelector('.legend-item')).not.toBeNull();
     });
 
+    it('overdue/late tasks with no time entries should appear in overdue section, not the main table', () => {
+      // Period = today; overdue task due in the past, late task done after due date
+      const preset = document.getElementById('date-preset');
+      preset.value = 'today';
+      preset.dispatchEvent(new Event('change'));
+
+      const now = Date.now();
+      const pastDate = '2026-01-15';
+      const overdueTask = { id:'o1', parentId:null, title:'Overdue Thing', isDone:false, dueDay: pastDate, timeSpentOnDay:{} };
+      const lateTask = { id:'l1', parentId:null, title:'Late Thing', isDone:true, doneOn: now, dueDay: pastDate, timeSpentOnDay:{} };
+      window.processData([overdueTask, lateTask], []);
+
+      // main table should have no rows for these tasks
+      const mainRows = document.querySelectorAll('#details-table-body tr');
+      const mainText = Array.from(mainRows).map(r => r.textContent).join(' ');
+      expect(mainText).not.toContain('Overdue Thing');
+      expect(mainText).not.toContain('Late Thing');
+
+      // overdue section should show both
+      expect(document.getElementById('overdue-section').classList.contains('hidden')).toBe(false);
+      const overdueRows = document.querySelectorAll('#overdue-table-body tr');
+      expect(overdueRows.length).toBe(2);
+      const overdueText = Array.from(overdueRows).map(r => r.textContent).join(' ');
+      expect(overdueText).toContain('Overdue Thing');
+      expect(overdueText).toContain('Late Thing');
+    });
+
+    it('overdue section should be hidden when there are no overdue or late tasks', () => {
+      const task = { id:'t1', parentId:null, title:'Normal Task', isDone:false, dueDay:null, timeSpentOnDay:{} };
+      window.processData([task], []);
+      expect(document.getElementById('overdue-section').classList.contains('hidden')).toBe(true);
+    });
+
     it('detail list columns are sortable when headers are clicked', () => {
+      // use custom range so time entries fall within the period (tasks go to main table, not overdue section)
+      // set values directly without dispatching change to avoid double processData call (double sort-handler binding)
+      const preset = document.getElementById('date-preset');
+      preset.value = 'custom';
+      document.getElementById('custom-date-container').classList.remove('hidden');
+      document.getElementById('date-from').value = '2026-01-01';
+      document.getElementById('date-to').value = '2026-01-02';
+
       // create two tasks with different dates
-      const taskA = { id:'a', parentId:null, title:'A', isDone:false, dueDay:'2026-01-01', timeSpentOnDay:{'2026-01-01':3600000} };
-      const taskB = { id:'b', parentId:null, title:'B', isDone:false, dueDay:'2026-01-02', timeSpentOnDay:{'2026-01-02':3600000} };
+      const taskA = { id:'a', parentId:null, title:'A', isDone:true, doneOn: new Date('2026-01-01').getTime(), dueDay:'2026-01-01', timeSpentOnDay:{'2026-01-01':3600000} };
+      const taskB = { id:'b', parentId:null, title:'B', isDone:true, doneOn: new Date('2026-01-02').getTime(), dueDay:'2026-01-02', timeSpentOnDay:{'2026-01-02':3600000} };
       window.processData([taskA, taskB], []);
       // capture initial order of date cells
       const initial = Array.from(document.querySelectorAll('#details-table-body tr td:first-child')).map(td => td.textContent);
