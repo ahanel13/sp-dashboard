@@ -136,4 +136,4 @@ clear descriptions and, if applicable, screenshots. Contributions are welcome!
 
 ## 🗂️ License
 
-MIT © 2026 Douglas Cooper
+MIT © 2026 Douglas Cooper, Anthony Hanel — see [LICENSE](LICENSE) for full text.
