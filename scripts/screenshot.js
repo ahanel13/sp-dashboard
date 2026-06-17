@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs';
 
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
   const page = await browser.newPage();
 
   const fileUrl = 'file://' + path.resolve('sp-dashboard/index.html');
@@ -14,6 +14,17 @@ import fs from 'fs';
 
   // wait a moment for any mock data to load
   await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // use a custom range covering the mock data dates so bars render prominently
+  await page.evaluate(() => {
+    const sel = document.getElementById('date-preset');
+    sel.value = 'custom';
+    sel.dispatchEvent(new Event('change'));
+    document.getElementById('date-from').value = '2026-02-17';
+    document.getElementById('date-to').value = '2026-02-22';
+    document.getElementById('date-from').dispatchEvent(new Event('change'));
+  });
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   // ensure assets directory exists
   const outDir = path.resolve('assets');
