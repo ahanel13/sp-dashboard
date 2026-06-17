@@ -491,5 +491,29 @@ describe('Date Range Reporter UI', () => {
       dateTh.click();
       expect(dateTh.classList.contains('sorted-desc')).toBe(true);
     });
+
+    it('from-weekday preset shows weekday picker and produces correct date range', () => {
+      const presetSelect = document.getElementById('date-preset');
+      const weekdaySelect = document.getElementById('weekday-select');
+      const weekdayPickerContainer = document.getElementById('weekday-picker-container');
+      const barContainer = document.getElementById('bar-chart-container');
+
+      presetSelect.value = 'from-weekday';
+      presetSelect.dispatchEvent(new Event('change'));
+      expect(weekdayPickerContainer.classList.contains('hidden')).toBe(false);
+
+      const today = new Date();
+      for (const targetDay of [0, 1, 2, 3, 4, 5, 6]) {
+        weekdaySelect.value = String(targetDay);
+        weekdaySelect.dispatchEvent(new Event('change'));
+        window.processData([], []);
+        const daysBack = (today.getDay() - targetDay + 7) % 7;
+        expect(barContainer.querySelectorAll('.bar-col').length).toBe(daysBack + 1);
+      }
+
+      presetSelect.value = 'today';
+      presetSelect.dispatchEvent(new Event('change'));
+      expect(weekdayPickerContainer.classList.contains('hidden')).toBe(true);
+    });
   });
 });
