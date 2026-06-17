@@ -54,7 +54,7 @@ README.md                # This file
 
 ## 📦 Installation
 
-1. Download the plugin files for the latest [Release](https://github.com/dougcooper/sp-dashboard/releases)
+1. Download the plugin files for the latest [Release](https://github.com/ahanel13/sp-dashboard/releases)
 2. Open Super Productivity
 3. Go to Settings → Plugins
 4. Click "Load Plugin from Folder"
@@ -129,7 +129,7 @@ make build        # compiles plugin into /build/sp-dashboard zip ready for distr
 
 ## 📬 Reporting Issues & Contributing
 
-Please file issues or pull requests against the [GitHub repository](https://github.com/dougcooper/sp-dashboard) with
+Please file issues or pull requests against the [GitHub repository](https://github.com/ahanel13/sp-dashboard) with
 clear descriptions and, if applicable, screenshots. Contributions are welcome!
 
 ---
