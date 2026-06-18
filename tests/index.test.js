@@ -271,6 +271,35 @@ describe('Date Range Reporter UI', () => {
       expect(document.getElementById('stat-tasks').innerText).toBe('0');
     });
 
+    it('should include currentSessionTime in totalTimeSpent and bar chart when today is in range', () => {
+      const todayStr = toLocalDate(new Date());
+      const activeTask = {
+        id: 't-active',
+        parentId: null,
+        title: 'Active Task',
+        isDone: false,
+        timeSpentOnDay: { [todayStr]: 3600000 /* 1h committed */ },
+        currentSessionTime: 1800000 /* 30m in-progress */
+      };
+      window.processData([activeTask], []);
+      // stat-time should reflect 1.5h total (committed + in-progress)
+      expect(document.getElementById('stat-time').innerText).toBe('1h 30m');
+    });
+
+    it('should include currentSessionTime even when no committed time for today', () => {
+      const todayStr = toLocalDate(new Date());
+      const activeTask = {
+        id: 't-active-only',
+        parentId: null,
+        title: 'Just Started',
+        isDone: false,
+        timeSpentOnDay: {},
+        currentSessionTime: 900000 /* 15m in-progress */
+      };
+      window.processData([activeTask], []);
+      expect(document.getElementById('stat-time').innerText).toBe('0h 15m');
+    });
+
     it('should deduplicate tasks that appear in both active and archived lists', () => {
       const now = Date.now();
       const doneTask = {

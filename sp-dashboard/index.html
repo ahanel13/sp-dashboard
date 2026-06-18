@@ -507,6 +507,7 @@
     let cachedProjects = [];
     let latestMetrics = null;
     let currentSort = { key: 'date', dir: 'desc' }; // sorting state for details table
+    let liveUpdateInterval = null;
 
     // helper to sort table entries by given field/key
     const sortEntries = (entries, key, dir) => {
@@ -1110,6 +1111,17 @@
           });
         }
 
+        // Add in-progress session time (not yet committed to timeSpentOnDay)
+        if ((task.currentSessionTime || 0) > 0) {
+          const today = toLocalDate(new Date());
+          if (dateRange.includes(today)) {
+            const idx = dateRange.indexOf(today);
+            const cs = task.currentSessionTime;
+            metrics.weeklyData.data[idx] += cs;
+            taskTimeInRange += cs;
+          }
+        }
+
         // Tally Project Time and Total Tasks if active in window
         if (taskTimeInRange > 0) {
           metrics.totalTimeSpent += taskTimeInRange;
@@ -1249,6 +1261,7 @@
       console.log("[sp-dashboard] bootstrap timeout fired; PluginAPI exists?", !!window.PluginAPI);
       if (window.PluginAPI) {
         pullDataFromSP();
+        liveUpdateInterval = setInterval(pullDataFromSP, 30000);
       } else {
         console.log("[sp-dashboard] No PluginAPI detected. Loading mock data...");
         
@@ -1272,7 +1285,8 @@
           },
           {
             id: "t2", parentId: null, title: "General Admin", isDone: false, projectId: null,
-            timeSpentOnDay: { [dates[0]]: 3600000 /* 1h */ }
+            timeSpentOnDay: { [dates[0]]: 3600000 /* 1h */ },
+            currentSessionTime: 1800000 /* 30m in-progress session */
           },
           {
             id: "t3", parentId: null, title: "Draft Email Copy", isDone: true, doneOn: new Date('2026-02-20T10:00Z').getTime(), projectId: "p2",
