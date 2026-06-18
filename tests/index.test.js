@@ -12,7 +12,8 @@ describe('Date Range Reporter UI', () => {
   let scriptContent;
 
   beforeEach(() => {
-    // Reset the DOM
+    // Reset the DOM and clear any persisted localStorage state between tests
+    localStorage.clear();
     document.documentElement.innerHTML = html;
 
     // In a JSDOM environment, we need to manually execute the script 
@@ -65,8 +66,8 @@ describe('Date Range Reporter UI', () => {
       expect(toLocalDate(new Date(dueStart))).toBe('2026-02-20');
     });
 
-    it('month preset should not roll over when today is the 31st', () => {
-      // March 31, 2026 at noon — without the fix, setMonth(Feb) on Mar 31 rolls to Mar 3
+    it('month preset should cover the full previous calendar month', () => {
+      // March 31, 2026 at noon — month preset should show Feb 1–28 (full previous calendar month)
       vi.useFakeTimers({ now: new Date('2026-03-31T12:00:00').getTime() });
       const consoleSpy = vi.spyOn(console, 'log');
       const presetSelect = document.getElementById('date-preset');
@@ -76,8 +77,8 @@ describe('Date Range Reporter UI', () => {
       vi.useRealTimers();
       const rangeLog = consoleSpy.mock.calls.find(args => String(args[0]).includes('computed date range'));
       expect(rangeLog).toBeDefined();
-      expect(rangeLog[1]).toBe('2026-02-28'); // should be Feb 28, not Mar 3
-      expect(rangeLog[2]).toBe('2026-03-31');
+      expect(rangeLog[1]).toBe('2026-02-01'); // 1st of previous calendar month
+      expect(rangeLog[2]).toBe('2026-02-28'); // last day of previous calendar month
       consoleSpy.mockRestore();
     });
   });
@@ -490,6 +491,30 @@ describe('Date Range Reporter UI', () => {
       // clicking again flips direction
       dateTh.click();
       expect(dateTh.classList.contains('sorted-desc')).toBe(true);
+    });
+
+    it('from-weekday preset shows weekday picker and produces correct date range', () => {
+      const presetSelect = document.getElementById('date-preset');
+      const weekdaySelect = document.getElementById('weekday-select');
+      const weekdayPickerContainer = document.getElementById('weekday-picker-container');
+      const barContainer = document.getElementById('bar-chart-container');
+
+      presetSelect.value = 'from-weekday';
+      presetSelect.dispatchEvent(new Event('change'));
+      expect(weekdayPickerContainer.classList.contains('hidden')).toBe(false);
+
+      const today = new Date();
+      for (const targetDay of [0, 1, 2, 3, 4, 5, 6]) {
+        weekdaySelect.value = String(targetDay);
+        weekdaySelect.dispatchEvent(new Event('change'));
+        window.processData([], []);
+        const daysBack = (today.getDay() - targetDay + 7) % 7;
+        expect(barContainer.querySelectorAll('.bar-col').length).toBe(daysBack + 1);
+      }
+
+      presetSelect.value = 'today';
+      presetSelect.dispatchEvent(new Event('change'));
+      expect(weekdayPickerContainer.classList.contains('hidden')).toBe(true);
     });
   });
 });
