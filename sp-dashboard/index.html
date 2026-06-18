@@ -182,6 +182,9 @@
     .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
     .card-title { font-size: 1.125rem; font-weight: 600; margin: 0; }
     .chart-select { background: var(--card-bg, #1e1e1e); color: var(--text-color, #fff); border: 1px solid var(--divider-color, #333); border-radius: 0.25rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+    .dim-toggle { display: inline-flex; border: 1px solid var(--divider-color, #333); border-radius: 0.375rem; overflow: hidden; }
+    .dim-btn { background: none; border: none; padding: 0.375rem 1rem; font-size: 0.875rem; color: var(--text-color-muted, #9e9e9e); cursor: pointer; outline: none; font-weight: 500; }
+    .dim-btn.active { background: var(--c-primary, #03a9f4); color: #fff; }
 
     /* --- NATIVE CHARTS --- */
     .chart-container { position: relative; height: 250px; width: 100%; display: flex; justify-content: center; padding-left: 40px; }
@@ -398,14 +401,20 @@
           </div>
 
           <div class="chart-card">
-            <div class="card-header">
-              <h3 class="card-title">Project Breakdown</h3>
-              <select id="pie-chart-select" class="chart-select">
-                <option value="time">Time Tracked</option>
-                <option value="completed" selected>Tasks Completed</option>
-                <option value="overdue">Tasks Overdue</option>
-                <option value="late">Completed Late</option>
-              </select>
+            <div class="card-header" style="flex-direction:column; align-items:flex-start; gap:0.5rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 class="card-title">Breakdown</h3>
+                <select id="pie-chart-select" class="chart-select">
+                  <option value="time">Time Tracked</option>
+                  <option value="completed" selected>Tasks Completed</option>
+                  <option value="overdue">Tasks Overdue</option>
+                  <option value="late">Completed Late</option>
+                </select>
+              </div>
+              <div class="dim-toggle">
+                <button id="pie-dim-project" class="dim-btn active">Project</button>
+                <button id="pie-dim-tag" class="dim-btn">Tag</button>
+              </div>
             </div>
             <div class="chart-container">
               <div class="pie-wrapper">
@@ -505,7 +514,9 @@
     // --- GLOBALS ---
     let cachedTasks = [];
     let cachedProjects = [];
+    let cachedTags = [];
     let latestMetrics = null;
+    let pieDimension = 'project';
     let currentSort = { key: 'date', dir: 'desc' }; // sorting state for details table
     let liveUpdateInterval = null;
 
@@ -582,6 +593,8 @@
     const dateToInput = document.getElementById('date-to');
     const barChartSelect = document.getElementById('bar-chart-select');
     const pieChartSelect = document.getElementById('pie-chart-select');
+    const pieDimProjectBtn = document.getElementById('pie-dim-project');
+    const pieDimTagBtn = document.getElementById('pie-dim-tag');
 
     presetSelect.addEventListener('change', (e) => {
       customContainer.classList.toggle('hidden', e.target.value !== 'custom');
@@ -699,16 +712,30 @@
     const updatePieChart = () => {
       if (!latestMetrics) return;
       const type = document.getElementById('pie-chart-select').value;
+      const isTag = pieDimension === 'tag';
+      const timeFmt = (v) => `${(v / 3600000).toFixed(1)}h`;
+      const countFmt = (v) => `${Math.round(v)} tasks`;
       if (type === 'time') {
-        renderNativePieChart(latestMetrics.projectData, (v) => `${(v / 3600000).toFixed(1)}h`);
+        renderNativePieChart(isTag ? latestMetrics.tagData : latestMetrics.projectData, timeFmt);
       } else if (type === 'completed') {
-        renderNativePieChart(latestMetrics.projectCompletedData, (v) => `${Math.round(v)} tasks`);
+        renderNativePieChart(isTag ? latestMetrics.tagCompletedData : latestMetrics.projectCompletedData, countFmt);
       } else if (type === 'overdue') {
-        renderNativePieChart(latestMetrics.projectOverdueData, (v) => `${Math.round(v)} tasks`);
+        renderNativePieChart(isTag ? latestMetrics.tagOverdueData : latestMetrics.projectOverdueData, countFmt);
       } else if (type === 'late') {
-        renderNativePieChart(latestMetrics.projectLateData, (v) => `${Math.round(v)} tasks`);
+        renderNativePieChart(isTag ? latestMetrics.tagLateData : latestMetrics.projectLateData, countFmt);
       }
     };
+
+    const setPieDimension = (dim) => {
+      pieDimension = dim;
+      pieDimProjectBtn.classList.toggle('active', dim === 'project');
+      pieDimTagBtn.classList.toggle('active', dim === 'tag');
+      localStorage.setItem('sp-dashboard-pie-dim', dim);
+      updatePieChart();
+    };
+    pieDimProjectBtn.addEventListener('click', () => setPieDimension('project'));
+    pieDimTagBtn.addEventListener('click', () => setPieDimension('tag'));
+    setPieDimension(localStorage.getItem('sp-dashboard-pie-dim') || 'project');
 
     const renderGenericBarChart = (chartData, containerId, color, formatFn, yTickFn, unitSize = 1) => {
       const container = document.getElementById(containerId);
@@ -931,7 +958,7 @@
     };
 
     // process tasks/projects into metrics and update UI
-    const processData = (tasksArr, projectsArr) => {
+    const processData = (tasksArr, projectsArr, tagsArr = []) => {
       // determine date range from preset/selectors
       const preset = document.getElementById('date-preset').value;
       let dateFromStr, dateToStr;
@@ -968,7 +995,9 @@
       // Build lookup maps for faster processing
       const projectMap = {};
       projectsArr.forEach(p => projectMap[p.id] = p.title);
-      
+      const tagMap = {};
+      (tagsArr || []).forEach(t => { tagMap[t.id] = t.title || t.id; });
+
       let metrics = {
         totalTimeSpent: 0,
         totalCompleted: 0,
@@ -984,6 +1013,10 @@
         projectCompletedData: {},
         projectOverdueData: {},
         projectLateData: {},
+        tagData: {},
+        tagCompletedData: {},
+        tagOverdueData: {},
+        tagLateData: {},
         tableEntries: [],
         overdueEntries: []
       };
@@ -1010,9 +1043,11 @@
                     "isDone", task.isDone, "doneOnUTC", task.doneOn ? new Date(task.doneOn).toISOString() : null,
                     "timeSpentOnDay keys", keys, "inRange", overlap);
         let taskTimeInRange = 0;
-        const pName = task.projectId && projectMap[task.projectId] 
-            ? projectMap[task.projectId] 
+        const pName = task.projectId && projectMap[task.projectId]
+            ? projectMap[task.projectId]
             : 'Uncategorized';
+        const tNames = (task.tagIds || []).map(id => tagMap[id] || id);
+        if (tNames.length === 0) tNames.push('Untagged');
 
         // count unplanned only if dueDay is missing
         if (!dueStart && !task.isDone) {
@@ -1034,9 +1069,11 @@
           if (isLate) {
             metrics.lateCompleted++;
             metrics.projectLateData[pName] = (metrics.projectLateData[pName] || 0) + 1;
+            tNames.forEach(n => { metrics.tagLateData[n] = (metrics.tagLateData[n] || 0) + 1; });
           }
           countedOverdue.add(task.id);
           metrics.projectOverdueData[pName] = (metrics.projectOverdueData[pName] || 0) + 1;
+          tNames.forEach(n => { metrics.tagOverdueData[n] = (metrics.tagOverdueData[n] || 0) + 1; });
         }
 
         dateRange.forEach((dateStr, index) => {
@@ -1066,6 +1103,7 @@
           if (task.isDone && task.doneOn && task.doneOn >= dayStart && task.doneOn <= dayEnd) {
             metrics.completedPerDay.data[index]++;
             metrics.projectCompletedData[pName] = (metrics.projectCompletedData[pName] || 0) + 1;
+            tNames.forEach(n => { metrics.tagCompletedData[n] = (metrics.tagCompletedData[n] || 0) + 1; });
             if (isLate) {
               metrics.latePerDay.data[index]++;
             }
@@ -1122,11 +1160,12 @@
           }
         }
 
-        // Tally Project Time and Total Tasks if active in window
+        // Tally Project/Tag Time and Total Tasks if active in window
         if (taskTimeInRange > 0) {
           metrics.totalTimeSpent += taskTimeInRange;
           if (!metrics.projectData[pName]) metrics.projectData[pName] = 0;
           metrics.projectData[pName] += taskTimeInRange;
+          tNames.forEach(n => { metrics.tagData[n] = (metrics.tagData[n] || 0) + taskTimeInRange; });
         }
 
         // count tasks that had activity OR were completed OR are due (in range)
@@ -1151,6 +1190,9 @@
                         ? projectMap[task.projectId]
                         : 'Uncategorized';
             metrics.projectOverdueData[pName] = (metrics.projectOverdueData[pName] || 0) + 1;
+            const tns = (task.tagIds || []).map(id => tagMap[id] || id);
+            if (tns.length === 0) tns.push('Untagged');
+            tns.forEach(n => { metrics.tagOverdueData[n] = (metrics.tagOverdueData[n] || 0) + 1; });
             countedOverdue.add(task.id);
           }
         }
@@ -1238,7 +1280,16 @@
           console.log("[sp-dashboard] final cachedTasks done count:", finalDoneCount);
           cachedProjects = await window.PluginAPI.getAllProjects() || [];
           console.log("[sp-dashboard] received projects count", cachedProjects.length);
-          processData(cachedTasks, cachedProjects);
+          // Tags are supplied via postMessage from plugin.js (host context).
+          // Fall back to a direct call if the iframe API exposes it.
+          if (cachedTags.length === 0) {
+            const getTagsFn = window.PluginAPI.getTags || window.PluginAPI.getAllTags;
+            if (getTagsFn) {
+              cachedTags = (await getTagsFn.call(window.PluginAPI)) || [];
+            }
+          }
+          console.log("[sp-dashboard] tags count", cachedTags.length);
+          processData(cachedTasks, cachedProjects, cachedTags);
         } else {
           console.warn("[sp-dashboard] PluginAPI missing inside pullDataFromSP");
         }
@@ -1252,6 +1303,9 @@
       console.log("[sp-dashboard] message event received in iframe");
       console.log(event.data)
       if (event.data && event.data.type === 'SP_STATE_CHANGED') {
+        if (Array.isArray(event.data.tags) && event.data.tags.length > 0) {
+          cachedTags = event.data.tags;
+        }
         pullDataFromSP();
       }
     });
@@ -1278,44 +1332,58 @@
           { id: "p2", title: "Marketing Campaign" }
         ];
 
+        cachedTags = [
+          { id: "tag-fe", title: "Frontend" },
+          { id: "tag-be", title: "Backend" },
+          { id: "tag-ux", title: "Design" }
+        ];
+
         cachedTasks = [
           {
             id: "t1", parentId: null, title: "Create Figma Mockups", isDone: true, doneOn: new Date('2026-02-22T10:00Z').getTime(), projectId: "p1",
+            tagIds: ["tag-ux", "tag-fe"],
             timeSpentOnDay: { [dates[0]]: 14400000 /* 4h */, [dates[1]]: 7200000 /* 2h */ }
           },
           {
             id: "t2", parentId: null, title: "General Admin", isDone: false, projectId: null,
+            tagIds: [],
             timeSpentOnDay: { [dates[0]]: 3600000 /* 1h */ },
             currentSessionTime: 1800000 /* 30m in-progress session */
           },
           {
             id: "t3", parentId: null, title: "Draft Email Copy", isDone: true, doneOn: new Date('2026-02-20T10:00Z').getTime(), projectId: "p2",
+            tagIds: ["tag-fe"],
             timeSpentOnDay: { [dates[2]]: 18000000 /* 5h */ }
           },
           {
             id: "t4", parentId: null, title: "Setup Database", isDone: false, projectId: "p1",
+            tagIds: ["tag-be"],
             timeSpentOnDay: { [dates[3]]: 10800000 /* 3h */ }, dueDay: "2026-02-18" // Overdue
           },
           {
             id: "t5", parentId: null, title: "Write Documentation", isDone: false, projectId: "p1",
+            tagIds: ["tag-be"],
             timeSpentOnDay: {}, // No time logged in this period – not included in denominator
             dueDay: "2026-02-28" // Future due date
           },
           {
             id: "t6", parentId: null, title: "API Integration", isDone: false, projectId: "p1",
+            tagIds: ["tag-be", "tag-fe"],
             timeSpentOnDay: { [dates[0]]: 5400000 /* 1.5h */ }, dueDay: "2026-02-17" // Overdue with time logged
           },
           {
             id: "t6-1", parentId: "t6", title: "Fix authentication endpoint", isDone: true, doneOn: new Date('2026-02-21T14:00Z').getTime(), projectId: "p1",
+            tagIds: ["tag-be"],
             timeSpentOnDay: { [dates[1]]: 7200000 /* 2h */ } // Child task (subtask of t6)
           },
           {
             id: "t7", parentId: null, title: "Review Code", isDone: true, doneOn: new Date('2026-02-21T15:00Z').getTime(), projectId: "p1",
+            tagIds: ["tag-fe"],
             timeSpentOnDay: { [dates[1]]: 3600000 /* 1h */ }, dueDay: "2026-02-19" // Late - completed 2 days after due date
           }
         ];
 
-        processData(cachedTasks, cachedProjects);
+        processData(cachedTasks, cachedProjects, cachedTags);
       }
     }, 500);
 
