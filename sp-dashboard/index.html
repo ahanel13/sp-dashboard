@@ -738,33 +738,58 @@
         lbl.textContent = yTickFn(i * yStep * unitSize);
         parentEl.appendChild(lbl);
       });
-      // adjust bars for preset: monthly/yearly should cap at 12
-      let maxBars = 30;
+      const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const preset = document.getElementById('date-preset').value;
-      if (preset === 'year' || preset === 'month') {
-        maxBars = 12;
-      }
-      let step = Math.ceil(chartData.data.length / maxBars);
-      for (let i = 0; i < chartData.data.length; i += step) {
-        let chunkSum = 0;
-        let chunkCount = 0;
-        for (let j = 0; j < step && i + j < chartData.data.length; j++) {
-          chunkSum += chartData.data[i+j];
-          chunkCount++;
-        }
-        
-        const val = step === 1 ? chunkSum : chunkSum / chunkCount;
-        const label = chartData.labels[i].substring(5);
+
+      const appendBar = (val, label, titleDate) => {
         const heightPx = (val / scaleMax) * BAR_AREA;
         const displayVal = formatFn(val);
-
         const col = document.createElement('div');
         col.className = 'bar-col';
         col.innerHTML = `
           <div class="bar" style="height: ${heightPx}px; background: ${color};" data-val="${displayVal}"></div>
-          <div class="bar-label" title="${chartData.labels[i]}">${label}</div>
+          <div class="bar-label" title="${titleDate}">${label}</div>
         `;
         container.appendChild(col);
+      };
+
+      if (preset === 'year') {
+        // Group daily data into calendar months
+        const monthBuckets = new Map();
+        for (let i = 0; i < chartData.labels.length; i++) {
+          const key = chartData.labels[i].substring(0, 7); // "YYYY-MM"
+          monthBuckets.set(key, (monthBuckets.get(key) || 0) + chartData.data[i]);
+        }
+        for (const [key, sum] of monthBuckets) {
+          const monthIdx = parseInt(key.substring(5), 10) - 1;
+          appendBar(sum, MONTH_NAMES[monthIdx], key + '-01');
+        }
+      } else {
+        let step = 1;
+        if (preset === 'month') {
+          step = 7;
+        } else if (preset === 'custom') {
+          step = Math.max(1, Math.ceil(chartData.data.length / 30));
+        }
+
+        for (let i = 0; i < chartData.data.length; i += step) {
+          let chunkSum = 0;
+          for (let j = 0; j < step && i + j < chartData.data.length; j++) {
+            chunkSum += chartData.data[i + j];
+          }
+          const dateStr = chartData.labels[i];
+          const d = new Date(dateStr + 'T00:00:00');
+          let label;
+          if (preset === 'this-week' || preset === 'week' || preset === 'from-weekday') {
+            label = DAY_NAMES[d.getDay()];
+          } else if (preset === 'month') {
+            label = MONTH_NAMES[d.getMonth()] + ' ' + d.getDate();
+          } else {
+            label = dateStr.substring(5); // custom: MM-DD
+          }
+          appendBar(chunkSum, label, dateStr);
+        }
       }
       
       // Setup tooltip listeners for bars
@@ -922,12 +947,12 @@
         } else if (preset === 'week') {
           startObj.setDate(endObj.getDate() - 6);
         } else if (preset === 'month') {
-          startObj.setMonth(endObj.getMonth() - 1);
-          if (startObj.getDate() !== endObj.getDate()) {
-            startObj.setDate(0); // rewind to last day of previous month
-          }
+          startObj.setDate(1);
+          startObj.setMonth(startObj.getMonth() - 1); // 1st of last month
+          endObj.setDate(0);                           // last day of last month
         } else if (preset === 'year') {
-          startObj.setFullYear(endObj.getFullYear() - 1);
+          startObj.setDate(1);
+          startObj.setMonth(startObj.getMonth() - 11); // 1st of 11 months ago → 12 calendar months
         } else if (preset === 'from-weekday') {
           const targetDay = parseInt(document.getElementById('weekday-select').value, 10);
           const daysBack = (endObj.getDay() - targetDay + 7) % 7;
