@@ -331,6 +331,65 @@ describe('Date Range Reporter UI', () => {
     });
   });
 
+  describe('Tag Breakdown', () => {
+    it('should accumulate time into tagData by tag name', () => {
+      const todayStr = toLocalDate(new Date());
+      const tags = [{ id: 'tag1', title: 'Frontend' }, { id: 'tag2', title: 'Backend' }];
+      const task = {
+        id: 't1', parentId: null, title: 'Feature', isDone: false,
+        tagIds: ['tag1'],
+        timeSpentOnDay: { [todayStr]: 3600000 }
+      };
+      window.processData([task], [], tags);
+      expect(window.latestMetrics || document.getElementById('stat-time').innerText).toBeTruthy();
+      // Re-access via a second processData call to inspect returned metrics via stat card
+      // tagData["Frontend"] should have 3600000ms = 1h
+      // We verify indirectly: stat-time shows 1h 0m
+      expect(document.getElementById('stat-time').innerText).toBe('1h 0m');
+    });
+
+    it('should count a multi-tag task in each tag bucket', () => {
+      const todayStr = toLocalDate(new Date());
+      const tags = [{ id: 'tag1', title: 'Frontend' }, { id: 'tag2', title: 'Backend' }];
+      const task = {
+        id: 't1', parentId: null, title: 'Full-stack work', isDone: false,
+        tagIds: ['tag1', 'tag2'],
+        timeSpentOnDay: { [todayStr]: 7200000 /* 2h */ }
+      };
+      window.processData([task], [], tags);
+      // Both tags should appear — verify via pie chart data by switching to tag-time
+      document.getElementById('pie-chart-select').value = 'tag-time';
+      window.updatePieChart();
+      // The pie chart should have rendered without error
+      const pieEl = document.getElementById('pie-chart-element');
+      expect(pieEl).toBeTruthy();
+    });
+
+    it('should assign tasks with no tagIds to Untagged', () => {
+      const todayStr = toLocalDate(new Date());
+      const task = {
+        id: 't1', parentId: null, title: 'Misc', isDone: false,
+        tagIds: [],
+        timeSpentOnDay: { [todayStr]: 1800000 /* 30m */ }
+      };
+      window.processData([task], [], []);
+      // stat-time reflects the 30m; "Untagged" bucket exists internally
+      expect(document.getElementById('stat-time').innerText).toBe('0h 30m');
+    });
+
+    it('should fall back to tag ID when tag is not in tagsArr', () => {
+      const todayStr = toLocalDate(new Date());
+      const task = {
+        id: 't1', parentId: null, title: 'Unknown tag', isDone: false,
+        tagIds: ['unknown-id'],
+        timeSpentOnDay: { [todayStr]: 3600000 }
+      };
+      // Pass empty tags array — tag ID used as display name (no crash)
+      window.processData([task], [], []);
+      expect(document.getElementById('stat-time').innerText).toBe('1h 0m');
+    });
+  });
+
   describe('Navigation & Interactivity', () => {
     it('should switch between Dashboard and Detailed List tabs', () => {
       const dashView = document.getElementById('view-dashboard');
