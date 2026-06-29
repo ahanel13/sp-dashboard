@@ -6,10 +6,11 @@ A lightweight dashboard plugin for [Super Productivity](https://super-productivi
 
 ## 🚀 Features
 
-- Selectable date ranges: past week, month, year or custom range
-- Two views:
+- Selectable date ranges: past week, current month, year or custom range
+- Three views:
   - **Dashboard** with key metrics, bar charts and pie charts
   - **Detailed list** of individual time entries and task status
+  - **By Project / Tag** drill-down with per-entity stats, daily trend chart, and filtered task list
 
 ## 🖼️ Preview
 
@@ -20,6 +21,9 @@ Below are screenshots of the plugin rendered outside of the host app (mock data 
 
 ![Detailed List View](assets/detailed_list.png)
 *Detailed list of individual time entries and task statuses.*
+
+![By Project / Tag View](assets/drilldown.png)
+*Drill-down view showing stats, daily trend, and tasks for a selected project or tag.*
 
 *(Images are regenerated via the screenshot utility when the UI changes.)*
 
