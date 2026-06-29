@@ -66,9 +66,9 @@ describe('Date Range Reporter UI', () => {
       expect(toLocalDate(new Date(dueStart))).toBe('2026-02-20');
     });
 
-    it('month preset should cover the full previous calendar month', () => {
-      // March 31, 2026 at noon — month preset should show Feb 1–28 (full previous calendar month)
-      vi.useFakeTimers({ now: new Date('2026-03-31T12:00:00').getTime() });
+    it('month preset should cover current month from day 1 to today', () => {
+      // March 15, 2026 at noon — month preset should show Mar 1–15 (current month, day 1 to today)
+      vi.useFakeTimers({ now: new Date('2026-03-15T12:00:00').getTime() });
       const consoleSpy = vi.spyOn(console, 'log');
       const presetSelect = document.getElementById('date-preset');
       presetSelect.value = 'month';
@@ -77,8 +77,8 @@ describe('Date Range Reporter UI', () => {
       vi.useRealTimers();
       const rangeLog = consoleSpy.mock.calls.find(args => String(args[0]).includes('computed date range'));
       expect(rangeLog).toBeDefined();
-      expect(rangeLog[1]).toBe('2026-02-01'); // 1st of previous calendar month
-      expect(rangeLog[2]).toBe('2026-02-28'); // last day of previous calendar month
+      expect(rangeLog[1]).toBe('2026-03-01'); // 1st of current month
+      expect(rangeLog[2]).toBe('2026-03-15'); // today
       consoleSpy.mockRestore();
     });
   });

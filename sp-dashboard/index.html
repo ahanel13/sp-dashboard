@@ -294,7 +294,7 @@
             <option value="today" selected>Today</option>
             <option value="this-week">This Week</option>
             <option value="week">Past Week</option>
-            <option value="month">Past Month</option>
+            <option value="month">This Month</option>
             <option value="year">Past Year</option>
             <option value="custom">Custom Range...</option>
             <option value="from-weekday">Starting from weekday</option>
@@ -600,20 +600,20 @@
       customContainer.classList.toggle('hidden', e.target.value !== 'custom');
       weekdayPickerContainer.classList.toggle('hidden', e.target.value !== 'from-weekday');
       localStorage.setItem('sp-dashboard-date-preset', e.target.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
 
     dateFromInput.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-date-from', dateFromInput.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
     dateToInput.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-date-to', dateToInput.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
     weekdaySelect.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-weekday-select', weekdaySelect.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
     barChartSelect.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-bar-chart-select', barChartSelect.value);
@@ -975,9 +975,7 @@
         } else if (preset === 'week') {
           startObj.setDate(endObj.getDate() - 6);
         } else if (preset === 'month') {
-          startObj.setDate(1);
-          startObj.setMonth(startObj.getMonth() - 1); // 1st of last month
-          endObj.setDate(0);                           // last day of last month
+          startObj.setDate(1); // 1st of current month, end stays as today
         } else if (preset === 'year') {
           startObj.setDate(1);
           startObj.setMonth(startObj.getMonth() - 11); // 1st of 11 months ago → 12 calendar months
