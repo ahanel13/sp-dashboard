@@ -1,20 +1,21 @@
 # Dashboard Plugin for Super Productivity
 
-A lightweight dashboard plugin for [Super Productivity](https://super-productivity.com) that visualizes time tracked, completed tasks, overdue items, and project breakdowns within a user‑defined date range. It ships as a self-contained HTML/JavaScript widget with no external dependencies and is styled to support light/dark themes.
+A lightweight dashboard plugin for [Super Productivity](https://super-productivity.com) that visualizes time tracked, completed tasks, overdue items, and project breakdowns within a user-defined date range.
 
 ---
 
-## 🚀 Features
+## Features
 
-- Selectable date ranges: past week, current month, year or custom range
-- Three views:
-  - **Dashboard** with key metrics, bar charts and pie charts
-  - **Detailed list** of individual time entries and task status
-  - **By Project / Tag** drill-down with per-entity stats, daily trend chart, and filtered task list
+- Selectable date ranges: past week, current month, year, or custom range
+- **Dashboard** — key metrics (time tracked, tasks completed, overdue, late), daily trend bar chart, and project/tag breakdown pie chart
+- **Detailed List** — sortable table of every time entry with project, task, duration, and status
+- **By Project / Tag** — drill into any project or tag for dedicated stats, a daily trend chart, and a filtered task list
+- Live updates whenever task data changes in Super Productivity
+- Adapts to light and dark themes automatically
 
-## 🖼️ Preview
+---
 
-Below are screenshots of the plugin rendered outside of the host app (mock data is used when `PluginAPI` is not available):
+## Preview
 
 ![Dashboard View](assets/dashboard.png)
 *Dashboard with key metrics and charts.*
@@ -25,119 +26,24 @@ Below are screenshots of the plugin rendered outside of the host app (mock data 
 ![By Project / Tag View](assets/drilldown.png)
 *Drill-down view showing stats, daily trend, and tasks for a selected project or tag.*
 
-*(Images are regenerated via the screenshot utility when the UI changes.)*
-
-- Native charts rendered with vanilla JS and CSS (no charting libraries)
-- Responsive layout and theming consistent with Super Productivity
-- Live updates when task data changes in the host app
-- Fallback mock data for standalone development and screenshots
-
 ---
 
-## 🛠️ Project Structure
+## Installation
 
-```
-sp-dashboard/
-├── index.html            # Main UI (CSS + JS embedded)
-├── manifest.json.template # Template used at build time
-└── plugin.js             # Super Productivity integration script
-
-build/sp-dashboard/      # Generated distribution output
-
-tests/
-└── index.test.js         # Vitest/JSDOM unit tests
-
-Makefile                 # Build & release helpers
-package.json             # Node tooling and dependencies
-README.md                # This file
-```
-
-> All plugin logic resides in a single HTML file to conform with the host app's plugin sandbox.
-
----
-
-## 📦 Installation
-
-1. Download the plugin files for the latest [Release](https://github.com/ahanel13/sp-dashboard/releases)
+1. Download `sp-dashboard.zip` from the latest [Release](https://github.com/ahanel13/sp-dashboard/releases)
 2. Open Super Productivity
-3. Go to Settings → Plugins
-4. Click "Load Plugin from Folder"
-5. Select the `sp-dashboard` zip file
-6. The plugin will be activated automatically
+3. Go to **Settings → Plugins**
+4. Click **Load Plugin from Folder** and select the zip file
+5. The plugin activates automatically
 
 ---
 
-## 🔧 Development
+## Issues & Feedback
 
-### Prerequisites
-
-- Node.js (18+) and npm/yarn installed
-- `make` available (macOS/Linux)
-
-### Install dependencies
-
-```bash
-npm install
-```
-
-### Running tests
-
-```bash
-npm test          # run once
-npm run test:watch # watch mode
-npm run test:coverage # generate coverage report
-# or simply
-make test
-```
-
-### Updating the screenshots
-
-The screenshots are stored under `assets/` and are tracked with Git LFS. You can regenerate them with:
-
-```bash
-npm run screenshot   # uses puppeteer, outputs images
-# or
-make screenshot
-```
-
-
-The tests load `index.html` via JSDOM and manually execute the embedded script. They cover utility functions, metric calculations, and basic UI interactions.
-
-### Building for release
-
-```bash
-make
-#or
-make build        # compiles plugin into /build/sp-dashboard zip ready for distribution
-```
-
-`make release` performs additional steps (tagging, GitHub release) and requires the GitHub CLI.
+File a bug or feature request on the [GitHub repository](https://github.com/ahanel13/sp-dashboard). Screenshots and reproduction steps are always appreciated.
 
 ---
 
-## 📝 Usage Notes
-
-- The plugin listens for Redux `ACTION` hooks from Super Productivity and posts a message to the iframe to refresh whenever the app state changes.
-- If the PluginAPI is unavailable (e.g. opening `index.html` directly in a browser), mock data is injected after a short timeout to make development easier.
-- Charts are rendered using CSS and DOM elements; they automatically bucket data if the date range contains more than 30 days.
-
----
-
-## ✅ Testing Guidelines
-
-- Add new unit tests for every new feature or logic change.
-- Mock `PluginAPI` where necessary using `vi.stubGlobal` or manual objects.
-- Cover edge cases such as empty date ranges, tasks without projects, overdue detection, and date manipulation.
-
----
-
-## 📬 Reporting Issues & Contributing
-
-Please file issues or pull requests against the [GitHub repository](https://github.com/ahanel13/sp-dashboard) with
-clear descriptions and, if applicable, screenshots. Contributions are welcome!
-
----
-
-## 🗂️ License
+## License
 
 MIT © 2026 Douglas Cooper, Anthony Hanel — see [LICENSE](LICENSE) for full text.
