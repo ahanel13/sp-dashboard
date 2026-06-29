@@ -67,8 +67,8 @@ describe('Date Range Reporter UI', () => {
     });
 
     it('month preset should cover the full previous calendar month', () => {
-      // March 31, 2026 at noon — month preset should show Feb 1–28 (full previous calendar month)
-      vi.useFakeTimers({ now: new Date('2026-03-31T12:00:00').getTime() });
+      // March 15, 2026 at noon — month preset should show Mar 1–15 (current month, day 1 to today)
+      vi.useFakeTimers({ now: new Date('2026-03-15T12:00:00').getTime() });
       const consoleSpy = vi.spyOn(console, 'log');
       const presetSelect = document.getElementById('date-preset');
       presetSelect.value = 'month';
@@ -77,8 +77,8 @@ describe('Date Range Reporter UI', () => {
       vi.useRealTimers();
       const rangeLog = consoleSpy.mock.calls.find(args => String(args[0]).includes('computed date range'));
       expect(rangeLog).toBeDefined();
-      expect(rangeLog[1]).toBe('2026-02-01'); // 1st of previous calendar month
-      expect(rangeLog[2]).toBe('2026-02-28'); // last day of previous calendar month
+      expect(rangeLog[1]).toBe('2026-03-01'); // 1st of current month
+      expect(rangeLog[2]).toBe('2026-03-15'); // today
       consoleSpy.mockRestore();
     });
   });
@@ -603,6 +603,113 @@ describe('Date Range Reporter UI', () => {
       presetSelect.value = 'today';
       presetSelect.dispatchEvent(new Event('change'));
       expect(weekdayPickerContainer.classList.contains('hidden')).toBe(true);
+    });
+  });
+
+  describe('Drilldown Tab', () => {
+    it('projectDailyData should accumulate time per project per day', () => {
+      const projects = [{ id: 'p1', title: 'Alpha' }, { id: 'p2', title: 'Beta' }];
+      const tasks = [
+        { id: 't1', parentId: null, title: 'T1', isDone: false, projectId: 'p1',
+          tagIds: [], timeSpentOnDay: { '2026-01-01': 3600000, '2026-01-02': 7200000 } },
+        { id: 't2', parentId: null, title: 'T2', isDone: false, projectId: 'p1',
+          tagIds: [], timeSpentOnDay: { '2026-01-01': 1800000 } },
+        { id: 't3', parentId: null, title: 'T3', isDone: false, projectId: 'p2',
+          tagIds: [], timeSpentOnDay: { '2026-01-01': 5400000 } }
+      ];
+      document.getElementById('date-preset').value = 'custom';
+      document.getElementById('custom-date-container').classList.remove('hidden');
+      document.getElementById('date-from').value = '2026-01-01';
+      document.getElementById('date-to').value = '2026-01-02';
+      window.processData(tasks, projects, []);
+
+      const m = window.latestMetrics;
+      expect(m.projectDailyData['Alpha']['2026-01-01']).toBe(5400000);
+      expect(m.projectDailyData['Alpha']['2026-01-02']).toBe(7200000);
+      expect(m.projectDailyData['Beta']['2026-01-01']).toBe(5400000);
+      expect(m.projectDailyData['Beta']['2026-01-02']).toBeUndefined();
+    });
+
+    it('tagDailyData should accumulate time per tag per day, counting multi-tag tasks in each tag', () => {
+      const tags = [{ id: 'tg1', title: 'Frontend' }, { id: 'tg2', title: 'Backend' }];
+      const tasks = [
+        { id: 't1', parentId: null, title: 'T1', isDone: false, projectId: null,
+          tagIds: ['tg1', 'tg2'], timeSpentOnDay: { '2026-01-01': 3600000 } }
+      ];
+      document.getElementById('date-preset').value = 'custom';
+      document.getElementById('custom-date-container').classList.remove('hidden');
+      document.getElementById('date-from').value = '2026-01-01';
+      document.getElementById('date-to').value = '2026-01-01';
+      window.processData(tasks, [], tags);
+
+      const m = window.latestMetrics;
+      expect(m.tagDailyData['Frontend']['2026-01-01']).toBe(3600000);
+      expect(m.tagDailyData['Backend']['2026-01-01']).toBe(3600000);
+    });
+
+    it('tableEntries should include tagNames with resolved titles', () => {
+      const tags = [{ id: 'tg1', title: 'Design' }];
+      const todayStr = toLocalDate(new Date());
+      const tasks = [
+        { id: 't1', parentId: null, title: 'Wireframes', isDone: false, projectId: null,
+          tagIds: ['tg1'], timeSpentOnDay: { [todayStr]: 1800000 } }
+      ];
+      window.processData(tasks, [], tags);
+      const entry = window.latestMetrics.tableEntries.find(e => e.taskTitle === 'Wireframes');
+      expect(entry).toBeDefined();
+      expect(entry.tagNames).toContain('Design');
+    });
+
+    it('tableEntries should have Untagged in tagNames for tasks with no tagIds', () => {
+      const todayStr = toLocalDate(new Date());
+      const tasks = [
+        { id: 't1', parentId: null, title: 'Admin', isDone: false,
+          tagIds: [], timeSpentOnDay: { [todayStr]: 900000 } }
+      ];
+      window.processData(tasks, [], []);
+      const entry = window.latestMetrics.tableEntries.find(e => e.taskTitle === 'Admin');
+      expect(entry.tagNames).toContain('Untagged');
+    });
+
+    it('switchTab drilldown should show view-drilldown and hide other views', () => {
+      window.switchTab('drilldown');
+      expect(document.getElementById('view-drilldown').classList.contains('hidden')).toBe(false);
+      expect(document.getElementById('view-dashboard').classList.contains('hidden')).toBe(true);
+      expect(document.getElementById('view-details').classList.contains('hidden')).toBe(true);
+      expect(document.getElementById('tab-btn-drilldown').classList.contains('active')).toBe(true);
+    });
+
+    it('renderDrillDown should populate stat cards for a selected project', () => {
+      const todayStr = toLocalDate(new Date());
+      const projects = [{ id: 'p1', title: 'Omega' }];
+      const tasks = [
+        { id: 't1', parentId: null, title: 'Work', isDone: true,
+          doneOn: Date.now(), projectId: 'p1', tagIds: [],
+          timeSpentOnDay: { [todayStr]: 7200000 } }
+      ];
+      window.processData(tasks, projects, []);
+      window.setDrillDimension('project');
+      window.setDrillEntity('Omega');
+      expect(document.getElementById('drill-stat-time').textContent).toBe('2h 0m');
+      expect(document.getElementById('drill-stat-tasks').textContent).toBe('1');
+    });
+
+    it('renderDrillDown should filter table body to show only tasks with the selected tag', () => {
+      const todayStr = toLocalDate(new Date());
+      const tags = [{ id: 'tg1', title: 'QA' }];
+      const tasks = [
+        { id: 't1', parentId: null, title: 'Write Tests', isDone: false,
+          tagIds: ['tg1'], timeSpentOnDay: { [todayStr]: 3600000 } },
+        { id: 't2', parentId: null, title: 'Unrelated Work', isDone: false,
+          tagIds: [], timeSpentOnDay: { [todayStr]: 1800000 } }
+      ];
+      window.processData(tasks, [], tags);
+      window.setDrillDimension('tag');
+      window.setDrillEntity('QA');
+      const rows = document.querySelectorAll('#drill-table-body tr');
+      const text = Array.from(rows).map(r => r.textContent).join(' ');
+      expect(text).toContain('Write Tests');
+      expect(text).not.toContain('Unrelated Work');
     });
   });
 });

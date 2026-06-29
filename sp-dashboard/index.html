@@ -294,7 +294,7 @@
             <option value="today" selected>Today</option>
             <option value="this-week">This Week</option>
             <option value="week">Past Week</option>
-            <option value="month">Past Month</option>
+            <option value="month">This Month</option>
             <option value="year">Past Year</option>
             <option value="custom">Custom Range...</option>
             <option value="from-weekday">Starting from weekday</option>
@@ -321,6 +321,7 @@
       <div class="tabs">
         <button id="tab-btn-dashboard" class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
         <button id="tab-btn-details" class="tab-btn" onclick="switchTab('details')">Detailed List</button>
+        <button id="tab-btn-drilldown" class="tab-btn" onclick="switchTab('drilldown')">By Project / Tag</button>
       </div>
 
       <!-- ========================================== -->
@@ -465,6 +466,90 @@
         </div>
       </div>
 
+      <!-- ========================================== -->
+      <!-- VIEW 3: BY PROJECT / TAG DRILLDOWN          -->
+      <!-- ========================================== -->
+      <div id="view-drilldown" class="view-content hidden">
+
+        <!-- Controls -->
+        <div style="display:flex; align-items:center; gap:var(--s2,1rem); flex-wrap:wrap; margin-bottom:var(--s3,1.5rem);">
+          <div class="dim-toggle">
+            <button id="drill-dim-project" class="dim-btn active" onclick="setDrillDimension('project')">Project</button>
+            <button id="drill-dim-tag" class="dim-btn" onclick="setDrillDimension('tag')">Tag</button>
+          </div>
+          <div class="control-box" style="flex-direction:row; align-items:center; gap:var(--s,0.5rem);">
+            <label for="drill-entity-select" style="white-space:nowrap; font-size:0.875rem; color:var(--text-color-muted,#9e9e9e);">Show:</label>
+            <select id="drill-entity-select" class="chart-select" onchange="setDrillEntity(this.value)"></select>
+          </div>
+        </div>
+
+        <!-- Stat cards -->
+        <div class="grid-3" style="margin-bottom:var(--s3,1.5rem);">
+          <div class="stat-card">
+            <div class="stat-header">
+              <h3 class="stat-title">Time Spent</h3>
+              <div class="stat-icon" style="background:rgba(96,165,250,0.1);color:#60a5fa;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+            </div>
+            <div class="stat-value-container">
+              <span class="stat-value" id="drill-stat-time">0h 0m</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">
+              <h3 class="stat-title">Tasks Completed</h3>
+              <div class="stat-icon" style="background:rgba(74,222,128,0.1);color:#4ade80;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+            </div>
+            <div class="stat-value-container">
+              <span class="stat-value" id="drill-stat-tasks">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">
+              <h3 class="stat-title">Overdue Tasks</h3>
+              <div class="stat-icon badge-red"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+            </div>
+            <div class="stat-value-container">
+              <span class="stat-value" id="drill-stat-overdue">0</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">
+              <h3 class="stat-title">Completed Late</h3>
+              <div class="stat-icon" style="background:rgba(251,191,36,0.1);color:#fbbf24;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+            </div>
+            <div class="stat-value-container">
+              <span class="stat-value" id="drill-stat-late">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bar chart -->
+        <div class="chart-card" style="margin-bottom:var(--s3,1.5rem);">
+          <div class="card-header">
+            <h3 class="card-title" id="drill-chart-title">Daily Time</h3>
+          </div>
+          <div class="chart-container" id="drill-chart-container-wrap">
+            <div class="bar-chart" id="drill-bar-chart-container"></div>
+          </div>
+        </div>
+
+        <!-- Task table -->
+        <div style="overflow-x:auto;">
+          <table class="details-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Task</th>
+                <th>Time Spent</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="drill-table-body"></tbody>
+          </table>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
@@ -502,11 +587,10 @@
 
     // --- TAB LOGIC ---
     const switchTab = (tabId) => {
-      document.getElementById('view-dashboard').classList.add('hidden');
-      document.getElementById('view-details').classList.add('hidden');
-      document.getElementById('tab-btn-dashboard').classList.remove('active');
-      document.getElementById('tab-btn-details').classList.remove('active');
-
+      ['dashboard', 'details', 'drilldown'].forEach(id => {
+        document.getElementById(`view-${id}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${id}`).classList.remove('active');
+      });
       document.getElementById(`view-${tabId}`).classList.remove('hidden');
       document.getElementById(`tab-btn-${tabId}`).classList.add('active');
     };
@@ -519,6 +603,8 @@
     let pieDimension = 'project';
     let currentSort = { key: 'date', dir: 'desc' }; // sorting state for details table
     let liveUpdateInterval = null;
+    let currentDrillDimension = 'project';
+    let currentDrillEntity = '';
 
     // helper to sort table entries by given field/key
     const sortEntries = (entries, key, dir) => {
@@ -600,20 +686,20 @@
       customContainer.classList.toggle('hidden', e.target.value !== 'custom');
       weekdayPickerContainer.classList.toggle('hidden', e.target.value !== 'from-weekday');
       localStorage.setItem('sp-dashboard-date-preset', e.target.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
 
     dateFromInput.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-date-from', dateFromInput.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
     dateToInput.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-date-to', dateToInput.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
     weekdaySelect.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-weekday-select', weekdaySelect.value);
-      processData(cachedTasks, cachedProjects);
+      processData(cachedTasks, cachedProjects, cachedTags);
     });
     barChartSelect.addEventListener('change', () => {
       localStorage.setItem('sp-dashboard-bar-chart-select', barChartSelect.value);
@@ -645,10 +731,19 @@
     const savedPie = localStorage.getItem('sp-dashboard-pie-chart-select');
     if (savedBar) barChartSelect.value = savedBar;
     if (savedPie) pieChartSelect.value = savedPie;
+    const savedDrillDim = localStorage.getItem('sp-dashboard-drill-dim');
+    if (savedDrillDim) {
+      currentDrillDimension = savedDrillDim;
+      document.getElementById('drill-dim-project').classList.toggle('active', savedDrillDim === 'project');
+      document.getElementById('drill-dim-tag').classList.toggle('active', savedDrillDim === 'tag');
+    }
+    const savedDrillEntity = localStorage.getItem('sp-dashboard-drill-entity');
+    if (savedDrillEntity) currentDrillEntity = savedDrillEntity;
 
     // --- RENDER LOGIC ---
     const updateDashboardUI = (metrics) => {
       latestMetrics = metrics;
+      window.latestMetrics = metrics;
 
       // render table with current sort order
       const sortedEntries = sortEntries(metrics.tableEntries, currentSort.key, currentSort.dir);
@@ -690,6 +785,8 @@
       renderTable(sortedEntries);
       renderOverdueSection(metrics.overdueEntries);
       updateSortIndicators();
+      populateDrillDropdown();
+      renderDrillDown();
     };
 
     const updateBarChart = () => {
@@ -736,6 +833,159 @@
     pieDimProjectBtn.addEventListener('click', () => setPieDimension('project'));
     pieDimTagBtn.addEventListener('click', () => setPieDimension('tag'));
     setPieDimension(localStorage.getItem('sp-dashboard-pie-dim') || 'project');
+
+    // --- DRILLDOWN TAB LOGIC ---
+    const populateDrillDropdown = () => {
+      if (!latestMetrics) return;
+      const select = document.getElementById('drill-entity-select');
+      const isTag = currentDrillDimension === 'tag';
+      let names;
+      if (isTag) {
+        if (cachedTags.length > 0) {
+          names = [...new Set([...cachedTags.map(t => t.title || t.id), 'Untagged'])].sort((a, b) => a.localeCompare(b));
+        } else {
+          names = Array.from(new Set([
+            ...Object.keys(latestMetrics.tagData),
+            ...Object.keys(latestMetrics.tagCompletedData),
+            ...Object.keys(latestMetrics.tagOverdueData),
+            ...Object.keys(latestMetrics.tagLateData)
+          ])).sort((a, b) => a.localeCompare(b));
+        }
+      } else {
+        if (cachedProjects.length > 0) {
+          names = [...new Set([...cachedProjects.map(p => p.title), 'Uncategorized'])].sort((a, b) => a.localeCompare(b));
+        } else {
+          names = Array.from(new Set([
+            ...Object.keys(latestMetrics.projectData),
+            ...Object.keys(latestMetrics.projectCompletedData),
+            ...Object.keys(latestMetrics.projectOverdueData),
+            ...Object.keys(latestMetrics.projectLateData)
+          ])).sort((a, b) => a.localeCompare(b));
+        }
+      }
+      select.innerHTML = '';
+      if (names.length === 0) {
+        const opt = document.createElement('option');
+        opt.textContent = 'No data';
+        select.appendChild(opt);
+        currentDrillEntity = '';
+        return;
+      }
+      names.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+      if (names.includes(currentDrillEntity)) {
+        select.value = currentDrillEntity;
+      } else {
+        currentDrillEntity = names[0];
+        select.value = currentDrillEntity;
+        localStorage.setItem('sp-dashboard-drill-entity', currentDrillEntity);
+      }
+    };
+
+    const setDrillDimension = (dim) => {
+      currentDrillDimension = dim;
+      document.getElementById('drill-dim-project').classList.toggle('active', dim === 'project');
+      document.getElementById('drill-dim-tag').classList.toggle('active', dim === 'tag');
+      localStorage.setItem('sp-dashboard-drill-dim', dim);
+      populateDrillDropdown();
+      renderDrillDown();
+    };
+
+    const setDrillEntity = (name) => {
+      currentDrillEntity = name;
+      localStorage.setItem('sp-dashboard-drill-entity', name);
+      renderDrillDown();
+    };
+
+    const renderDrillTable = (entries) => {
+      const tbody = document.getElementById('drill-table-body');
+      tbody.innerHTML = '';
+      if (entries.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.style.cssText = 'text-align:center;color:var(--text-color-muted,#9e9e9e);padding:3rem;';
+        td.textContent = 'No entries for this selection.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      entries.forEach(entry => {
+        const tr = document.createElement('tr');
+
+        const tdDate = document.createElement('td');
+        tdDate.style.whiteSpace = 'nowrap';
+        tdDate.textContent = formatDateShort(entry.date);
+        tr.appendChild(tdDate);
+
+        const tdTask = document.createElement('td');
+        tdTask.style.fontWeight = '500';
+        tdTask.textContent = entry.taskTitle;
+        tr.appendChild(tdTask);
+
+        const tdTime = document.createElement('td');
+        tdTime.className = 'time-cell';
+        tdTime.textContent = formatTime(entry.timeSpent);
+        tr.appendChild(tdTime);
+
+        const tdStatus = document.createElement('td');
+        const badge = document.createElement('span');
+        if (entry.late) {
+          badge.className = 'badge badge-yellow';
+          badge.textContent = 'Late';
+        } else if (entry.overdue) {
+          badge.className = 'badge badge-red';
+          badge.textContent = 'Overdue';
+        } else if (entry.isDone) {
+          badge.className = 'badge badge-done';
+          badge.textContent = 'Done';
+        } else {
+          badge.className = 'badge badge-progress';
+          badge.textContent = 'In Progress';
+        }
+        tdStatus.appendChild(badge);
+        tr.appendChild(tdStatus);
+
+        tbody.appendChild(tr);
+      });
+    };
+
+    const renderDrillDown = () => {
+      if (!latestMetrics || !currentDrillEntity) return;
+      const isTag = currentDrillDimension === 'tag';
+      const entity = currentDrillEntity;
+
+      const timeMs = (isTag ? latestMetrics.tagData : latestMetrics.projectData)[entity] || 0;
+      const completed = (isTag ? latestMetrics.tagCompletedData : latestMetrics.projectCompletedData)[entity] || 0;
+      const overdue = (isTag ? latestMetrics.tagOverdueData : latestMetrics.projectOverdueData)[entity] || 0;
+      const late = (isTag ? latestMetrics.tagLateData : latestMetrics.projectLateData)[entity] || 0;
+
+      document.getElementById('drill-stat-time').textContent = formatTime(timeMs);
+      document.getElementById('drill-stat-tasks').textContent = String(completed);
+      document.getElementById('drill-stat-overdue').textContent = String(overdue);
+      document.getElementById('drill-stat-late').textContent = String(late);
+
+      const dailySource = isTag ? latestMetrics.tagDailyData : latestMetrics.projectDailyData;
+      const entityDailyMap = dailySource[entity] || {};
+      const dateRange = latestMetrics.weeklyData.labels;
+      const dailyChartData = {
+        labels: dateRange,
+        data: dateRange.map(d => entityDailyMap[d] || 0)
+      };
+
+      document.getElementById('drill-chart-title').textContent = entity + ' — Daily Time';
+      renderGenericBarChart(dailyChartData, 'drill-bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, (v) => `${Math.round(v / 3600000)}h`, 3600000);
+
+      const filteredEntries = latestMetrics.tableEntries.filter(e => {
+        if (isTag) return e.tagNames && e.tagNames.includes(entity);
+        return e.projectName === entity;
+      });
+      renderDrillTable(filteredEntries);
+    };
 
     const renderGenericBarChart = (chartData, containerId, color, formatFn, yTickFn, unitSize = 1) => {
       const container = document.getElementById(containerId);
@@ -975,9 +1225,7 @@
         } else if (preset === 'week') {
           startObj.setDate(endObj.getDate() - 6);
         } else if (preset === 'month') {
-          startObj.setDate(1);
-          startObj.setMonth(startObj.getMonth() - 1); // 1st of last month
-          endObj.setDate(0);                           // last day of last month
+          startObj.setDate(1); // 1st of current month, end stays as today
         } else if (preset === 'year') {
           startObj.setDate(1);
           startObj.setMonth(startObj.getMonth() - 11); // 1st of 11 months ago → 12 calendar months
@@ -1013,10 +1261,12 @@
         projectCompletedData: {},
         projectOverdueData: {},
         projectLateData: {},
+        projectDailyData: {},
         tagData: {},
         tagCompletedData: {},
         tagOverdueData: {},
         tagLateData: {},
+        tagDailyData: {},
         tableEntries: [],
         overdueEntries: []
       };
@@ -1088,6 +1338,13 @@
             metrics.weeklyData.data[index] += spentOnDate;
             taskTimeInRange += spentOnDate;
 
+            if (!metrics.projectDailyData[pName]) metrics.projectDailyData[pName] = {};
+            metrics.projectDailyData[pName][dateStr] = (metrics.projectDailyData[pName][dateStr] || 0) + spentOnDate;
+            tNames.forEach(n => {
+              if (!metrics.tagDailyData[n]) metrics.tagDailyData[n] = {};
+              metrics.tagDailyData[n][dateStr] = (metrics.tagDailyData[n][dateStr] || 0) + spentOnDate;
+            });
+
             metrics.tableEntries.push({
               date: dateStr,
               projectName: pName,
@@ -1095,7 +1352,8 @@
               timeSpent: spentOnDate,
               isDone: task.isDone,
               overdue: isOverdue,
-              late: isLate
+              late: isLate,
+              tagNames: tNames
             });
           }
 
@@ -1129,7 +1387,8 @@
               timeSpent: 0,
               isDone: task.isDone,
               overdue: isOverdue,
-              late: isLate
+              late: isLate,
+              tagNames: tNames
             });
           }
         }
@@ -1239,6 +1498,11 @@
     window.updatePieChart = updatePieChart;
     window.sortEntries = sortEntries;
     window.renderOverdueSection = renderOverdueSection;
+    window.renderDrillDown = renderDrillDown;
+    window.renderDrillTable = renderDrillTable;
+    window.setDrillDimension = setDrillDimension;
+    window.setDrillEntity = setDrillEntity;
+    window.populateDrillDropdown = populateDrillDropdown;
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
     const pullDataFromSP = async () => {
