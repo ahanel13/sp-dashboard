@@ -441,6 +441,34 @@ describe('Date Range Reporter UI', () => {
       expect(barContainer.querySelectorAll('.bar-col').length).toBe(1);
     });
 
+    it('should not double-count a parent task and its subtasks for the same day', () => {
+      const presetSelect = document.getElementById('date-preset');
+      presetSelect.value = 'today';
+      presetSelect.dispatchEvent(new Event('change'));
+
+      const todayStr = toLocalDate(new Date());
+
+      // Parent's timeSpentOnDay already reflects the rolled-up total of its subtasks,
+      // mirroring how Super Productivity actually stores task time.
+      const parent = {
+        id: 'parent1', parentId: null, title: 'Update Reports', isDone: true, doneOn: Date.now(),
+        timeSpentOnDay: { [todayStr]: 7980000 } // 2h 13m
+      };
+      const sub1 = {
+        id: 'sub1', parentId: 'parent1', title: 'Add requests', isDone: true, doneOn: Date.now(),
+        timeSpentOnDay: { [todayStr]: 5160000 } // 1h 26m
+      };
+      const sub2 = {
+        id: 'sub2', parentId: 'parent1', title: 'Write remediations', isDone: true, doneOn: Date.now(),
+        timeSpentOnDay: { [todayStr]: 2820000 } // 47m
+      };
+
+      window.processData([parent, sub1, sub2], []);
+
+      // Total should equal the parent's rolled-up value, not parent + subtasks.
+      expect(document.getElementById('stat-time').innerText).toBe('2h 13m');
+    });
+
     it('this-week preset should include Monday through today and exclude last Sunday', () => {
       const presetSelect = document.getElementById('date-preset');
       presetSelect.value = 'this-week';

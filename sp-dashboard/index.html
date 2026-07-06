@@ -1333,7 +1333,10 @@
           const dayEnd = dayEndObj.getTime() - 1;
 
           // Time Spent Logging
-          const spentOnDate = task.timeSpentOnDay && task.timeSpentOnDay[dateStr];
+          // Skip subtasks: a parent's timeSpentOnDay already includes its subtasks'
+          // rolled-up time, so summing both double-counts (matches SP's own
+          // getTimeWorkedForDayForAllNonArchiveTasks$, which filters out subtasks).
+          const spentOnDate = !task.parentId && task.timeSpentOnDay && task.timeSpentOnDay[dateStr];
           if (spentOnDate) {
             metrics.weeklyData.data[index] += spentOnDate;
             taskTimeInRange += spentOnDate;
@@ -1409,7 +1412,7 @@
         }
 
         // Add in-progress session time (not yet committed to timeSpentOnDay)
-        if ((task.currentSessionTime || 0) > 0) {
+        if (!task.parentId && (task.currentSessionTime || 0) > 0) {
           const today = toLocalDate(new Date());
           if (dateRange.includes(today)) {
             const idx = dateRange.indexOf(today);
