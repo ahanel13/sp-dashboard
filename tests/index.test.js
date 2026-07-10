@@ -740,4 +740,113 @@ describe('Date Range Reporter UI', () => {
       expect(text).not.toContain('Unrelated Work');
     });
   });
+
+  describe('Share / Export', () => {
+    const todayStr = toLocalDate(new Date());
+    const mockProjects = [
+      { id: 'p1', title: 'Website Redesign' },
+      { id: 'p2', title: 'Marketing' }
+    ];
+    const mockTags = [{ id: 'tg1', title: 'Frontend' }];
+    const mockTasks = [
+      { id: 't1', parentId: null, title: 'Build homepage', isDone: true, doneOn: Date.now(),
+        projectId: 'p1', tagIds: ['tg1'], timeSpentOnDay: { [todayStr]: 7200000 } }, // 2h
+      { id: 't2', parentId: null, title: 'Email blast', isDone: false,
+        projectId: 'p2', tagIds: [], timeSpentOnDay: { [todayStr]: 3600000 } }        // 1h
+    ];
+
+    it('getActiveViewNode should report the currently visible tab', () => {
+      window.processData(mockTasks, mockProjects, mockTags);
+      expect(window.getActiveViewNode().key).toBe('dashboard');
+      window.switchTab('details');
+      expect(window.getActiveViewNode().key).toBe('details');
+      window.switchTab('drilldown');
+      const active = window.getActiveViewNode();
+      expect(active.key).toBe('drilldown');
+      expect(active.node.id).toBe('view-drilldown');
+    });
+
+    it('buildTextSummary(dashboard) includes headline stats and per-project time', () => {
+      window.processData(mockTasks, mockProjects, mockTags);
+      const summary = window.buildTextSummary('dashboard');
+      expect(summary).toContain('Productivity Summary');
+      expect(summary).toContain('Total Time Tracked: 3h 0m');
+      expect(summary).toContain('Tasks Completed: 1 / 2');
+      expect(summary).toContain('Time by Project');
+      expect(summary).toContain('Website Redesign: 2h 0m');
+      expect(summary).toContain('Marketing: 1h 0m');
+    });
+
+    it('buildTextSummary(details) renders a markdown table of tracked entries', () => {
+      window.processData(mockTasks, mockProjects, mockTags);
+      const summary = window.buildTextSummary('details');
+      expect(summary).toContain('Detailed Time Log');
+      expect(summary).toContain('| Date | Project | Task | Time | Status |');
+      expect(summary).toContain('Build homepage');
+      expect(summary).toContain('Email blast');
+    });
+
+    it('buildTextSummary(drilldown) reflects the selected entity', () => {
+      window.processData(mockTasks, mockProjects, mockTags);
+      window.setDrillDimension('project');
+      window.setDrillEntity('Website Redesign');
+      const summary = window.buildTextSummary('drilldown');
+      expect(summary).toContain('Project: Website Redesign');
+      expect(summary).toContain('Time Spent: 2h 0m');
+      expect(summary).toContain('Build homepage');
+      expect(summary).not.toContain('Email blast');
+    });
+
+    it('buildTextSummary returns a safe message when no data has been processed', () => {
+      // window.latestMetrics can leak across tests in the shared JSDOM window; clear it.
+      window.latestMetrics = null;
+      expect(window.buildTextSummary('dashboard')).toBe('No data available.');
+    });
+
+    it('getRangeLabel derives a human-readable range from the processed metrics', () => {
+      window.processData(mockTasks, mockProjects, mockTags);
+      const label = window.getRangeLabel();
+      expect(label).toBe(window.formatDateShort(todayStr)); // single-day "today" preset
+    });
+
+    it('inlineComputedStyles copies computed styles onto a detached clone', () => {
+      window.processData(mockTasks, mockProjects, mockTags);
+      const node = document.getElementById('view-dashboard');
+      const clone = node.cloneNode(true);
+      window.inlineComputedStyles(node, clone);
+      // The root and a known descendant should now carry inline style declarations.
+      expect(clone.getAttribute('style')).toBeTruthy();
+      const descendant = clone.querySelector('#stat-time');
+      expect(descendant).not.toBeNull();
+      expect(descendant.getAttribute('style')).toBeTruthy();
+    });
+
+    it('pie chart renders as an inline SVG donut (prints reliably), not a conic-gradient', () => {
+      document.getElementById('pie-chart-select').value = 'time';
+      window.processData(mockTasks, mockProjects, mockTags);
+      const pie = document.getElementById('pie-chart-element');
+      const svg = pie.querySelector('svg');
+      expect(svg).not.toBeNull();
+      // one arc per project with tracked time (Website Redesign + Marketing)
+      expect(svg.querySelectorAll('circle').length).toBe(2);
+      // no CSS conic-gradient background left behind
+      expect(pie.style.background).toBe('');
+    });
+
+    it('triggerDownload routes the file to the host window when embedded in an iframe', () => {
+      const posted = [];
+      Object.defineProperty(window, 'parent', {
+        value: { postMessage: (m) => posted.push(m) }, configurable: true
+      });
+      try {
+        window.triggerDownload(new Blob(['x'], { type: 'image/png' }), 'Dashboard');
+      } finally {
+        Object.defineProperty(window, 'parent', { value: window, configurable: true });
+      }
+      expect(posted.length).toBe(1);
+      expect(posted[0].type).toBe('SP_DASHBOARD_DOWNLOAD');
+      expect(posted[0].filename).toMatch(/^dashboard-dashboard-\d{4}-\d{2}-\d{2}\.png$/);
+      expect(posted[0].blob).toBeInstanceOf(Blob);
+    });
+  });
 });
