@@ -10,6 +10,27 @@
 
 console.log("[sp-dashboard plugin] Date Range Reporter plugin loaded!");
 
+// The dashboard iframe is sandboxed and typically cannot start a file download itself.
+// It posts the generated image here; we save it from the (unsandboxed) host context,
+// which uses the app's normal download flow (defaults to the user's Downloads folder).
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || data.type !== 'SP_DASHBOARD_DOWNLOAD' || !data.blob) return;
+  try {
+    const url = URL.createObjectURL(data.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.filename || 'dashboard.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    console.log("[sp-dashboard plugin] saved download", data.filename);
+  } catch (e) {
+    console.error("[sp-dashboard plugin] download failed", e);
+  }
+});
+
 // We listen to the global Redux ACTION hook.
 // Whenever the user adds a task, tracks time, or changes a project, this fires.
 PluginAPI.registerHook(PluginAPI.Hooks.ACTION, async (action) => {

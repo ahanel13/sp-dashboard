@@ -217,12 +217,9 @@
 
     .pie-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; gap: 2rem; }
     .pie-chart {
-      width: 180px; height: 180px; border-radius: 50%; flex-shrink: 0;
-      background: conic-gradient(var(--divider-color, #333) 0% 100%);
-      mask-image: radial-gradient(circle, transparent 58%, black 59%);
-      -webkit-mask-image: radial-gradient(circle, transparent 58%, black 59%);
-      transition: background 0.3s;
+      width: 180px; height: 180px; flex-shrink: 0;
     }
+    .pie-chart svg { display: block; width: 100%; height: 100%; }
     .pie-legend { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 0.5rem; }
     .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; }
     .legend-label { display: flex; align-items: center; gap: 0.5rem; color: var(--text-color-muted, #9e9e9e); }
@@ -261,12 +258,78 @@
     .details-table tr:last-child td { border-bottom: none; }
     .details-table tr:hover { background: rgba(255, 255, 255, 0.03); }
     .time-cell { font-family: monospace; font-size: 0.9rem; }
+
+    /* --- SHARE / EXPORT --- */
+    .share-wrap { position: relative; margin-left: auto; display: flex; align-items: center; }
+    .share-btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-color-muted, #9e9e9e); font-size: 0.9rem;
+      padding: var(--s, 0.5rem) var(--s2, 1rem);
+    }
+    .share-btn:hover { color: var(--c-primary, #03a9f4); }
+    .share-btn svg { width: 16px; height: 16px; }
+    .share-menu {
+      position: absolute; top: 100%; right: 0; z-index: 1100;
+      background: var(--card-bg, #1e1e1e);
+      border: 1px solid var(--divider-color, #333);
+      border-radius: var(--card-border-radius, 8px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      padding: 0.25rem; min-width: 190px;
+      display: flex; flex-direction: column;
+    }
+    .share-menu-item {
+      background: none; border: none; text-align: left; cursor: pointer;
+      color: var(--text-color, #fff); font-size: 0.875rem;
+      padding: 0.5rem 0.75rem; border-radius: 4px; white-space: nowrap;
+    }
+    .share-menu-item:hover { background: rgba(255, 255, 255, 0.06); color: var(--c-primary, #03a9f4); }
+
+    /* --- TOAST --- */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--card-bg, #1e1e1e); color: var(--text-color, #fff);
+      border: 1px solid var(--divider-color, #333); border-left: 3px solid #4ade80;
+      padding: 0.75rem 1.25rem; border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      font-size: 0.875rem; z-index: 2000;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    }
+    .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.toast-error { border-left-color: #f87171; }
+
+    /* --- PRINT --- */
+    .print-only { display: none; }
+    @media print {
+      /* Force a clean light palette so the report is legible on paper / PDF
+         regardless of the host (usually dark) theme. */
+      body {
+        --bg: #ffffff; --card-bg: #ffffff; --text-color: #111111;
+        --text-color-muted: #555555; --divider-color: #cccccc;
+        background: #fff; color: #111; height: auto; overflow: visible;
+        padding: 12px;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      .container { height: auto; max-width: none; gap: 0.75rem; }
+      .header, .tabs, .bar-tooltip, .share-wrap, .toast { display: none !important; }
+      .main-card { box-shadow: none; border: none; }
+      .view-content { overflow: visible !important; height: auto !important; flex: none !important; }
+      .view-content.hidden { display: none !important; }
+      .pie-legend { max-height: none !important; overflow: visible !important; }
+      .bar-chart { overflow: visible !important; }
+      .print-only { display: block; }
+      #print-header { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
+    }
   </style>
 </head>
 <body>
 
   <div class="container">
-    
+
+    <!-- Print-only report title (filled in before window.print()) -->
+    <div id="print-header" class="print-only"></div>
+
     <!-- Header -->
     <header class="header">
       <div class="title-area">
@@ -322,6 +385,20 @@
         <button id="tab-btn-dashboard" class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
         <button id="tab-btn-details" class="tab-btn" onclick="switchTab('details')">Detailed List</button>
         <button id="tab-btn-drilldown" class="tab-btn" onclick="switchTab('drilldown')">By Project / Tag</button>
+
+        <!-- Share / export the currently visible tab -->
+        <div class="share-wrap">
+          <button id="share-btn" class="share-btn" aria-haspopup="true" aria-expanded="false" title="Share this tab">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+            <span>Share</span>
+          </button>
+          <div id="share-menu" class="share-menu hidden" role="menu">
+            <button class="share-menu-item" role="menuitem" data-action="copy-image">Copy image</button>
+            <button class="share-menu-item" role="menuitem" data-action="download-png">Download PNG</button>
+            <button class="share-menu-item" role="menuitem" data-action="print">Print / Save as PDF</button>
+            <button class="share-menu-item" role="menuitem" data-action="copy-text">Copy text summary</button>
+          </div>
+        </div>
       </div>
 
       <!-- ========================================== -->
@@ -555,6 +632,9 @@
 
   <!-- Bar chart tooltip positioned at cursor -->
   <div class="bar-tooltip" id="bar-tooltip"></div>
+
+  <!-- Transient feedback for share/export actions -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script>
     console.log("[sp-dashboard] Dashboard script initialized");
@@ -1104,20 +1184,33 @@
       const entries = Object.entries(projectData).sort((a,b) => b[1] - a[1]);
       const totalVal = entries.reduce((acc, curr) => acc + curr[1], 0);
 
+      // Donut geometry: r chosen so the circumference is exactly 100, letting each
+      // slice's arc length be set directly as a percentage via stroke-dasharray.
+      const R = 15.915494; // 100 / (2π)
+      const SW = 8.5;      // stroke width → ~58% inner-hole ratio, matching the old look
+      const svgOpen = '<svg viewBox="0 0 42 42" width="100%" height="100%" role="img" aria-label="Breakdown chart">';
+
       if (totalVal === 0 || entries.length === 0) {
-        pieEl.style.background = 'var(--divider-color, #333)';
+        // Rendered as an SVG stroke (foreground) so it prints reliably — unlike a CSS
+        // conic-gradient background, which many print/PDF engines drop.
+        pieEl.innerHTML = `${svgOpen}<circle cx="21" cy="21" r="${R}" fill="none" style="stroke: var(--divider-color, #333)" stroke-width="${SW}"></circle></svg>`;
         legendEl.innerHTML = '<div class="text-muted text-sm">No data for selected period</div>';
         return;
       }
 
-      let gradientStops = [];
+      let segments = '';
       let currentPercent = 0;
 
       entries.forEach(([name, val], index) => {
         const color = PIE_COLORS[index % PIE_COLORS.length];
         const percent = (val / totalVal) * 100;
-        
-        gradientStops.push(`${color} ${currentPercent}% ${currentPercent + percent}%`);
+
+        // Each slice is a full circle whose visible arc is one dash; dashoffset 25
+        // rotates the start to 12 o'clock, then we subtract the running total so
+        // slices sit end-to-end clockwise (matching the previous conic-gradient).
+        segments += `<circle cx="21" cy="21" r="${R}" fill="none" stroke="${color}" stroke-width="${SW}"` +
+          ` stroke-dasharray="${percent.toFixed(4)} ${(100 - percent).toFixed(4)}"` +
+          ` stroke-dashoffset="${(25 - currentPercent).toFixed(4)}"></circle>`;
         currentPercent += percent;
 
         legendEl.innerHTML += `
@@ -1130,7 +1223,7 @@
           </div>
         `;
       });
-      pieEl.style.background = `conic-gradient(${gradientStops.join(', ')})`;
+      pieEl.innerHTML = `${svgOpen}${segments}</svg>`;
     };
 
     const renderTable = (entries) => {
@@ -1490,6 +1583,301 @@
       attachSortHandlers();
     };
 
+    // --- SHARE / EXPORT ---
+    // Human-readable label for the range currently in view (derived from metrics, so it
+    // reflects whatever preset/custom range produced the data on screen).
+    const getRangeLabel = () => {
+      const m = window.latestMetrics || latestMetrics;
+      if (!m || !m.weeklyData || !m.weeklyData.labels || !m.weeklyData.labels.length) return '';
+      const labels = m.weeklyData.labels;
+      const from = labels[0], to = labels[labels.length - 1];
+      return from === to ? formatDateShort(from) : `${formatDateShort(from)} – ${formatDateShort(to)}`;
+    };
+
+    // Which tab is currently visible? Returns its key, display label and root node.
+    const getActiveViewNode = () => {
+      const tabs = [
+        { key: 'dashboard', label: 'Dashboard' },
+        { key: 'details', label: 'Detailed List' },
+        { key: 'drilldown', label: 'By Project / Tag' }
+      ];
+      const active = tabs.find(t => !document.getElementById(`view-${t.key}`).classList.contains('hidden')) || tabs[0];
+      return { ...active, node: document.getElementById(`view-${active.key}`) };
+    };
+
+    // Feedback toast — prefer the host snackbar when available, else a small inline toast.
+    const showToast = (msg, isError) => {
+      try {
+        if (window.PluginAPI && typeof window.PluginAPI.showSnack === 'function') {
+          window.PluginAPI.showSnack({ msg, ico: isError ? 'error' : 'check' });
+          return;
+        }
+      } catch (e) { /* fall through to inline toast */ }
+      const el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.toggle('toast-error', !!isError);
+      el.classList.add('visible');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => el.classList.remove('visible'), 2600);
+    };
+
+    // Copy the computed styles of every node in `srcRoot` onto the matching node in the
+    // detached clone `destRoot`. This resolves CSS custom properties (--bg, --c-primary, …)
+    // and gradients to concrete values so the SVG <foreignObject> renders identically
+    // without access to the page stylesheet.
+    const inlineComputedStyles = (srcRoot, destRoot) => {
+      const srcNodes = [srcRoot, ...srcRoot.querySelectorAll('*')];
+      const destNodes = [destRoot, ...destRoot.querySelectorAll('*')];
+      for (let i = 0; i < srcNodes.length; i++) {
+        const dest = destNodes[i];
+        if (!dest || dest.nodeType !== 1) continue;
+        const cs = window.getComputedStyle(srcNodes[i]);
+        let cssText = '';
+        for (let j = 0; j < cs.length; j++) {
+          const prop = cs[j];
+          cssText += `${prop}:${cs.getPropertyValue(prop)};`;
+        }
+        dest.style.cssText = cssText;
+      }
+    };
+
+    // Render a DOM node to a PNG Blob using a native SVG <foreignObject> → <canvas> pipeline
+    // (no external library — required for this self-contained plugin).
+    const captureNodeToPngBlob = (node) => {
+      return new Promise((resolve, reject) => {
+        try {
+          const rect = node.getBoundingClientRect();
+          const width = Math.ceil(rect.width);
+          const height = Math.ceil(node.scrollHeight); // full, un-clipped content height
+          const bg = window.getComputedStyle(document.body).backgroundColor || '#121212';
+
+          const clone = node.cloneNode(true);
+          inlineComputedStyles(node, clone);
+          // Reveal & un-clip the root so the whole tab is captured, not just the viewport.
+          clone.classList.remove('hidden');
+          clone.style.boxSizing = 'border-box';
+          clone.style.width = `${width}px`;
+          clone.style.height = `${height}px`;
+          clone.style.overflow = 'visible';
+          clone.style.margin = '0';
+          const tip = clone.querySelector('#bar-tooltip');
+          if (tip) tip.remove();
+
+          const xml = new XMLSerializer().serializeToString(clone);
+          const svg =
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">` +
+            `<foreignObject x="0" y="0" width="100%" height="100%">` +
+            `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;background:${bg};">${xml}</div>` +
+            `</foreignObject></svg>`;
+          const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const dpr = Math.max(1, window.devicePixelRatio || 1);
+              const canvas = document.createElement('canvas');
+              canvas.width = width * dpr;
+              canvas.height = height * dpr;
+              const ctx = canvas.getContext('2d');
+              ctx.scale(dpr, dpr);
+              ctx.fillStyle = bg;
+              ctx.fillRect(0, 0, width, height);
+              ctx.drawImage(img, 0, 0, width, height);
+              canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob returned null')), 'image/png');
+            } catch (err) { reject(err); }
+          };
+          img.onerror = () => reject(new Error('Failed to rasterize dashboard image'));
+          img.src = url;
+        } catch (err) { reject(err); }
+      });
+    };
+
+    const triggerDownload = (blob, label) => {
+      const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const filename = `dashboard-${slug}-${toLocalDate(new Date())}.png`;
+      // Inside Super Productivity the plugin runs in a sandboxed iframe that usually
+      // can't initiate downloads. Hand the file to the host window (plugin.js), which
+      // saves it via the app's normal download flow (defaults to ~/Downloads).
+      if (window.parent && window.parent !== window) {
+        try {
+          window.parent.postMessage({ type: 'SP_DASHBOARD_DOWNLOAD', blob, filename }, '*');
+          return;
+        } catch (e) {
+          console.warn('[sp-dashboard] host download routing failed, falling back', e);
+        }
+      }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    const copyImage = async () => {
+      const { node, label } = getActiveViewNode();
+      let blob;
+      try {
+        blob = await captureNodeToPngBlob(node);
+      } catch (err) {
+        console.error('[sp-dashboard] image capture failed', err);
+        showToast('Could not capture image', true);
+        return;
+      }
+      try {
+        if (!navigator.clipboard || typeof window.ClipboardItem === 'undefined') throw new Error('clipboard image unsupported');
+        await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
+        showToast('Image copied to clipboard');
+      } catch (err) {
+        console.warn('[sp-dashboard] clipboard image write failed, downloading instead', err);
+        triggerDownload(blob, label);
+        showToast("Couldn't copy image — downloaded it instead");
+      }
+    };
+
+    const downloadImage = async () => {
+      const { node, label } = getActiveViewNode();
+      try {
+        const blob = await captureNodeToPngBlob(node);
+        triggerDownload(blob, label);
+        showToast('Image downloaded');
+      } catch (err) {
+        console.error('[sp-dashboard] image capture failed', err);
+        showToast('Could not capture image', true);
+      }
+    };
+
+    const printActiveTab = () => {
+      const { label } = getActiveViewNode();
+      const ph = document.getElementById('print-header');
+      if (ph) ph.textContent = `${label}${getRangeLabel() ? ' — ' + getRangeLabel() : ''}`;
+      window.print();
+    };
+
+    const legacyCopyText = (text) => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      if (!ok) throw new Error('execCommand copy failed');
+    };
+
+    // Build a Slack-friendly markdown summary of the given tab from the current metrics.
+    const buildTextSummary = (tabKey) => {
+      const m = window.latestMetrics || latestMetrics;
+      if (!m) return 'No data available.';
+      const range = getRangeLabel();
+      const suffix = range ? ` (${range})` : '';
+      const lines = [];
+
+      if (tabKey === 'details') {
+        lines.push(`*Detailed Time Log*${suffix}`);
+        lines.push('');
+        lines.push('| Date | Project | Task | Time | Status |');
+        lines.push('| --- | --- | --- | --- | --- |');
+        const sorted = sortEntries(m.tableEntries, currentSort.key, currentSort.dir);
+        if (sorted.length) {
+          sorted.forEach(e => {
+            const status = e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress';
+            lines.push(`| ${formatDateShort(e.date)} | ${e.projectName} | ${e.taskTitle} | ${formatTime(e.timeSpent)} | ${status} |`);
+          });
+        } else {
+          lines.push('| — | — | No tracked time found | — | — |');
+        }
+        if (m.overdueEntries && m.overdueEntries.length) {
+          lines.push('');
+          lines.push('*Overdue & Late*');
+          m.overdueEntries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.projectName}: ${e.taskTitle}`));
+        }
+      } else if (tabKey === 'drilldown') {
+        const isTag = currentDrillDimension === 'tag';
+        const entity = currentDrillEntity || '(none)';
+        const timeMs = (isTag ? m.tagData : m.projectData)[entity] || 0;
+        const completed = (isTag ? m.tagCompletedData : m.projectCompletedData)[entity] || 0;
+        const overdue = (isTag ? m.tagOverdueData : m.projectOverdueData)[entity] || 0;
+        const late = (isTag ? m.tagLateData : m.projectLateData)[entity] || 0;
+        lines.push(`*${isTag ? 'Tag' : 'Project'}: ${entity}*${suffix}`);
+        lines.push(`• Time Spent: ${formatTime(timeMs)}`);
+        lines.push(`• Tasks Completed: ${completed}`);
+        lines.push(`• Overdue Tasks: ${overdue}`);
+        lines.push(`• Completed Late: ${late}`);
+        const entries = m.tableEntries.filter(e =>
+          isTag ? (e.tagNames && e.tagNames.includes(entity)) : e.projectName === entity);
+        if (entries.length) {
+          lines.push('');
+          lines.push('Tasks:');
+          entries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.taskTitle} (${formatTime(e.timeSpent)})`));
+        }
+      } else {
+        lines.push(`*Productivity Summary*${suffix}`);
+        lines.push(`• Total Time Tracked: ${formatTime(m.totalTimeSpent)}`);
+        lines.push(`• Tasks Completed: ${m.totalCompleted} / ${m.totalTasks}`);
+        lines.push(`• Overdue Tasks: ${m.overdueTasks}`);
+        lines.push(`• Completed Late: ${m.lateCompleted}`);
+        const projects = Object.entries(m.projectData || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+        if (projects.length) {
+          lines.push('');
+          lines.push('*Time by Project*');
+          projects.forEach(([name, ms]) => lines.push(`• ${name}: ${formatTime(ms)}`));
+        }
+      }
+      return lines.join('\n');
+    };
+
+    const copyText = async () => {
+      const { key } = getActiveViewNode();
+      const text = buildTextSummary(key);
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          legacyCopyText(text);
+        }
+        showToast('Summary copied to clipboard');
+      } catch (err) {
+        console.warn('[sp-dashboard] clipboard writeText failed, trying fallback', err);
+        try {
+          legacyCopyText(text);
+          showToast('Summary copied to clipboard');
+        } catch (err2) {
+          console.error('[sp-dashboard] copy text failed', err2);
+          showToast('Could not copy summary', true);
+        }
+      }
+    };
+
+    // --- SHARE MENU WIRING ---
+    const shareBtn = document.getElementById('share-btn');
+    const shareMenu = document.getElementById('share-menu');
+    const toggleShareMenu = (open) => {
+      const willOpen = open === undefined ? shareMenu.classList.contains('hidden') : open;
+      shareMenu.classList.toggle('hidden', !willOpen);
+      shareBtn.setAttribute('aria-expanded', String(willOpen));
+    };
+    if (shareBtn && shareMenu) {
+      shareBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleShareMenu(); });
+      shareMenu.addEventListener('click', (e) => {
+        const item = e.target.closest('.share-menu-item');
+        if (!item) return;
+        toggleShareMenu(false);
+        const action = item.dataset.action;
+        if (action === 'copy-image') copyImage();
+        else if (action === 'download-png') downloadImage();
+        else if (action === 'print') printActiveTab();
+        else if (action === 'copy-text') copyText();
+      });
+      document.addEventListener('click', () => toggleShareMenu(false));
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleShareMenu(false); });
+    }
+
     // expose key utilities for testing (JSDOM environment won't execute script tags normally)
     window.formatTime = formatTime;
     window.formatDateShort = formatDateShort;
@@ -1506,6 +1894,13 @@
     window.setDrillDimension = setDrillDimension;
     window.setDrillEntity = setDrillEntity;
     window.populateDrillDropdown = populateDrillDropdown;
+    window.buildTextSummary = buildTextSummary;
+    window.getActiveViewNode = getActiveViewNode;
+    window.getRangeLabel = getRangeLabel;
+    window.inlineComputedStyles = inlineComputedStyles;
+    window.captureNodeToPngBlob = captureNodeToPngBlob;
+    window.triggerDownload = triggerDownload;
+    window.renderNativePieChart = renderNativePieChart;
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
     const pullDataFromSP = async () => {
