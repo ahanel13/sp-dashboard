@@ -16,6 +16,10 @@ console.log("[sp-dashboard plugin] Date Range Reporter plugin loaded!");
 window.addEventListener('message', (event) => {
   const data = event.data;
   if (!data || data.type !== 'SP_DASHBOARD_DOWNLOAD' || !data.blob) return;
+  const isOwnIframe = Array.from(document.querySelectorAll('iframe')).some(
+    (iframe) => iframe.src && iframe.src.includes('index.html') && iframe.contentWindow === event.source
+  );
+  if (!isOwnIframe) return;
   try {
     const url = URL.createObjectURL(data.blob);
     const a = document.createElement('a');
