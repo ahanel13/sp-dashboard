@@ -8,6 +8,11 @@ VERSION := $(shell grep '"version"' package.json | sed 's/.*"version": "\(.*\)".
 DESCRIPTION := $(shell grep '"description"' package.json | sed 's/.*"description": "\(.*\)".*/\1/')
 RELEASE_FILE = $(PROJECT)-v$(VERSION).zip
 
+# A semver prerelease (1.6.0-rc, 1.6.0-beta.2) is published as a GitHub
+# prerelease, so it never becomes the "Latest" release users are sent to.
+# Derived from the version string — there is no flag to remember.
+PRERELEASE := $(if $(findstring -,$(VERSION)),--prerelease,)
+
 .PHONY: build clean help release release-check test
 
 # Default target
@@ -64,6 +69,11 @@ release-check:
 		echo "   Delete it with: git tag -d v$(VERSION) && git push --delete origin v$(VERSION)"; \
 		exit 1; \
 	fi
+	@if [ -n "$(PRERELEASE)" ]; then \
+		echo "✓ v$(VERSION) will publish as a PRERELEASE (not marked Latest)"; \
+	else \
+		echo "✓ v$(VERSION) will publish as a full release (marked Latest)"; \
+	fi
 	@echo "✓ All checks passed"
 
 # Create a complete GitHub release (build, tag, push, and create release)
@@ -86,6 +96,7 @@ release: release-check build
 		--title "v$(VERSION)" \
 		--notes "Release v$(VERSION) of $(PROJECT) plugin" \
 		--generate-notes \
+		$(PRERELEASE) \
 		$(ZIP_FILE)
 	@echo ""
 	@echo "════════════════════════════════════════════════════════════"
@@ -114,4 +125,4 @@ help:
 	@echo "  make screenshot     - Generate/update screenshots via Puppeteer"
 	@echo "  make help          - Show this help message"
 	@echo ""
-	@echo "Current version: $(VERSION)"
+	@echo "Current version: $(VERSION)$(if $(PRERELEASE), (prerelease),)"

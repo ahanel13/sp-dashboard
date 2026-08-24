@@ -260,7 +260,7 @@
     .time-cell { font-family: monospace; font-size: 0.9rem; }
 
     /* --- SHARE / EXPORT --- */
-    .share-wrap { position: relative; margin-left: auto; display: flex; align-items: center; }
+    .share-wrap { position: relative; display: flex; align-items: center; }
     .share-btn {
       display: inline-flex; align-items: center; gap: 0.4rem;
       background: none; border: none; cursor: pointer;
@@ -299,6 +299,125 @@
     .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
     .toast.toast-error { border-left-color: #f87171; }
 
+    /* --- SETTINGS --- */
+    .settings-btn {
+      margin-left: auto; background: none; border: none; cursor: pointer;
+      color: var(--text-color-muted, #9e9e9e); padding: var(--s, 0.5rem);
+      display: inline-flex; align-items: center;
+    }
+    .settings-btn:hover { color: var(--c-primary, #03a9f4); }
+    .settings-btn svg { width: 18px; height: 18px; }
+
+    .settings-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.55); z-index: 1500;
+      display: flex; align-items: center; justify-content: center; padding: var(--s2, 1rem);
+    }
+    .settings-modal {
+      background: var(--card-bg, #1e1e1e); border: 1px solid var(--divider-color, #333);
+      border-radius: var(--card-border-radius, 8px); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      width: 100%; max-width: 880px; height: 100%; max-height: 700px;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .settings-head { display: flex; align-items: center; gap: 0.5rem; padding: var(--s2, 1rem); border-bottom: 1px solid var(--divider-color, #333); }
+    .settings-head svg { width: 18px; height: 18px; }
+    .settings-title { font-size: 1.125rem; font-weight: 600; margin: 0; }
+    .settings-close { margin-left: auto; background: none; border: none; color: var(--text-color-muted, #9e9e9e); cursor: pointer; padding: 4px; display: inline-flex; }
+    .settings-close:hover { color: var(--text-color, #fff); }
+    .settings-close svg { width: 18px; height: 18px; }
+    .settings-body { flex: 1; display: flex; min-height: 0; }
+    .settings-rail { width: 190px; flex-shrink: 0; border-right: 1px solid var(--divider-color, #333); padding: var(--s, 0.5rem) 0; display: flex; flex-direction: column; overflow-y: auto; }
+    .settings-rail-btn { background: none; border: none; border-left: 3px solid transparent; text-align: left; cursor: pointer; color: var(--text-color-muted, #9e9e9e); font-size: 0.9rem; padding: 0.55rem 0.9rem; }
+    .settings-rail-btn:hover { color: var(--text-color, #fff); }
+    .settings-rail-btn.active { color: var(--text-color, #fff); border-left-color: var(--c-primary, #03a9f4); background: rgba(3, 169, 244, 0.08); }
+    .settings-rail-foot { margin-top: auto; padding: 0.7rem 0.9rem 0; border-top: 1px solid var(--divider-color, #333); display: flex; flex-direction: column; gap: 0.45rem; align-items: flex-start; }
+    .settings-link { background: none; border: none; padding: 0; cursor: pointer; font-size: 0.78rem; color: var(--text-color-muted, #9e9e9e); }
+    .settings-link:hover { color: var(--c-primary, #03a9f4); }
+    .settings-link.danger { color: #f87171; }
+    .settings-panel { flex: 1; overflow-y: auto; padding: var(--s2, 1rem) var(--s3, 1.5rem); min-width: 0; }
+    .settings-panel-title { font-size: 1.05rem; font-weight: 600; margin: 0; }
+    .settings-panel-sub { font-size: 0.75rem; color: var(--text-color-muted, #9e9e9e); margin: 3px 0 0; }
+    .settings-panel-sub.warn { color: #fbbf24; }
+
+    .set-row { display: flex; align-items: flex-start; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--divider-color, #333); }
+    .set-row:last-child { border-bottom: none; }
+    .set-row-main { flex: 1; min-width: 0; }
+    .set-label { font-size: 0.9rem; }
+    .set-hint { font-size: 0.75rem; color: var(--text-color-muted, #9e9e9e); margin-top: 3px; line-height: 1.35; }
+    .set-hint.warn { color: #fbbf24; }
+    .set-ctl { width: 232px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.4rem; align-items: flex-start; }
+    .set-ctl select, .set-ctl input[type="text"], .set-ctl input[type="number"] {
+      width: 100%; box-sizing: border-box; background: var(--bg, #121212); color: var(--text-color, #fff);
+      border: 1px solid var(--divider-color, #333); border-radius: 4px; padding: 0.35rem 0.5rem; font-size: 0.85rem;
+    }
+    .set-ctl input[type="text"], .set-ctl input[type="number"] { cursor: auto; }
+    /* A target is one or two digits — no need for the full control width. */
+    .set-ctl input[type="number"] { width: 84px; }
+    .set-ctl select:disabled, .set-ctl input:disabled { opacity: 0.4; cursor: not-allowed; }
+    .set-opt { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; background: none; border: none; color: var(--text-color, #fff); padding: 0; text-align: left; }
+    .set-mark { width: 14px; height: 14px; flex-shrink: 0; border: 2px solid var(--text-color-muted, #9e9e9e); box-sizing: border-box; }
+    .set-mark.radio { border-radius: 50%; }
+    .set-mark.check { border-radius: 3px; }
+    .set-opt.active .set-mark { background: var(--c-primary, #03a9f4); border-color: var(--c-primary, #03a9f4); box-shadow: inset 0 0 0 2px var(--card-bg, #1e1e1e); }
+    .set-seg { display: inline-flex; border: 1px solid var(--divider-color, #333); border-radius: 4px; overflow: hidden; }
+    .set-seg button { background: none; border: none; border-right: 1px solid var(--divider-color, #333); color: var(--text-color-muted, #9e9e9e); font-size: 0.75rem; padding: 0.3rem 0.6rem; cursor: pointer; }
+    .set-seg button:last-child { border-right: none; }
+    .set-seg button.active { background: var(--c-primary, #03a9f4); color: #fff; }
+    .set-days { display: flex; gap: 4px; }
+    .set-day { width: 28px; height: 28px; border: 1px solid var(--divider-color, #333); border-radius: 4px; background: none; color: var(--text-color-muted, #9e9e9e); font-size: 0.75rem; cursor: pointer; padding: 0; }
+    .set-day.active { background: var(--c-primary, #03a9f4); color: #fff; border-color: var(--c-primary, #03a9f4); }
+    .set-chips { width: 100%; box-sizing: border-box; border: 1px solid var(--divider-color, #333); border-radius: 4px; padding: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; background: var(--bg, #121212); }
+    .set-chip { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--divider-color, #333); border-radius: 3px; padding: 1px 6px; font-size: 0.75rem; }
+    .set-chip button { background: none; border: none; color: var(--text-color-muted, #9e9e9e); cursor: pointer; padding: 0; line-height: 1; font-size: 0.85rem; }
+    .set-chip button:hover { color: #f87171; }
+    .set-chips select { width: auto; flex: 1; min-width: 92px; border: none; background: none; font-size: 0.75rem; padding: 2px; }
+    .set-chips-empty { font-size: 0.75rem; color: var(--text-color-muted, #9e9e9e); padding: 1px 4px; }
+    .set-swatches { display: flex; gap: 3px; }
+    .set-swatch { width: 14px; height: 14px; border-radius: 2px; }
+    .set-note { font-size: 0.7rem; color: var(--text-color-muted, #9e9e9e); }
+    .set-btn { background: var(--bg, #121212); color: var(--text-color, #fff); border: 1px solid var(--divider-color, #333); border-radius: 4px; padding: 0.35rem 0.8rem; font-size: 0.8rem; cursor: pointer; }
+    .set-btn:hover { border-color: var(--c-primary, #03a9f4); }
+    .set-btn.danger { border-color: rgba(248, 113, 113, 0.5); color: #f87171; }
+    .set-danger { border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 6px; padding: 0.8rem 1rem; margin-top: 1rem; background: rgba(248, 113, 113, 0.05); }
+    .set-danger-title { font-size: 0.9rem; color: #f87171; }
+    .set-actions { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.7rem; }
+
+    .settings-foot { display: flex; align-items: center; gap: 1rem; padding: 0.65rem var(--s2, 1rem); border-top: 1px solid var(--divider-color, #333); }
+    .settings-foot-note { font-size: 0.75rem; color: var(--text-color-muted, #9e9e9e); }
+    .settings-done { margin-left: auto; background: var(--c-primary, #03a9f4); color: #fff; border: none; border-radius: 4px; padding: 0.4rem 1.1rem; font-size: 0.85rem; cursor: pointer; }
+
+    /* Goal line drawn over a bar chart */
+    .goal-line { position: absolute; left: 0; right: 0; height: 0; border-top: 2px dashed #fbbf24; pointer-events: none; }
+    /* Sits over the bars, so it carries its own backing to stay readable. */
+    .goal-line-label {
+      position: absolute; right: 2px; font-size: 0.65rem; color: #fbbf24;
+      background: var(--card-bg, #1e1e1e); padding: 0 4px; border-radius: 3px;
+      line-height: 1.3; pointer-events: none;
+    }
+
+    /* Weekly time goal under the Total Time card */
+    .goal-progress-label { font-size: 0.7rem; color: var(--text-color-muted, #9e9e9e); margin-top: 0.6rem; }
+
+    /* Appearance: density */
+    body.density-compact { padding: var(--s2, 1rem); }
+    body.density-compact .container { gap: var(--s2, 1rem); }
+    body.density-compact .grid-3, body.density-compact .grid-2 { gap: var(--s2, 1rem); margin-bottom: var(--s2, 1rem); }
+    body.density-compact .stat-card, body.density-compact .chart-card { padding: 0.6rem 0.75rem; }
+    body.density-compact .stat-value { font-size: 1.6rem; }
+    body.density-compact .stat-header { margin-bottom: 0.5rem; }
+    body.density-compact .view-content { padding: var(--s2, 1rem); }
+    body.density-compact .details-table th, body.density-compact .details-table td { padding: 0.25rem 0.6rem; }
+
+    /* Appearance: theme override (host normally supplies these via .dark-theme) */
+    body.force-light {
+      --bg: #ffffff; --card-bg: #f6f6f6; --text-color: #111111;
+      --text-color-muted: #666666; --divider-color: #dddddd;
+    }
+    body.force-dark {
+      --bg: #121212; --card-bg: #1e1e1e; --text-color: #ffffff;
+      --text-color-muted: #9e9e9e; --divider-color: #333333;
+    }
+
     /* --- PRINT --- */
     .print-only { display: none; }
     @media print {
@@ -312,7 +431,7 @@
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       .container { height: auto; max-width: none; gap: 0.75rem; }
-      .header, .tabs, .bar-tooltip, .share-wrap, .toast { display: none !important; }
+      .header, .tabs, .bar-tooltip, .share-wrap, .toast, .settings-overlay { display: none !important; }
       .main-card { box-shadow: none; border: none; }
       .view-content { overflow: visible !important; height: auto !important; flex: none !important; }
       .view-content.hidden { display: none !important; }
@@ -386,6 +505,12 @@
         <button id="tab-btn-details" class="tab-btn" onclick="switchTab('details')">Detailed List</button>
         <button id="tab-btn-drilldown" class="tab-btn" onclick="switchTab('drilldown')">By Project / Tag</button>
 
+        <!-- Settings. Deliberately not a 4th tab: the tab bar feeds Share / Print /
+             Copy image, and settings must never end up inside an exported report. -->
+        <button id="settings-btn" class="settings-btn" title="Settings" aria-haspopup="dialog" aria-expanded="false">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+        </button>
+
         <!-- Share / export the currently visible tab -->
         <div class="share-wrap">
           <button id="share-btn" class="share-btn" aria-haspopup="true" aria-expanded="false" title="Share this tab">
@@ -409,7 +534,7 @@
         <!-- Top Stats Row -->
         <div class="grid-3">
           
-          <div class="stat-card">
+          <div class="stat-card" id="stat-card-time">
             <div class="stat-header">
               <h3 class="stat-title">Total Time Tracked</h3>
               <div class="stat-icon" style="background: rgba(96, 165, 250, 0.1); color: #60a5fa;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
@@ -417,9 +542,16 @@
             <div class="stat-value-container">
               <span class="stat-value" id="stat-time">0h 0m</span>
             </div>
+            <!-- Weekly time goal (Settings › Goals) -->
+            <div id="weekly-goal" class="hidden">
+              <div class="progress-track">
+                <div class="progress-fill" id="weekly-goal-fill" style="width: 0%; background: #fbbf24;"></div>
+              </div>
+              <div class="goal-progress-label" id="weekly-goal-label"></div>
+            </div>
           </div>
 
-          <div class="stat-card">
+          <div class="stat-card" id="stat-card-completed">
             <div class="stat-header">
               <h3 class="stat-title">Tasks Completed</h3>
               <div class="stat-icon" style="background: rgba(74, 222, 128, 0.1); color: #4ade80;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
@@ -433,7 +565,7 @@
             </div>
           </div>
 
-          <div class="stat-card">
+          <div class="stat-card" id="stat-card-overdue">
             <div class="stat-header">
               <h3 class="stat-title">Overdue Tasks</h3>
               <div class="stat-icon badge-red"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
@@ -448,7 +580,7 @@
             </div>
           </div>
 
-          <div class="stat-card">
+          <div class="stat-card" id="stat-card-late">
             <div class="stat-header">
               <h3 class="stat-title">Completed Late</h3>
               <div class="stat-icon" style="background: rgba(251, 191, 36, 0.1); color: #fbbf24;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
@@ -636,12 +768,208 @@
   <!-- Transient feedback for share/export actions -->
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <!-- ========================================== -->
+  <!-- SETTINGS (panel contents rendered from      -->
+  <!-- SETTINGS_SECTIONS by renderSettingsPanel)   -->
+  <!-- ========================================== -->
+  <div id="settings-overlay" class="settings-overlay hidden">
+    <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="settings-head">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+        <h2 class="settings-title" id="settings-title">Settings</h2>
+        <button class="settings-close" id="settings-close" title="Close">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-rail" id="settings-rail"></div>
+        <div class="settings-panel" id="settings-panel"></div>
+      </div>
+      <div class="settings-foot">
+        <span class="settings-foot-note">Changes apply as you make them — there is no Save</span>
+        <button class="settings-done" id="settings-done">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Off-screen picker used by Settings › Advanced › Import -->
+  <input type="file" id="settings-import-input" accept="application/json,.json" style="display:none">
+
+
   <script>
-    console.log("[sp-dashboard] Dashboard script initialized");
+    // ==========================================================
+    // SETTINGS STORE
+    // One JSON blob in localStorage. Nothing else in this file writes
+    // localStorage — every persisted preference goes through here.
+    // ==========================================================
+    const SETTINGS_KEY = 'sp-dashboard-settings';
+    const SETTINGS_SCHEMA_VERSION = 1;
+    const HOUR_MS = 3600000;
+
+    const DEFAULT_SETTINGS = {
+      schemaVersion: SETTINGS_SCHEMA_VERSION,
+
+      // --- General ---
+      weekStartsOn: 1,              // 0 Sun, 1 Mon, 6 Sat
+      dateFormat: 'auto',           // auto | iso | us | eu
+      timeFormat: 'hm',             // hm | decimal | minutes
+      workingDays: [1, 2, 3, 4, 5],
+      hideNonWorkingDays: false,
+
+      // --- Defaults ---
+      // `*Mode` is 'remember' (keep the last used value) or 'pin' (always start
+      // from `*Pinned`). `*Last` is the bookkeeping for 'remember'.
+      periodMode: 'remember', periodPinned: 'today', periodLast: '',
+      dateFromLast: '', dateToLast: '', weekdayLast: '1',
+      tabMode: 'pin', tabPinned: 'dashboard', tabLast: '',
+      barMetricMode: 'remember', barMetricPinned: 'completed', barMetricLast: '',
+      pieMetricMode: 'remember', pieMetricPinned: 'completed', pieMetricLast: '',
+      pieDimPinned: 'project', pieDimLast: '',
+      sortKey: 'date', sortDir: 'desc',
+      drillDimMode: 'remember', drillDimPinned: 'project', drillDimLast: '', drillEntityLast: '',
+
+      // --- Data & filtering ---
+      includeArchived: true,
+      excludedProjects: [],
+      excludedTags: [],
+      includeRunningTimer: true,
+      showSubtaskRows: false,
+      minEntryMs: 0,
+      noDueDateOverdue: false,
+      hideEmptyEntities: true,
+
+      // --- Appearance ---
+      theme: 'auto',                // auto | light | dark
+      palette: 'default',
+      barGrouping: 'auto',          // auto | daily | weekly | monthly
+      pieMaxSlices: 8,              // 0 = show every slice
+      density: 'comfortable',
+      statCards: ['time', 'completed', 'overdue', 'late'],
+      tablePageSize: 0,             // 0 = no limit
+
+      // --- Goals ---
+      dailyTimeGoalOn: false, dailyTimeGoalH: 6,
+      weeklyTimeGoalOn: false, weeklyTimeGoalH: 30,
+      dailyTaskGoalOn: false, dailyTaskGoal: 5,
+
+      // --- Advanced ---
+      refreshMs: 30000,
+      debugLogging: false,
+      exportFilename: 'dashboard-{tab}-{date}',
+      summaryFormat: 'slack'        // slack | markdown | csv
+    };
+
+    // The keys this plugin wrote before the settings store existed. Folded in
+    // once on first load, then removed so they can't drift.
+    const LEGACY_KEY_MAP = {
+      'sp-dashboard-date-preset': 'periodLast',
+      'sp-dashboard-date-from': 'dateFromLast',
+      'sp-dashboard-date-to': 'dateToLast',
+      'sp-dashboard-weekday-select': 'weekdayLast',
+      'sp-dashboard-bar-chart-select': 'barMetricLast',
+      'sp-dashboard-pie-chart-select': 'pieMetricLast',
+      'sp-dashboard-pie-dim': 'pieDimLast',
+      'sp-dashboard-drill-dim': 'drillDimLast',
+      'sp-dashboard-drill-entity': 'drillEntityLast'
+    };
+
+    // Coerce a stored value against its default, so a hand-edited or stale blob
+    // can never put the dashboard into a state the UI can't represent.
+    const coerceSetting = (def, val) => {
+      if (val === undefined || val === null) return Array.isArray(def) ? def.slice() : def;
+      if (Array.isArray(def)) return Array.isArray(val) ? val.slice() : def.slice();
+      if (typeof def === 'number') return (typeof val === 'number' && isFinite(val)) ? val : def;
+      if (typeof def === 'boolean') return typeof val === 'boolean' ? val : def;
+      return typeof val === 'string' ? val : def;
+    };
+
+    const readStoredSettings = () => {
+      let stored = {};
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (raw) stored = JSON.parse(raw);
+      } catch (e) {
+        console.warn('[sp-dashboard] settings unreadable, using defaults', e);
+      }
+      if (!stored || typeof stored !== 'object' || Array.isArray(stored)) stored = {};
+
+      let migrated = false;
+      Object.keys(LEGACY_KEY_MAP).forEach(oldKey => {
+        let val = null;
+        try { val = localStorage.getItem(oldKey); } catch (e) { /* ignore */ }
+        if (val === null) return;
+        const newKey = LEGACY_KEY_MAP[oldKey];
+        if (stored[newKey] === undefined || stored[newKey] === '') stored[newKey] = val;
+        try { localStorage.removeItem(oldKey); } catch (e) { /* ignore */ }
+        migrated = true;
+      });
+
+      const merged = {};
+      Object.keys(DEFAULT_SETTINGS).forEach(key => {
+        merged[key] = coerceSetting(DEFAULT_SETTINGS[key], stored[key]);
+      });
+      merged.schemaVersion = SETTINGS_SCHEMA_VERSION;
+
+      if (migrated) {
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged)); } catch (e) { /* ignore */ }
+      }
+      return merged;
+    };
+
+    let SETTINGS = readStoredSettings();
+
+    const persistSettings = () => {
+      try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS)); }
+      catch (e) { console.warn('[sp-dashboard] could not persist settings', e); }
+    };
+
+    const getSetting = (key) => SETTINGS[key];
+
+    // Records what a dashboard control was last set to. Never fights a pinned
+    // value — pinning only decides what happens on the next open.
+    const rememberSetting = (key, value) => {
+      if (SETTINGS[key] === value) return;
+      SETTINGS[key] = value;
+      persistSettings();
+    };
+
+    // Remember-vs-pin resolution for the controls in Settings › Defaults.
+    const resolveDefault = (modeKey, pinnedKey, lastKey) => {
+      const last = SETTINGS[lastKey];
+      if (SETTINGS[modeKey] === 'pin' || last === undefined || last === null || last === '') {
+        return SETTINGS[pinnedKey];
+      }
+      return last;
+    };
+
+    // Every diagnostic in this file goes through here. Off by default: the
+    // per-task logging below fires once per task per refresh, which is enough
+    // to matter on a vault with a long archive.
+    const debugLog = (...args) => { if (SETTINGS.debugLogging) console.log(...args); };
+    const debugWarn = (...args) => { if (SETTINGS.debugLogging) console.warn(...args); };
+
+    const PALETTES = {
+      default:    ['#03a9f4', '#b388ff', '#4ade80', '#f472b6', '#fbbf24', '#f87171', '#34d399', '#818cf8', '#a78bfa'],
+      colorblind: ['#0072b2', '#e69f00', '#009e73', '#cc79a7', '#56b4e9', '#d55e00', '#f0e442', '#8c564b', '#666666'],
+      mono:       ['#e8e8e8', '#cfcfcf', '#b5b5b5', '#9c9c9c', '#828282', '#696969', '#4f4f4f', '#3b3b3b', '#292929'],
+      contrast:   ['#ffffff', '#ffd400', '#00e5ff', '#ff3d00', '#76ff03', '#e040fb', '#ff9100', '#00b0ff', '#c6ff00']
+    };
+    const getPalette = () => PALETTES[getSetting('palette')] || PALETTES.default;
+
+    // Escape data-derived strings before they go through innerHTML.
+    const escapeHtml = (value) => String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    debugLog("[sp-dashboard] Dashboard script initialized");
+
     // --- UTILITIES ---
     const formatTime = (milliseconds) => {
-      if (!milliseconds) return '0h 0m';
-      const totalMinutes = Math.floor(milliseconds / 60000);
+      const ms = milliseconds || 0;
+      const fmt = getSetting('timeFormat');
+      if (fmt === 'decimal') return `${(ms / HOUR_MS).toFixed(2)}h`;
+      if (fmt === 'minutes') return `${Math.floor(ms / 60000)}m`;
+      const totalMinutes = Math.floor(ms / 60000);
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
       return `${hours}h ${minutes}m`;
@@ -650,9 +978,20 @@
     const toLocalDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
     const formatDateShort = (dateStr) => {
-      const d = new Date(dateStr + "T00:00:00"); 
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      if (!dateStr) return '';
+      const iso = String(dateStr).split('T')[0];
+      const fmt = getSetting('dateFormat');
+      if (fmt === 'iso') return iso;
+      const d = new Date(iso + "T00:00:00");
+      if (isNaN(d.getTime())) return String(dateStr);
+      if (fmt === 'eu') return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const locale = fmt === 'us' ? 'en-US'
+        : ((typeof navigator !== 'undefined' && navigator.language) || 'en-US');
+      return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
     };
+
+    // Days back from `d` to the most recent start-of-week, per the setting.
+    const daysSinceWeekStart = (d) => (d.getDay() - Number(getSetting('weekStartsOn')) + 7) % 7;
 
     const getDatesInRange = (startDate, endDate) => {
       const dates = [];
@@ -673,6 +1012,7 @@
       });
       document.getElementById(`view-${tabId}`).classList.remove('hidden');
       document.getElementById(`tab-btn-${tabId}`).classList.add('active');
+      rememberSetting('tabLast', tabId);
     };
 
     // --- GLOBALS ---
@@ -681,7 +1021,7 @@
     let cachedTags = [];
     let latestMetrics = null;
     let pieDimension = 'project';
-    let currentSort = { key: 'date', dir: 'desc' }; // sorting state for details table
+    let currentSort = { key: getSetting('sortKey'), dir: getSetting('sortDir') }; // sorting state for details table
     let liveUpdateInterval = null;
     let currentDrillDimension = 'project';
     let currentDrillEntity = '';
@@ -741,9 +1081,6 @@
         });
       });
     };
-    // Base colors matching the UI kit logic (fallback hexes just in case)
-    const PIE_COLORS = ['#03a9f4', '#b388ff', '#4ade80', '#f472b6', '#fbbf24', '#f87171', '#34d399', '#818cf8', '#a78bfa'];
-
     // --- INITIALIZE UI ---
     const todayObjInit = new Date();
     const lastWeekObjInit = new Date();
@@ -765,60 +1102,54 @@
     presetSelect.addEventListener('change', (e) => {
       customContainer.classList.toggle('hidden', e.target.value !== 'custom');
       weekdayPickerContainer.classList.toggle('hidden', e.target.value !== 'from-weekday');
-      localStorage.setItem('sp-dashboard-date-preset', e.target.value);
+      rememberSetting('periodLast', e.target.value);
       processData(cachedTasks, cachedProjects, cachedTags);
     });
 
     dateFromInput.addEventListener('change', () => {
-      localStorage.setItem('sp-dashboard-date-from', dateFromInput.value);
+      rememberSetting('dateFromLast', dateFromInput.value);
       processData(cachedTasks, cachedProjects, cachedTags);
     });
     dateToInput.addEventListener('change', () => {
-      localStorage.setItem('sp-dashboard-date-to', dateToInput.value);
+      rememberSetting('dateToLast', dateToInput.value);
       processData(cachedTasks, cachedProjects, cachedTags);
     });
     weekdaySelect.addEventListener('change', () => {
-      localStorage.setItem('sp-dashboard-weekday-select', weekdaySelect.value);
+      rememberSetting('weekdayLast', weekdaySelect.value);
       processData(cachedTasks, cachedProjects, cachedTags);
     });
     barChartSelect.addEventListener('change', () => {
-      localStorage.setItem('sp-dashboard-bar-chart-select', barChartSelect.value);
+      rememberSetting('barMetricLast', barChartSelect.value);
       updateBarChart();
     });
     pieChartSelect.addEventListener('change', () => {
-      localStorage.setItem('sp-dashboard-pie-chart-select', pieChartSelect.value);
+      rememberSetting('pieMetricLast', pieChartSelect.value);
       updatePieChart();
     });
 
-    // Restore persisted selections
-    const savedPreset = localStorage.getItem('sp-dashboard-date-preset');
-    if (savedPreset) {
-      presetSelect.value = savedPreset;
-      customContainer.classList.toggle('hidden', savedPreset !== 'custom');
-      weekdayPickerContainer.classList.toggle('hidden', savedPreset !== 'from-weekday');
-      if (savedPreset === 'custom') {
-        const savedFrom = localStorage.getItem('sp-dashboard-date-from');
-        const savedTo = localStorage.getItem('sp-dashboard-date-to');
-        if (savedFrom) dateFromInput.value = savedFrom;
-        if (savedTo) dateToInput.value = savedTo;
-      }
-      if (savedPreset === 'from-weekday') {
-        const savedWeekday = localStorage.getItem('sp-dashboard-weekday-select');
-        if (savedWeekday) weekdaySelect.value = savedWeekday;
-      }
-    }
-    const savedBar = localStorage.getItem('sp-dashboard-bar-chart-select');
-    const savedPie = localStorage.getItem('sp-dashboard-pie-chart-select');
-    if (savedBar) barChartSelect.value = savedBar;
-    if (savedPie) pieChartSelect.value = savedPie;
-    const savedDrillDim = localStorage.getItem('sp-dashboard-drill-dim');
-    if (savedDrillDim) {
-      currentDrillDimension = savedDrillDim;
-      document.getElementById('drill-dim-project').classList.toggle('active', savedDrillDim === 'project');
-      document.getElementById('drill-dim-tag').classList.toggle('active', savedDrillDim === 'tag');
-    }
-    const savedDrillEntity = localStorage.getItem('sp-dashboard-drill-entity');
-    if (savedDrillEntity) currentDrillEntity = savedDrillEntity;
+    // Apply the opening state from Settings › Defaults (remember-or-pin per control).
+    const applyDefaultSelections = () => {
+      const preset = resolveDefault('periodMode', 'periodPinned', 'periodLast');
+      presetSelect.value = preset;
+      // A pinned value the <select> doesn't offer would leave it blank.
+      if (!presetSelect.value) presetSelect.value = 'today';
+      customContainer.classList.toggle('hidden', presetSelect.value !== 'custom');
+      weekdayPickerContainer.classList.toggle('hidden', presetSelect.value !== 'from-weekday');
+      if (getSetting('dateFromLast')) dateFromInput.value = getSetting('dateFromLast');
+      if (getSetting('dateToLast')) dateToInput.value = getSetting('dateToLast');
+      if (getSetting('weekdayLast')) weekdaySelect.value = getSetting('weekdayLast');
+
+      barChartSelect.value = resolveDefault('barMetricMode', 'barMetricPinned', 'barMetricLast');
+      pieChartSelect.value = resolveDefault('pieMetricMode', 'pieMetricPinned', 'pieMetricLast');
+
+      currentDrillDimension = resolveDefault('drillDimMode', 'drillDimPinned', 'drillDimLast');
+      document.getElementById('drill-dim-project').classList.toggle('active', currentDrillDimension === 'project');
+      document.getElementById('drill-dim-tag').classList.toggle('active', currentDrillDimension === 'tag');
+      currentDrillEntity = getSetting('drillEntityLast') || '';
+
+      currentSort = { key: getSetting('sortKey'), dir: getSetting('sortDir') };
+    };
+    applyDefaultSelections();
 
     // --- RENDER LOGIC ---
     const updateDashboardUI = (metrics) => {
@@ -860,6 +1191,29 @@
         }
       }
 
+      // Settings › Appearance: which stat cards are on screen
+      const visibleCards = new Set(getSetting('statCards') || []);
+      ['time', 'completed', 'overdue', 'late'].forEach(key => {
+        const card = document.getElementById(`stat-card-${key}`);
+        if (card) card.classList.toggle('hidden', !visibleCards.has(key));
+      });
+
+      // Settings › Goals: weekly time target on the Total Time card
+      const weeklyGoal = document.getElementById('weekly-goal');
+      if (weeklyGoal) {
+        if (getSetting('weeklyTimeGoalOn')) {
+          const targetH = Number(getSetting('weeklyTimeGoalH')) || 0;
+          const targetMs = targetH * HOUR_MS;
+          const pct = targetMs > 0 ? Math.min(100, (metrics.totalTimeSpent / targetMs) * 100) : 0;
+          weeklyGoal.classList.remove('hidden');
+          document.getElementById('weekly-goal-fill').style.width = `${pct}%`;
+          document.getElementById('weekly-goal-label').textContent =
+            `${Math.round(pct)}% of a ${targetH}h target`;
+        } else {
+          weeklyGoal.classList.add('hidden');
+        }
+      }
+
       updateBarChart();
       updatePieChart();
       renderTable(sortedEntries);
@@ -869,16 +1223,31 @@
       renderDrillDown();
     };
 
+    // Settings › Goals: the target line only makes sense against a per-day bar,
+    // so renderGenericBarChart drops it when the chart is bucketed.
+    const getDailyGoal = (type) => {
+      if (type === 'time' && getSetting('dailyTimeGoalOn')) {
+        const h = Number(getSetting('dailyTimeGoalH')) || 0;
+        return h > 0 ? { value: h * HOUR_MS, label: `${h}h target` } : null;
+      }
+      if (type === 'completed' && getSetting('dailyTaskGoalOn')) {
+        const n = Number(getSetting('dailyTaskGoal')) || 0;
+        return n > 0 ? { value: n, label: `${n} task target` } : null;
+      }
+      return null;
+    };
+
     const updateBarChart = () => {
       if (!latestMetrics) return;
       const type = document.getElementById('bar-chart-select').value;
       const taskYFn = (v) => `${Math.round(v)}`;
       const timeYFn = (v) => `${Math.round(v / 3600000)}h`;
       const HOUR = 3600000;
+      const goal = getDailyGoal(type);
       if (type === 'time') {
-        renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, timeYFn, HOUR);
+        renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, timeYFn, HOUR, goal);
       } else if (type === 'completed') {
-        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', (v) => `${Math.round(v)} tasks`, taskYFn);
+        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', (v) => `${Math.round(v)} tasks`, taskYFn, 1, goal);
       } else if (type === 'overdue') {
         renderGenericBarChart(latestMetrics.overduePerDay, 'bar-chart-container', '#f87171', (v) => `${Math.round(v)} tasks`, taskYFn);
       } else if (type === 'late') {
@@ -907,41 +1276,42 @@
       pieDimension = dim;
       pieDimProjectBtn.classList.toggle('active', dim === 'project');
       pieDimTagBtn.classList.toggle('active', dim === 'tag');
-      localStorage.setItem('sp-dashboard-pie-dim', dim);
+      rememberSetting('pieDimLast', dim);
       updatePieChart();
     };
     pieDimProjectBtn.addEventListener('click', () => setPieDimension('project'));
     pieDimTagBtn.addEventListener('click', () => setPieDimension('tag'));
-    setPieDimension(localStorage.getItem('sp-dashboard-pie-dim') || 'project');
+    setPieDimension(resolveDefault('pieMetricMode', 'pieDimPinned', 'pieDimLast'));
 
     // --- DRILLDOWN TAB LOGIC ---
     const populateDrillDropdown = () => {
       if (!latestMetrics) return;
       const select = document.getElementById('drill-entity-select');
       const isTag = currentDrillDimension === 'tag';
+      // With "hide empty" on (the default) the list is derived from the metrics,
+      // so only entities with data in the current range are offered.
+      const hideEmpty = !!getSetting('hideEmptyEntities');
       let names;
       if (isTag) {
-        if (cachedTags.length > 0) {
-          names = [...new Set([...cachedTags.map(t => t.title || t.id), 'Untagged'])].sort((a, b) => a.localeCompare(b));
-        } else {
-          names = Array.from(new Set([
-            ...Object.keys(latestMetrics.tagData),
-            ...Object.keys(latestMetrics.tagCompletedData),
-            ...Object.keys(latestMetrics.tagOverdueData),
-            ...Object.keys(latestMetrics.tagLateData)
-          ])).sort((a, b) => a.localeCompare(b));
-        }
+        const withData = Array.from(new Set([
+          ...Object.keys(latestMetrics.tagData),
+          ...Object.keys(latestMetrics.tagCompletedData),
+          ...Object.keys(latestMetrics.tagOverdueData),
+          ...Object.keys(latestMetrics.tagLateData)
+        ])).sort((a, b) => a.localeCompare(b));
+        names = (!hideEmpty && cachedTags.length > 0)
+          ? [...new Set([...cachedTags.map(t => t.title || t.id), 'Untagged'])].sort((a, b) => a.localeCompare(b))
+          : withData;
       } else {
-        if (cachedProjects.length > 0) {
-          names = [...new Set([...cachedProjects.map(p => p.title), 'Uncategorized'])].sort((a, b) => a.localeCompare(b));
-        } else {
-          names = Array.from(new Set([
-            ...Object.keys(latestMetrics.projectData),
-            ...Object.keys(latestMetrics.projectCompletedData),
-            ...Object.keys(latestMetrics.projectOverdueData),
-            ...Object.keys(latestMetrics.projectLateData)
-          ])).sort((a, b) => a.localeCompare(b));
-        }
+        const withData = Array.from(new Set([
+          ...Object.keys(latestMetrics.projectData),
+          ...Object.keys(latestMetrics.projectCompletedData),
+          ...Object.keys(latestMetrics.projectOverdueData),
+          ...Object.keys(latestMetrics.projectLateData)
+        ])).sort((a, b) => a.localeCompare(b));
+        names = (!hideEmpty && cachedProjects.length > 0)
+          ? [...new Set([...cachedProjects.map(p => p.title), 'Uncategorized'])].sort((a, b) => a.localeCompare(b))
+          : withData;
       }
       select.innerHTML = '';
       if (names.length === 0) {
@@ -962,7 +1332,7 @@
       } else {
         currentDrillEntity = names[0];
         select.value = currentDrillEntity;
-        localStorage.setItem('sp-dashboard-drill-entity', currentDrillEntity);
+        rememberSetting('drillEntityLast', currentDrillEntity);
       }
     };
 
@@ -970,14 +1340,14 @@
       currentDrillDimension = dim;
       document.getElementById('drill-dim-project').classList.toggle('active', dim === 'project');
       document.getElementById('drill-dim-tag').classList.toggle('active', dim === 'tag');
-      localStorage.setItem('sp-dashboard-drill-dim', dim);
+      rememberSetting('drillDimLast', dim);
       populateDrillDropdown();
       renderDrillDown();
     };
 
     const setDrillEntity = (name) => {
       currentDrillEntity = name;
-      localStorage.setItem('sp-dashboard-drill-entity', name);
+      rememberSetting('drillEntityLast', name);
       renderDrillDown();
     };
 
@@ -1067,11 +1437,11 @@
       renderDrillTable(filteredEntries);
     };
 
-    const renderGenericBarChart = (chartData, containerId, color, formatFn, yTickFn, unitSize = 1) => {
+    const renderGenericBarChart = (chartData, containerId, color, formatFn, yTickFn, unitSize = 1, goal = null) => {
       const container = document.getElementById(containerId);
       container.innerHTML = '';
       const parentEl = container.parentElement;
-      parentEl.querySelectorAll('.y-grid-line, .y-axis-label').forEach(el => el.remove());
+      parentEl.querySelectorAll('.y-grid-line, .y-axis-label, .goal-line, .goal-line-label').forEach(el => el.remove());
       if (chartData.data.length === 0) return;
 
       const realMax = Math.max(...chartData.data);
@@ -1100,6 +1470,30 @@
       const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const preset = document.getElementById('date-preset').value;
 
+      // Settings › Appearance › Bar chart grouping. "auto" keeps the rules this
+      // chart has always used; the other values force a bucket size.
+      const span = chartData.data.length;
+      let grouping = getSetting('barGrouping');
+      if (grouping !== 'daily' && grouping !== 'weekly' && grouping !== 'monthly') {
+        if (preset === 'year' || span > 90) grouping = 'monthly';
+        else if (preset === 'month' || span > 31) grouping = 'weekly';
+        else grouping = 'daily';
+      }
+
+      // A per-day target means nothing against a weekly or monthly bucket.
+      if (goal && goal.value > 0 && grouping === 'daily' && goal.value <= scaleMax) {
+        const bottomPx = BOTTOM_OFFSET + (goal.value / scaleMax) * BAR_AREA;
+        const gLine = document.createElement('div');
+        gLine.className = 'goal-line';
+        gLine.style.bottom = bottomPx + 'px';
+        parentEl.appendChild(gLine);
+        const gLabel = document.createElement('div');
+        gLabel.className = 'goal-line-label';
+        gLabel.style.bottom = (bottomPx + 2) + 'px';
+        gLabel.textContent = goal.label;
+        parentEl.appendChild(gLabel);
+      }
+
       const appendBar = (val, label, titleDate) => {
         const heightPx = (val / scaleMax) * BAR_AREA;
         const displayVal = formatFn(val);
@@ -1112,7 +1506,7 @@
         container.appendChild(col);
       };
 
-      if (preset === 'year') {
+      if (grouping === 'monthly') {
         // Group daily data into calendar months
         const monthBuckets = new Map();
         for (let i = 0; i < chartData.labels.length; i++) {
@@ -1124,12 +1518,11 @@
           appendBar(sum, MONTH_NAMES[monthIdx], key + '-01');
         }
       } else {
-        let step = 1;
-        if (preset === 'month') {
-          step = 7;
-        } else if (preset === 'custom') {
-          step = Math.max(1, Math.ceil(chartData.data.length / 30));
-        }
+        // Daily buckets stay one-per-day until the range gets long enough that
+        // the bars would be unreadable, then thin out evenly.
+        const step = grouping === 'weekly'
+          ? 7
+          : Math.max(1, Math.ceil(span / 30));
 
         for (let i = 0; i < chartData.data.length; i += step) {
           let chunkSum = 0;
@@ -1139,12 +1532,12 @@
           const dateStr = chartData.labels[i];
           const d = new Date(dateStr + 'T00:00:00');
           let label;
-          if (preset === 'this-week' || preset === 'week' || preset === 'from-weekday') {
+          if (step === 1 && span <= 8) {
             label = DAY_NAMES[d.getDay()];
-          } else if (preset === 'month') {
-            label = MONTH_NAMES[d.getMonth()] + ' ' + d.getDate();
+          } else if (step === 1) {
+            label = dateStr.substring(5); // MM-DD
           } else {
-            label = dateStr.substring(5); // custom: MM-DD
+            label = MONTH_NAMES[d.getMonth()] + ' ' + d.getDate();
           }
           appendBar(chunkSum, label, dateStr);
         }
@@ -1181,8 +1574,19 @@
       const legendEl = document.getElementById('pie-legend-container');
       legendEl.innerHTML = '';
       
-      const entries = Object.entries(projectData).sort((a,b) => b[1] - a[1]);
+      let entries = Object.entries(projectData).filter(([, v]) => v > 0).sort((a,b) => b[1] - a[1]);
+
+      // Settings › Appearance: roll everything past the top N into one "Other"
+      // slice, so a vault with thirty projects doesn't draw thirty slivers.
+      const maxSlices = Number(getSetting('pieMaxSlices')) || 0;
+      if (maxSlices > 0 && entries.length > maxSlices) {
+        const rest = entries.slice(maxSlices).reduce((sum, [, v]) => sum + v, 0);
+        entries = entries.slice(0, maxSlices);
+        if (rest > 0) entries.push(['Other', rest]);
+      }
+
       const totalVal = entries.reduce((acc, curr) => acc + curr[1], 0);
+      const palette = getPalette();
 
       // Donut geometry: r chosen so the circumference is exactly 100, letting each
       // slice's arc length be set directly as a percentage via stroke-dasharray.
@@ -1202,7 +1606,7 @@
       let currentPercent = 0;
 
       entries.forEach(([name, val], index) => {
-        const color = PIE_COLORS[index % PIE_COLORS.length];
+        const color = palette[index % palette.length];
         const percent = (val / totalVal) * 100;
 
         // Each slice is a full circle whose visible arc is one dash; dashoffset 25
@@ -1217,7 +1621,7 @@
           <div class="legend-item">
             <div class="legend-label">
               <span class="legend-dot" style="background: ${color}"></span>
-              <span title="${name}">${name.length > 20 ? name.substring(0,20)+'...' : name}</span>
+              <span title="${escapeHtml(name)}">${escapeHtml(name.length > 20 ? name.substring(0,20)+'...' : name)}</span>
             </div>
             <div class="legend-val">${formatFn(val)}</div>
           </div>
@@ -1234,25 +1638,33 @@
         return;
       }
 
-      tbody.innerHTML = entries.map(entry => `
+      // Settings › Appearance › rows per page (0 = no limit)
+      const pageSize = Number(getSetting('tablePageSize')) || 0;
+      const shown = pageSize > 0 ? entries.slice(0, pageSize) : entries;
+
+      tbody.innerHTML = shown.map(entry => `
         <tr>
-          <td style="white-space: nowrap;">${formatDateShort(entry.date)}</td>
-          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${entry.projectName}</td>
-          <td style="font-weight: 500;">${entry.taskTitle}</td>
-          <td class="time-cell">${formatTime(entry.timeSpent)}</td>
+          <td style="white-space: nowrap;">${escapeHtml(formatDateShort(entry.date))}</td>
+          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${escapeHtml(entry.projectName)}</td>
+          <td style="font-weight: 500;">${entry.isSubtask ? '<span style="color: var(--text-color-muted, #9e9e9e);">&#8627; </span>' : ''}${escapeHtml(entry.taskTitle)}</td>
+          <td class="time-cell">${escapeHtml(formatTime(entry.timeSpent))}</td>
           <td>
             ${
-              entry.late 
+              entry.late
                 ? `<span class="badge badge-yellow">Late</span>`
                 : entry.overdue
                 ? `<span class="badge badge-red">Overdue</span>`
-                : entry.isDone 
+                : entry.isDone
                 ? `<span class="badge badge-done">Done</span>`
                 : `<span class="badge badge-progress">In Progress</span>`
             }
           </td>
         </tr>
       `).join('');
+
+      if (shown.length < entries.length) {
+        tbody.innerHTML += `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 1rem; font-size: 0.8rem;">Showing ${shown.length} of ${entries.length} entries — raise the limit in Settings &rsaquo; Appearance.</td></tr>`;
+      }
     };
 
     const renderOverdueSection = (entries) => {
@@ -1267,10 +1679,10 @@
       countBadge.textContent = entries.length;
       tbody.innerHTML = entries.map(entry => `
         <tr>
-          <td style="white-space: nowrap;">${entry.date ? formatDateShort(entry.date) : '—'}</td>
-          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${entry.projectName}</td>
-          <td style="font-weight: 500;">${entry.taskTitle}</td>
-          <td class="time-cell">${formatTime(entry.timeSpent)}</td>
+          <td style="white-space: nowrap;">${entry.date ? escapeHtml(formatDateShort(entry.date)) : '—'}</td>
+          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${escapeHtml(entry.projectName)}</td>
+          <td style="font-weight: 500;">${escapeHtml(entry.taskTitle)}</td>
+          <td class="time-cell">${escapeHtml(formatTime(entry.timeSpent))}</td>
           <td>
             ${entry.late
               ? `<span class="badge badge-yellow">Late</span>`
@@ -1312,9 +1724,8 @@
         const endObj = new Date();
         const startObj = new Date(endObj);
         if (preset === 'this-week') {
-          const day = endObj.getDay(); // 0=Sun, 1=Mon, …, 6=Sat
-          const diff = day === 0 ? 6 : day - 1; // days back to most recent Monday
-          startObj.setDate(endObj.getDate() - diff);
+          // Days back to the most recent start-of-week (Settings › General).
+          startObj.setDate(endObj.getDate() - daysSinceWeekStart(endObj));
         } else if (preset === 'week') {
           startObj.setDate(endObj.getDate() - 6);
         } else if (preset === 'month') {
@@ -1330,14 +1741,46 @@
         dateFromStr = toLocalDate(startObj);
         dateToStr = toLocalDate(endObj);
       }
-      const dateRange = getDatesInRange(dateFromStr, dateToStr);
-      console.log("[sp-dashboard] computed date range", dateFromStr, dateToStr, dateRange);
+      let dateRange = getDatesInRange(dateFromStr, dateToStr);
+
+      // Settings › General: drop non-working days from the range entirely, so
+      // weekends stop flattening the charts. Never empty the range.
+      if (getSetting('hideNonWorkingDays')) {
+        const working = new Set((getSetting('workingDays') || []).map(Number));
+        const trimmed = dateRange.filter(ds => working.has(new Date(ds + "T00:00:00").getDay()));
+        if (trimmed.length) dateRange = trimmed;
+      }
+      debugLog("[sp-dashboard] computed date range", dateFromStr, dateToStr, dateRange);
 
       // Build lookup maps for faster processing
       const projectMap = {};
       projectsArr.forEach(p => projectMap[p.id] = p.title);
       const tagMap = {};
       (tagsArr || []).forEach(t => { tagMap[t.id] = t.title || t.id; });
+
+      const projectNameOf = (task) => (task.projectId && projectMap[task.projectId])
+        ? projectMap[task.projectId]
+        : 'Uncategorized';
+      const tagNamesOf = (task) => {
+        const names = (task.tagIds || []).map(id => tagMap[id] || id);
+        return names.length ? names : ['Untagged'];
+      };
+
+      // --- Settings › Data & Filtering ---
+      const excludedProjects = new Set(getSetting('excludedProjects') || []);
+      const excludedTags = new Set(getSetting('excludedTags') || []);
+      const minEntryMs = Number(getSetting('minEntryMs')) || 0;
+      const showSubtaskRows = !!getSetting('showSubtaskRows');
+      const includeRunningTimer = !!getSetting('includeRunningTimer');
+      const noDueDateOverdue = !!getSetting('noDueDateOverdue');
+
+      // Excluded work is removed before anything is counted, so every metric,
+      // chart and export below agrees on the same set of tasks.
+      const visibleTasks = (excludedProjects.size === 0 && excludedTags.size === 0)
+        ? tasksArr
+        : tasksArr.filter(task =>
+            !excludedProjects.has(projectNameOf(task)) &&
+            !tagNamesOf(task).some(n => excludedTags.has(n)));
 
       let metrics = {
         totalTimeSpent: 0,
@@ -1369,16 +1812,16 @@
       const rangeEndTime = new Date(dateToStr + "T23:59:59").getTime();
 
       const countedOverdue = new Set();
-      tasksArr.forEach(task => {
+      visibleTasks.forEach(task => {
         const keys = Object.keys(task.timeSpentOnDay || {});
         const overlap = keys.filter(k => dateRange.includes(k));
         // compute normalized due bounds (start of day / end of day)
         const { dueStart, dueEnd } = getDueBounds(task);
         if (!dueStart && !task.isDone) {
-          console.log("[sp-dashboard] task missing dueDay and not done, full object:", task);
+          debugLog("[sp-dashboard] task missing dueDay and not done, full object:", task);
         }
         // diagnostic info
-        console.log("[sp-dashboard] processing task", task.id, task.title,
+        debugLog("[sp-dashboard] processing task", task.id, task.title,
                     "dueDay", task.dueDay,
                     "dueStartUTC", dueStart !== null ? new Date(dueStart).toISOString() : null,
                     "dueEndUTC", dueEnd !== null ? new Date(dueEnd).toISOString() : null,
@@ -1386,11 +1829,8 @@
                     "isDone", task.isDone, "doneOnUTC", task.doneOn ? new Date(task.doneOn).toISOString() : null,
                     "timeSpentOnDay keys", keys, "inRange", overlap);
         let taskTimeInRange = 0;
-        const pName = task.projectId && projectMap[task.projectId]
-            ? projectMap[task.projectId]
-            : 'Uncategorized';
-        const tNames = (task.tagIds || []).map(id => tagMap[id] || id);
-        if (tNames.length === 0) tNames.push('Untagged');
+        const pName = projectNameOf(task);
+        const tNames = tagNamesOf(task);
 
         // count unplanned only if dueDay is missing
         if (!dueStart && !task.isDone) {
@@ -1406,6 +1846,9 @@
             isOverdue = true;
             isLate = true;
           }
+        } else if (noDueDateOverdue && !task.isDone) {
+          // Settings › Data & Filtering: treat undated open work as overdue.
+          isOverdue = true;
         }
         if (isOverdue) {
           metrics.overdueTasks++;
@@ -1429,8 +1872,11 @@
           // Skip subtasks: a parent's timeSpentOnDay already includes its subtasks'
           // rolled-up time, so summing both double-counts (matches SP's own
           // getTimeWorkedForDayForAllNonArchiveTasks$, which filters out subtasks).
-          const spentOnDate = !task.parentId && task.timeSpentOnDay && task.timeSpentOnDay[dateStr];
-          if (spentOnDate) {
+          const rawSpent = (task.timeSpentOnDay && task.timeSpentOnDay[dateStr]) || 0;
+          // Settings › Data & Filtering: drop entries shorter than the threshold.
+          const spentOnDate = rawSpent >= minEntryMs ? rawSpent : 0;
+
+          if (spentOnDate && !task.parentId) {
             metrics.weeklyData.data[index] += spentOnDate;
             taskTimeInRange += spentOnDate;
 
@@ -1450,6 +1896,20 @@
               overdue: isOverdue,
               late: isLate,
               tagNames: tNames
+            });
+          } else if (spentOnDate && task.parentId && showSubtaskRows) {
+            // Listed for visibility only: the parent's timeSpentOnDay already
+            // rolls this up, so adding it to any total would double-count.
+            metrics.tableEntries.push({
+              date: dateStr,
+              projectName: pName,
+              taskTitle: task.title || 'Untitled Task',
+              timeSpent: spentOnDate,
+              isDone: task.isDone,
+              overdue: isOverdue,
+              late: isLate,
+              tagNames: tNames,
+              isSubtask: true
             });
           }
 
@@ -1505,7 +1965,7 @@
         }
 
         // Add in-progress session time (not yet committed to timeSpentOnDay)
-        if (!task.parentId && (task.currentSessionTime || 0) > 0) {
+        if (includeRunningTimer && !task.parentId && (task.currentSessionTime || 0) > 0) {
           const today = toLocalDate(new Date());
           if (dateRange.includes(today)) {
             const idx = dateRange.indexOf(today);
@@ -1530,53 +1990,49 @@
           metrics.totalTasks++;
           if (taskCompletedInRange) {
             metrics.totalCompleted++;
-            console.log("[sp-dashboard] incrementing totalCompleted for", task.id, task.title, "- now at", metrics.totalCompleted);
+            debugLog("[sp-dashboard] incrementing totalCompleted for", task.id, task.title, "- now at", metrics.totalCompleted);
           }
         }
       });
 
       // After initial pass, some tasks may have gained dueDay later (see logs)
-      tasksArr.forEach(task => {
+      visibleTasks.forEach(task => {
         if (!countedOverdue.has(task.id)) {
           const { dueStart, dueEnd } = getDueBounds(task);
           if (!task.isDone && dueStart !== null && now > dueEnd) {
             metrics.overdueTasks++;
-            const pName = task.projectId && projectMap[task.projectId]
-                        ? projectMap[task.projectId]
-                        : 'Uncategorized';
+            const pName = projectNameOf(task);
             metrics.projectOverdueData[pName] = (metrics.projectOverdueData[pName] || 0) + 1;
-            const tns = (task.tagIds || []).map(id => tagMap[id] || id);
-            if (tns.length === 0) tns.push('Untagged');
-            tns.forEach(n => { metrics.tagOverdueData[n] = (metrics.tagOverdueData[n] || 0) + 1; });
+            tagNamesOf(task).forEach(n => { metrics.tagOverdueData[n] = (metrics.tagOverdueData[n] || 0) + 1; });
             countedOverdue.add(task.id);
           }
         }
       });
       // recompute unplannedCount after potential dueDay additions
-      metrics.unplannedCount = tasksArr.reduce((cnt, t) => {
+      metrics.unplannedCount = visibleTasks.reduce((cnt, t) => {
         const { dueStart } = getDueBounds(t);
         return cnt + ((!t.isDone && !dueStart) ? 1 : 0);
       }, 0);
-      
+
       // Diagnostic: log all done tasks and final tally
-      const doneTasks = tasksArr.filter(t => t.isDone);
+      const doneTasks = visibleTasks.filter(t => t.isDone);
       const doneWithoutTimestamp = doneTasks.filter(t => !t.doneOn);
-      console.log("[sp-dashboard] FINAL METRICS: totalCompleted=", metrics.totalCompleted, "totalTasks=", metrics.totalTasks);
-      console.log("[sp-dashboard] Done tasks in array (count=" + doneTasks.length + "):", doneTasks.map(t => ({ id: t.id, title: t.title, doneOn: t.doneOn })));
+      debugLog("[sp-dashboard] FINAL METRICS: totalCompleted=", metrics.totalCompleted, "totalTasks=", metrics.totalTasks);
+      debugLog("[sp-dashboard] Done tasks in array (count=" + doneTasks.length + "):", doneTasks.map(t => ({ id: t.id, title: t.title, doneOn: t.doneOn })));
       if (doneWithoutTimestamp.length > 0) {
-        console.warn("[sp-dashboard] WARNING: done tasks missing doneOn timestamp:", doneWithoutTimestamp.map(t => ({ id: t.id, title: t.title })));
+        debugWarn("[sp-dashboard] WARNING: done tasks missing doneOn timestamp:", doneWithoutTimestamp.map(t => ({ id: t.id, title: t.title })));
       }
-      
+
       // Sort descending by date
       metrics.tableEntries.sort((a, b) => b.date.localeCompare(a.date));
       // report any overdue tasks that had no time entries (might explain zero stats)
-      const overdueNoTime = tasksArr.filter(t => {
+      const overdueNoTime = visibleTasks.filter(t => {
         const keys = Object.keys(t.timeSpentOnDay || {});
         const { dueStart, dueEnd } = getDueBounds(t);
         return (!t.isDone && dueStart !== null && dueEnd < rangeEndTime && keys.length === 0);
       }).map(t => t.id);
       if (overdueNoTime.length) {
-        console.log("[sp-dashboard] overdue tasks with no time entries", overdueNoTime);
+        debugLog("[sp-dashboard] overdue tasks with no time entries", overdueNoTime);
       }
       updateDashboardUI(metrics);
       // attach sort click handlers after table generated
@@ -1693,9 +2149,21 @@
       });
     };
 
-    const triggerDownload = (blob, label) => {
-      const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-      const filename = `dashboard-${slug}-${toLocalDate(new Date())}.png`;
+    // Settings › Advanced › Export filename. Tokens: {tab} {range} {date}.
+    const buildExportFilename = (label, ext) => {
+      const slug = (v) => String(v || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const pattern = getSetting('exportFilename') || DEFAULT_SETTINGS.exportFilename;
+      const name = pattern
+        .replace(/\{tab\}/g, slug(label))
+        .replace(/\{range\}/g, slug(getRangeLabel()))
+        .replace(/\{date\}/g, toLocalDate(new Date()))
+        .replace(/[^a-zA-Z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      return `${name || 'dashboard'}.${ext}`;
+    };
+
+    const triggerDownload = (blob, label, filenameOverride) => {
+      const filename = filenameOverride || buildExportFilename(label, 'png');
       // Inside Super Productivity the plugin runs in a sandboxed iframe that usually
       // can't initiate downloads. Hand the file to the host window (plugin.js), which
       // saves it via the app's normal download flow (defaults to ~/Downloads).
@@ -1770,16 +2238,61 @@
       if (!ok) throw new Error('execCommand copy failed');
     };
 
-    // Build a Slack-friendly markdown summary of the given tab from the current metrics.
+    // Settings › Advanced › Copy text summary as → CSV.
+    const buildCsvSummary = (tabKey) => {
+      const m = window.latestMetrics || latestMetrics;
+      const cell = (v) => {
+        const s = String(v == null ? '' : v);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const row = (cells) => cells.map(cell).join(',');
+      const rows = [];
+      const statusOf = (e) => e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress';
+
+      if (tabKey === 'details' || tabKey === 'drilldown') {
+        let entries = m.tableEntries;
+        if (tabKey === 'details') {
+          entries = sortEntries(entries, currentSort.key, currentSort.dir);
+        } else {
+          const isTag = currentDrillDimension === 'tag';
+          entries = entries.filter(e =>
+            isTag ? (e.tagNames && e.tagNames.includes(currentDrillEntity)) : e.projectName === currentDrillEntity);
+        }
+        rows.push(row(['Date', 'Project', 'Task', 'Time', 'Status']));
+        entries.forEach(e => rows.push(row([
+          formatDateShort(e.date), e.projectName, e.taskTitle, formatTime(e.timeSpent), statusOf(e)
+        ])));
+      } else {
+        rows.push(row(['Metric', 'Value']));
+        rows.push(row(['Range', getRangeLabel()]));
+        rows.push(row(['Total Time Tracked', formatTime(m.totalTimeSpent)]));
+        rows.push(row(['Tasks Completed', m.totalCompleted]));
+        rows.push(row(['Tasks Total', m.totalTasks]));
+        rows.push(row(['Overdue Tasks', m.overdueTasks]));
+        rows.push(row(['Completed Late', m.lateCompleted]));
+        Object.entries(m.projectData || {})
+          .filter(([, v]) => v > 0)
+          .sort((a, b) => b[1] - a[1])
+          .forEach(([name, ms]) => rows.push(row([`Time — ${name}`, formatTime(ms)])));
+      }
+      return rows.join('\n');
+    };
+
+    // Build a shareable summary of the given tab from the current metrics.
+    // Default emphasis markers are Slack's single-asterisk bold; Settings ›
+    // Advanced can switch to real Markdown or CSV.
     const buildTextSummary = (tabKey) => {
       const m = window.latestMetrics || latestMetrics;
       if (!m) return 'No data available.';
+      const format = getSetting('summaryFormat');
+      if (format === 'csv') return buildCsvSummary(tabKey);
+      const b = format === 'markdown' ? '**' : '*';
       const range = getRangeLabel();
       const suffix = range ? ` (${range})` : '';
       const lines = [];
 
       if (tabKey === 'details') {
-        lines.push(`*Detailed Time Log*${suffix}`);
+        lines.push(`${b}Detailed Time Log${b}${suffix}`);
         lines.push('');
         lines.push('| Date | Project | Task | Time | Status |');
         lines.push('| --- | --- | --- | --- | --- |');
@@ -1794,7 +2307,7 @@
         }
         if (m.overdueEntries && m.overdueEntries.length) {
           lines.push('');
-          lines.push('*Overdue & Late*');
+          lines.push(`${b}Overdue & Late${b}`);
           m.overdueEntries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.projectName}: ${e.taskTitle}`));
         }
       } else if (tabKey === 'drilldown') {
@@ -1804,7 +2317,7 @@
         const completed = (isTag ? m.tagCompletedData : m.projectCompletedData)[entity] || 0;
         const overdue = (isTag ? m.tagOverdueData : m.projectOverdueData)[entity] || 0;
         const late = (isTag ? m.tagLateData : m.projectLateData)[entity] || 0;
-        lines.push(`*${isTag ? 'Tag' : 'Project'}: ${entity}*${suffix}`);
+        lines.push(`${b}${isTag ? 'Tag' : 'Project'}: ${entity}${b}${suffix}`);
         lines.push(`• Time Spent: ${formatTime(timeMs)}`);
         lines.push(`• Tasks Completed: ${completed}`);
         lines.push(`• Overdue Tasks: ${overdue}`);
@@ -1817,7 +2330,7 @@
           entries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.taskTitle} (${formatTime(e.timeSpent)})`));
         }
       } else {
-        lines.push(`*Productivity Summary*${suffix}`);
+        lines.push(`${b}Productivity Summary${b}${suffix}`);
         lines.push(`• Total Time Tracked: ${formatTime(m.totalTimeSpent)}`);
         lines.push(`• Tasks Completed: ${m.totalCompleted} / ${m.totalTasks}`);
         lines.push(`• Overdue Tasks: ${m.overdueTasks}`);
@@ -1825,7 +2338,7 @@
         const projects = Object.entries(m.projectData || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
         if (projects.length) {
           lines.push('');
-          lines.push('*Time by Project*');
+          lines.push(`${b}Time by Project${b}`);
           projects.forEach(([name, ms]) => lines.push(`• ${name}: ${formatTime(ms)}`));
         }
       }
@@ -1878,7 +2391,627 @@
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') toggleShareMenu(false); });
     }
 
+    // ==========================================================
+    // SETTINGS UI
+    // The panel is generated from SETTINGS_SECTIONS rather than written out as
+    // markup, so a new setting is one entry here plus one read of getSetting().
+    // ==========================================================
+    const sOpt = (v, l) => ({ v, l });
+
+    const METRIC_OPTIONS = [
+      sOpt('time', 'Time tracked'), sOpt('completed', 'Tasks completed'),
+      sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')
+    ];
+    const MODE_OPTIONS = [sOpt('remember', 'Remember'), sOpt('pin', 'Pin')];
+    const DAY_LETTERS = [sOpt(0, 'S'), sOpt(1, 'M'), sOpt(2, 'T'), sOpt(3, 'W'), sOpt(4, 'T'), sOpt(5, 'F'), sOpt(6, 'S')];
+
+    const SETTINGS_SECTIONS = [
+      {
+        id: 'general', label: 'General',
+        sub: 'Formats and locale, applied to every view',
+        rows: [
+          { label: 'Start of week', hint: 'Drives “This Week” and the day the weekly bar chart starts on',
+            controls: [{ type: 'select', key: 'weekStartsOn', numeric: true,
+              options: [sOpt(1, 'Monday'), sOpt(0, 'Sunday'), sOpt(6, 'Saturday')] }] },
+          { label: 'Date format', hint: 'Auto follows the host app’s locale',
+            controls: [{ type: 'select', key: 'dateFormat', options: [
+              sOpt('auto', 'Auto (locale)'), sOpt('iso', 'ISO — 2026-02-22'),
+              sOpt('us', 'Feb 22, 2026'), sOpt('eu', '22 Feb 2026')] }] },
+          { label: 'Time format', hint: 'Decimal hours is what pastes into a timesheet or invoice',
+            controls: [{ type: 'radio', key: 'timeFormat', options: [
+              sOpt('hm', '3h 45m'), sOpt('decimal', '3.75h — decimal'), sOpt('minutes', '225m')] }] },
+          { label: 'Working days', hint: 'Used by the setting below',
+            controls: [{ type: 'days', key: 'workingDays', options: DAY_LETTERS }] },
+          { label: 'Hide non-working days in charts', hint: 'Removes those days from the range entirely, so weekends stop flattening the chart',
+            controls: [{ type: 'toggle', key: 'hideNonWorkingDays' }] }
+        ]
+      },
+      {
+        id: 'defaults', label: 'Defaults',
+        sub: 'What each control shows when the dashboard opens. Remember keeps the last used value; Pin always starts from a fixed one.',
+        rows: [
+          { label: 'Period', controls: [
+            { type: 'seg', key: 'periodMode', options: MODE_OPTIONS },
+            { type: 'select', key: 'periodPinned', disabledWhen: { key: 'periodMode', is: 'remember' }, options: [
+              sOpt('today', 'Today'), sOpt('this-week', 'This Week'), sOpt('week', 'Past Week'),
+              sOpt('month', 'This Month'), sOpt('year', 'Past Year'), sOpt('from-weekday', 'Starting from weekday')] }] },
+          { label: 'Opening tab', controls: [
+            { type: 'seg', key: 'tabMode', options: MODE_OPTIONS },
+            { type: 'select', key: 'tabPinned', disabledWhen: { key: 'tabMode', is: 'remember' }, options: [
+              sOpt('dashboard', 'Dashboard'), sOpt('details', 'Detailed List'), sOpt('drilldown', 'By Project / Tag')] }] },
+          { label: 'Bar chart metric', controls: [
+            { type: 'seg', key: 'barMetricMode', options: MODE_OPTIONS },
+            { type: 'select', key: 'barMetricPinned', disabledWhen: { key: 'barMetricMode', is: 'remember' }, options: METRIC_OPTIONS }] },
+          { label: 'Pie chart metric & split', controls: [
+            { type: 'seg', key: 'pieMetricMode', options: MODE_OPTIONS },
+            { type: 'select', key: 'pieMetricPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' }, options: METRIC_OPTIONS },
+            { type: 'seg', key: 'pieDimPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' },
+              options: [sOpt('project', 'Project'), sOpt('tag', 'Tag')] }] },
+          { label: 'Detailed List sort', hint: 'Where the table starts before you click a column header',
+            controls: [
+              { type: 'select', key: 'sortKey', options: [
+                sOpt('date', 'Date'), sOpt('projectName', 'Project'), sOpt('taskTitle', 'Task'),
+                sOpt('timeSpent', 'Time Spent'), sOpt('status', 'Status')] },
+              { type: 'seg', key: 'sortDir', options: [sOpt('asc', 'Ascending'), sOpt('desc', 'Descending')] }] },
+          { label: 'By Project / Tag split', controls: [
+            { type: 'seg', key: 'drillDimMode', options: MODE_OPTIONS },
+            { type: 'seg', key: 'drillDimPinned', disabledWhen: { key: 'drillDimMode', is: 'remember' },
+              options: [sOpt('project', 'Project'), sOpt('tag', 'Tag')] }] }
+        ]
+      },
+      {
+        id: 'data', label: 'Data & Filtering',
+        sub: 'Everything here changes what the numbers mean, not just how they look',
+        subWarn: true,
+        rows: [
+          { label: 'Include archived tasks', hint: 'Turning this off is the single biggest speed-up on a vault with a long archive',
+            controls: [{ type: 'toggle', key: 'includeArchived' }] },
+          { label: 'Excluded projects', hint: 'Dropped from every stat, chart and table',
+            controls: [{ type: 'chips', key: 'excludedProjects', source: 'projects' }] },
+          { label: 'Excluded tags', hint: 'A task carrying any excluded tag is dropped',
+            controls: [{ type: 'chips', key: 'excludedTags', source: 'tags' }] },
+          { label: 'Count the running timer', hint: 'Adds the in-progress session to today’s total',
+            controls: [{ type: 'toggle', key: 'includeRunningTimer' }] },
+          { label: 'List subtasks as their own rows', hint: 'Detailed List only — a parent’s time already rolls up its subtasks, so totals never change',
+            controls: [{ type: 'toggle', key: 'showSubtaskRows' }] },
+          { label: 'Minimum entry length', hint: 'Keeps 30-second scraps out of the totals and the table',
+            controls: [{ type: 'select', key: 'minEntryMs', numeric: true, options: [
+              sOpt(0, 'Off'), sOpt(60000, '1 minute'), sOpt(300000, '5 minutes'), sOpt(900000, '15 minutes')] }] },
+          { label: 'Tasks with no due date', hint: 'Replaces the fixed footnote under the Overdue card',
+            controls: [{ type: 'radio', key: 'noDueDateOverdue', options: [
+              sOpt(false, 'Never overdue'), sOpt(true, 'Count as overdue')] }] },
+          { label: 'Hide empty projects & tags', hint: 'Trims the By Project / Tag dropdown to entities with data in range',
+            controls: [{ type: 'toggle', key: 'hideEmptyEntities' }] }
+        ]
+      },
+      {
+        id: 'appearance', label: 'Appearance',
+        sub: 'Purely visual — nothing here changes a number',
+        rows: [
+          { label: 'Theme', hint: 'Follow app mirrors the host’s own light/dark class',
+            controls: [{ type: 'seg', key: 'theme', options: [
+              sOpt('auto', 'Follow app'), sOpt('light', 'Light'), sOpt('dark', 'Dark')] }] },
+          { label: 'Chart palette', hint: 'Used by the pie chart and its legend',
+            controls: [
+              { type: 'select', key: 'palette', options: [
+                sOpt('default', 'Default'), sOpt('colorblind', 'Colourblind-safe'),
+                sOpt('mono', 'Monochrome'), sOpt('contrast', 'High contrast')] },
+              { type: 'swatches' }] },
+          { label: 'Bar chart grouping', hint: 'Auto keeps the existing rules: daily under a month, weekly for a month, monthly beyond',
+            controls: [{ type: 'select', key: 'barGrouping', options: [
+              sOpt('auto', 'Auto'), sOpt('daily', 'Daily'), sOpt('weekly', 'Weekly'), sOpt('monthly', 'Monthly')] }] },
+          { label: 'Small pie slices', hint: 'Rolls everything past the top N into one “Other” slice',
+            controls: [{ type: 'select', key: 'pieMaxSlices', numeric: true, options: [
+              sOpt(0, 'Show all slices'), sOpt(5, 'Top 5, rest as Other'),
+              sOpt(8, 'Top 8, rest as Other'), sOpt(10, 'Top 10, rest as Other')] }] },
+          { label: 'Density',
+            controls: [{ type: 'seg', key: 'density', options: [
+              sOpt('comfortable', 'Comfortable'), sOpt('compact', 'Compact')] }] },
+          { label: 'Stat cards', hint: 'Unchecked cards are hidden and the row re-flows',
+            controls: [{ type: 'checks', key: 'statCards', options: [
+              sOpt('time', 'Total time tracked'), sOpt('completed', 'Tasks completed'),
+              sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')] }] },
+          { label: 'Detailed List rows per page',
+            controls: [{ type: 'seg', key: 'tablePageSize', numeric: true, options: [
+              sOpt(50, '50'), sOpt(100, '100'), sOpt(250, '250'), sOpt(0, 'All')] }] }
+        ]
+      },
+      {
+        id: 'goals', label: 'Goals',
+        sub: 'Targets are drawn onto the Dashboard tab — a dashed line across the bar chart, a bar under the Total Time card',
+        rows: [
+          { label: 'Daily time target', hint: 'Dashed line on the bar chart when it shows Time tracked, day by day',
+            controls: [
+              { type: 'toggle', key: 'dailyTimeGoalOn' },
+              { type: 'number', key: 'dailyTimeGoalH', min: 1, max: 24, unit: 'hours per day',
+                disabledWhen: { key: 'dailyTimeGoalOn', is: false } }] },
+          { label: 'Weekly time target', hint: 'Progress bar under the Total Time card, against whatever range is in view',
+            controls: [
+              { type: 'toggle', key: 'weeklyTimeGoalOn' },
+              { type: 'number', key: 'weeklyTimeGoalH', min: 1, max: 168, unit: 'hours per range',
+                disabledWhen: { key: 'weeklyTimeGoalOn', is: false } }] },
+          { label: 'Daily tasks completed', hint: 'Dashed line on the bar chart when it shows Tasks completed',
+            controls: [
+              { type: 'toggle', key: 'dailyTaskGoalOn' },
+              { type: 'number', key: 'dailyTaskGoal', min: 1, max: 99, unit: 'tasks per day',
+                disabledWhen: { key: 'dailyTaskGoalOn', is: false } }] }
+        ]
+      },
+      {
+        id: 'advanced', label: 'Advanced',
+        sub: 'Refresh, export and the settings file itself',
+        rows: [
+          { label: 'Auto-refresh', hint: 'The dashboard also refreshes whenever the host app reports a change, so Off is not the same as stale',
+            controls: [{ type: 'select', key: 'refreshMs', numeric: true, options: [
+              sOpt(0, 'Off'), sOpt(10000, 'Every 10 seconds'), sOpt(30000, 'Every 30 seconds'),
+              sOpt(60000, 'Every minute'), sOpt(300000, 'Every 5 minutes')] }] },
+          { label: 'Debug logging', hint: 'Off by default: one log line per task, per refresh', hintWarn: true,
+            controls: [{ type: 'toggle', key: 'debugLogging' }] },
+          { label: 'Export filename', hint: 'Used by Download PNG. Tokens: {tab} {range} {date}',
+            controls: [{ type: 'text', key: 'exportFilename', placeholder: DEFAULT_SETTINGS.exportFilename }] },
+          { label: 'Copy text summary as',
+            controls: [{ type: 'seg', key: 'summaryFormat', options: [
+              sOpt('slack', 'Slack'), sOpt('markdown', 'Markdown'), sOpt('csv', 'CSV')] }] }
+        ],
+        danger: true
+      }
+    ];
+
+    let activeSettingsSection = 'general';
+
+    const mkEl = (tag, className, text) => {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+
+    // Chip pickers offer whatever the host has actually sent us, plus the two
+    // synthetic buckets processData assigns to unfiled work.
+    const chipSourceNames = (source) => {
+      if (source === 'tags') {
+        return [...new Set([...cachedTags.map(t => t.title || t.id), 'Untagged'])].sort((a, b) => a.localeCompare(b));
+      }
+      return [...new Set([...cachedProjects.map(p => p.title), 'Uncategorized'])].sort((a, b) => a.localeCompare(b));
+    };
+
+    const isControlDisabled = (ctrl) =>
+      !!(ctrl.disabledWhen && getSetting(ctrl.disabledWhen.key) === ctrl.disabledWhen.is);
+
+    const buildControl = (ctrl) => {
+      const disabled = isControlDisabled(ctrl);
+      const current = ctrl.key !== undefined ? getSetting(ctrl.key) : undefined;
+
+      if (ctrl.type === 'select') {
+        const sel = document.createElement('select');
+        sel.disabled = disabled;
+        sel.dataset.key = ctrl.key;
+        if (ctrl.numeric) sel.dataset.numeric = '1';
+        ctrl.options.forEach(o => {
+          const option = document.createElement('option');
+          option.value = String(o.v);
+          option.textContent = o.l;
+          sel.appendChild(option);
+        });
+        sel.value = String(current);
+        return sel;
+      }
+
+      if (ctrl.type === 'seg') {
+        const wrap = mkEl('div', 'set-seg');
+        ctrl.options.forEach(o => {
+          const btn = mkEl('button', String(current) === String(o.v) ? 'active' : '', o.l);
+          btn.type = 'button';
+          btn.disabled = disabled;
+          btn.dataset.key = ctrl.key;
+          btn.dataset.value = String(o.v);
+          if (ctrl.numeric) btn.dataset.numeric = '1';
+          wrap.appendChild(btn);
+        });
+        return wrap;
+      }
+
+      if (ctrl.type === 'radio' || ctrl.type === 'checks') {
+        const isCheck = ctrl.type === 'checks';
+        const wrap = mkEl('div');
+        wrap.style.cssText = 'display:flex; flex-direction:column; gap:0.4rem;';
+        ctrl.options.forEach(o => {
+          const on = isCheck
+            ? (current || []).indexOf(o.v) !== -1
+            : String(current) === String(o.v);
+          const btn = mkEl('button', `set-opt${on ? ' active' : ''}`);
+          btn.type = 'button';
+          btn.dataset.key = ctrl.key;
+          btn.dataset.value = String(o.v);
+          btn.dataset.kind = isCheck ? 'check' : 'radio';
+          if (typeof o.v === 'boolean') btn.dataset.bool = '1';
+          btn.appendChild(mkEl('span', `set-mark ${isCheck ? 'check' : 'radio'}`));
+          btn.appendChild(mkEl('span', '', o.l));
+          wrap.appendChild(btn);
+        });
+        return wrap;
+      }
+
+      if (ctrl.type === 'toggle') {
+        const wrap = mkEl('div', 'set-seg');
+        [sOpt(true, 'On'), sOpt(false, 'Off')].forEach(o => {
+          const btn = mkEl('button', current === o.v ? 'active' : '', o.l);
+          btn.type = 'button';
+          btn.dataset.key = ctrl.key;
+          btn.dataset.value = String(o.v);
+          btn.dataset.bool = '1';
+          wrap.appendChild(btn);
+        });
+        return wrap;
+      }
+
+      if (ctrl.type === 'days') {
+        const wrap = mkEl('div', 'set-days');
+        ctrl.options.forEach(o => {
+          const on = (current || []).indexOf(o.v) !== -1;
+          const btn = mkEl('button', `set-day${on ? ' active' : ''}`, o.l);
+          btn.type = 'button';
+          btn.dataset.key = ctrl.key;
+          btn.dataset.value = String(o.v);
+          btn.dataset.kind = 'check';
+          btn.dataset.numeric = '1';
+          wrap.appendChild(btn);
+        });
+        return wrap;
+      }
+
+      if (ctrl.type === 'chips') {
+        const wrap = mkEl('div', 'set-chips');
+        const chosen = current || [];
+        chosen.forEach(name => {
+          const chip = mkEl('span', 'set-chip');
+          chip.appendChild(mkEl('span', '', name));
+          const rm = mkEl('button', '', '×');
+          rm.type = 'button';
+          rm.title = `Stop excluding ${name}`;
+          rm.dataset.key = ctrl.key;
+          rm.dataset.remove = name;
+          chip.appendChild(rm);
+          wrap.appendChild(chip);
+        });
+        const remaining = chipSourceNames(ctrl.source).filter(n => chosen.indexOf(n) === -1);
+        if (remaining.length === 0) {
+          wrap.appendChild(mkEl('span', 'set-chips-empty',
+            chosen.length ? 'Nothing left to exclude' : 'Nothing to exclude yet'));
+        } else {
+          const sel = document.createElement('select');
+          sel.dataset.key = ctrl.key;
+          sel.dataset.add = '1';
+          const first = document.createElement('option');
+          first.value = '';
+          first.textContent = '+ Add…';
+          sel.appendChild(first);
+          remaining.forEach(n => {
+            const o = document.createElement('option');
+            o.value = n;
+            o.textContent = n;
+            sel.appendChild(o);
+          });
+          wrap.appendChild(sel);
+        }
+        return wrap;
+      }
+
+      if (ctrl.type === 'number' || ctrl.type === 'text') {
+        const wrap = mkEl('div');
+        wrap.style.cssText = 'width:100%; display:flex; flex-direction:column; gap:3px;';
+        const input = document.createElement('input');
+        input.type = ctrl.type === 'number' ? 'number' : 'text';
+        input.dataset.key = ctrl.key;
+        if (ctrl.type === 'number') {
+          input.dataset.numeric = '1';
+          if (ctrl.min !== undefined) input.min = String(ctrl.min);
+          if (ctrl.max !== undefined) input.max = String(ctrl.max);
+        }
+        if (ctrl.placeholder) input.placeholder = ctrl.placeholder;
+        input.value = String(current);
+        input.disabled = disabled;
+        wrap.appendChild(input);
+        if (ctrl.unit) wrap.appendChild(mkEl('span', 'set-note', ctrl.unit));
+        return wrap;
+      }
+
+      if (ctrl.type === 'swatches') {
+        const wrap = mkEl('div', 'set-swatches');
+        getPalette().forEach(c => {
+          const sw = mkEl('span', 'set-swatch');
+          sw.style.background = c;
+          wrap.appendChild(sw);
+        });
+        return wrap;
+      }
+
+      return mkEl('div');
+    };
+
+    const renderSettingsPanel = () => {
+      const panel = document.getElementById('settings-panel');
+      const rail = document.getElementById('settings-rail');
+      if (!panel || !rail) return;
+      const section = SETTINGS_SECTIONS.find(s => s.id === activeSettingsSection) || SETTINGS_SECTIONS[0];
+
+      rail.innerHTML = '';
+      SETTINGS_SECTIONS.forEach(s => {
+        const btn = mkEl('button', `settings-rail-btn${s.id === section.id ? ' active' : ''}`, s.label);
+        btn.type = 'button';
+        btn.dataset.section = s.id;
+        rail.appendChild(btn);
+      });
+      const foot = mkEl('div', 'settings-rail-foot');
+      ['export', 'import'].forEach(action => {
+        const b = mkEl('button', 'settings-link', action === 'export' ? 'Export settings…' : 'Import settings…');
+        b.type = 'button';
+        b.dataset.action = action;
+        foot.appendChild(b);
+      });
+      const reset = mkEl('button', 'settings-link danger', 'Reset to defaults');
+      reset.type = 'button';
+      reset.dataset.action = 'reset';
+      foot.appendChild(reset);
+      rail.appendChild(foot);
+
+      panel.innerHTML = '';
+      panel.appendChild(mkEl('h3', 'settings-panel-title', section.label));
+      if (section.sub) panel.appendChild(mkEl('p', `settings-panel-sub${section.subWarn ? ' warn' : ''}`, section.sub));
+
+      const rows = mkEl('div');
+      rows.style.marginTop = '0.5rem';
+      section.rows.forEach(row => {
+        const rowEl = mkEl('div', 'set-row');
+        const main = mkEl('div', 'set-row-main');
+        main.appendChild(mkEl('div', 'set-label', row.label));
+        if (row.hint) main.appendChild(mkEl('div', `set-hint${row.hintWarn ? ' warn' : ''}`, row.hint));
+        rowEl.appendChild(main);
+        const ctl = mkEl('div', 'set-ctl');
+        row.controls.forEach(c => ctl.appendChild(buildControl(c)));
+        rowEl.appendChild(ctl);
+        rows.appendChild(rowEl);
+      });
+      panel.appendChild(rows);
+
+      if (section.danger) {
+        const box = mkEl('div', 'set-danger');
+        box.appendChild(mkEl('div', 'set-danger-title', 'Settings file'));
+        box.appendChild(mkEl('div', 'set-hint',
+          `Everything above lives in one localStorage entry (${SETTINGS_KEY}). Resetting also clears the keys this plugin wrote before there was a settings page.`));
+        const actions = mkEl('div', 'set-actions');
+        const exp = mkEl('button', 'set-btn', 'Export…');
+        exp.type = 'button'; exp.dataset.action = 'export';
+        const imp = mkEl('button', 'set-btn', 'Import…');
+        imp.type = 'button'; imp.dataset.action = 'import';
+        const rst = mkEl('button', 'set-btn danger', 'Reset everything');
+        rst.type = 'button'; rst.dataset.action = 'reset';
+        rst.style.marginLeft = 'auto';
+        actions.appendChild(exp);
+        actions.appendChild(imp);
+        actions.appendChild(rst);
+        box.appendChild(actions);
+        panel.appendChild(box);
+      }
+    };
+
+    // Theme and density are the only settings applied to <body> rather than
+    // recomputed from the metrics.
+    const applyAppearance = () => {
+      const theme = getSetting('theme');
+      document.body.classList.toggle('force-light', theme === 'light');
+      document.body.classList.toggle('force-dark', theme === 'dark');
+      document.body.classList.toggle('density-compact', getSetting('density') === 'compact');
+    };
+
+    const restartLiveUpdate = () => {
+      if (liveUpdateInterval) {
+        clearInterval(liveUpdateInterval);
+        liveUpdateInterval = null;
+      }
+      const ms = Number(getSetting('refreshMs')) || 0;
+      if (ms > 0 && window.PluginAPI) {
+        liveUpdateInterval = setInterval(pullDataFromSP, ms);
+      }
+    };
+
+    // Re-derive everything a setting could have changed. Cheap enough to run on
+    // every edit, which is what lets the modal have no Save button.
+    const applySettings = ({ reprocess = true } = {}) => {
+      applyAppearance();
+      restartLiveUpdate();
+      currentSort = { key: getSetting('sortKey'), dir: getSetting('sortDir') };
+      if (reprocess) processData(cachedTasks, cachedProjects, cachedTags);
+      renderSettingsPanel();
+    };
+
+    const setSetting = (key, value) => {
+      SETTINGS[key] = value;
+      persistSettings();
+      applySettings();
+    };
+
+    const toggleArraySetting = (key, value) => {
+      const list = (getSetting(key) || []).slice();
+      const idx = list.indexOf(value);
+      if (idx === -1) list.push(value); else list.splice(idx, 1);
+      setSetting(key, list);
+    };
+
+    const coerceControlValue = (dataset, raw) => {
+      if (dataset.bool === '1') return raw === 'true';
+      if (dataset.numeric === '1') {
+        const n = Number(raw);
+        return isFinite(n) ? n : 0;
+      }
+      return raw;
+    };
+
+    const exportSettings = () => {
+      const blob = new Blob([JSON.stringify(SETTINGS, null, 2)], { type: 'application/json' });
+      triggerDownload(blob, 'settings', `sp-dashboard-settings-${toLocalDate(new Date())}.json`);
+      showToast('Settings exported');
+    };
+
+    const importSettings = (text) => {
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        showToast('That file is not valid JSON', true);
+        return;
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        showToast('That file is not a settings export', true);
+        return;
+      }
+      Object.keys(DEFAULT_SETTINGS).forEach(key => {
+        SETTINGS[key] = coerceSetting(DEFAULT_SETTINGS[key], parsed[key]);
+      });
+      SETTINGS.schemaVersion = SETTINGS_SCHEMA_VERSION;
+      persistSettings();
+      applyDefaultSelections();
+      applySettings();
+      showToast('Settings imported');
+    };
+
+    const resetSettings = () => {
+      Object.keys(DEFAULT_SETTINGS).forEach(key => {
+        const def = DEFAULT_SETTINGS[key];
+        SETTINGS[key] = Array.isArray(def) ? def.slice() : def;
+      });
+      persistSettings();
+      Object.keys(LEGACY_KEY_MAP).forEach(k => {
+        try { localStorage.removeItem(k); } catch (e) { /* ignore */ }
+      });
+      applyDefaultSelections();
+      setPieDimension(resolveDefault('pieMetricMode', 'pieDimPinned', 'pieDimLast'));
+      applySettings();
+      showToast('Settings reset to defaults');
+    };
+
+    const openSettings = () => {
+      renderSettingsPanel();
+      document.getElementById('settings-overlay').classList.remove('hidden');
+      const btn = document.getElementById('settings-btn');
+      if (btn) btn.setAttribute('aria-expanded', 'true');
+    };
+
+    const closeSettings = () => {
+      document.getElementById('settings-overlay').classList.add('hidden');
+      const btn = document.getElementById('settings-btn');
+      if (btn) btn.setAttribute('aria-expanded', 'false');
+    };
+
+    // --- SETTINGS WIRING ---
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const settingsRail = document.getElementById('settings-rail');
+    const settingsPanel = document.getElementById('settings-panel');
+    const settingsImportInput = document.getElementById('settings-import-input');
+
+    document.getElementById('settings-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSettings();
+    });
+    document.getElementById('settings-close').addEventListener('click', closeSettings);
+    document.getElementById('settings-done').addEventListener('click', closeSettings);
+    settingsOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsOverlay) closeSettings();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !settingsOverlay.classList.contains('hidden')) closeSettings();
+    });
+
+    const runSettingsAction = (action) => {
+      if (action === 'export') exportSettings();
+      else if (action === 'import') settingsImportInput.click();
+      else if (action === 'reset') {
+        // The only destructive control in here, so it asks first.
+        if (typeof window.confirm !== 'function' || window.confirm('Reset every dashboard setting to its default?')) {
+          resetSettings();
+        }
+      }
+    };
+
+    settingsRail.addEventListener('click', (e) => {
+      const sectionBtn = e.target.closest('[data-section]');
+      if (sectionBtn) {
+        activeSettingsSection = sectionBtn.dataset.section;
+        renderSettingsPanel();
+        return;
+      }
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) runSettingsAction(actionBtn.dataset.action);
+    });
+
+    settingsPanel.addEventListener('click', (e) => {
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) { runSettingsAction(actionBtn.dataset.action); return; }
+
+      const removeBtn = e.target.closest('[data-remove]');
+      if (removeBtn) {
+        const list = (getSetting(removeBtn.dataset.key) || []).filter(n => n !== removeBtn.dataset.remove);
+        setSetting(removeBtn.dataset.key, list);
+        return;
+      }
+
+      const btn = e.target.closest('button[data-key]');
+      if (!btn || btn.disabled) return;
+      const value = coerceControlValue(btn.dataset, btn.dataset.value);
+      if (btn.dataset.kind === 'check') toggleArraySetting(btn.dataset.key, value);
+      else setSetting(btn.dataset.key, value);
+    });
+
+    settingsPanel.addEventListener('change', (e) => {
+      const node = e.target;
+      if (!node.dataset || !node.dataset.key) return;
+      if (node.dataset.add === '1') {
+        if (!node.value) return;
+        const list = (getSetting(node.dataset.key) || []).slice();
+        if (list.indexOf(node.value) === -1) list.push(node.value);
+        setSetting(node.dataset.key, list);
+        return;
+      }
+      if (node.tagName === 'INPUT' && node.type === 'number') {
+        let n = Number(node.value);
+        if (!isFinite(n)) n = DEFAULT_SETTINGS[node.dataset.key];
+        if (node.min !== '') n = Math.max(Number(node.min), n);
+        if (node.max !== '') n = Math.min(Number(node.max), n);
+        setSetting(node.dataset.key, n);
+        return;
+      }
+      setSetting(node.dataset.key, coerceControlValue(node.dataset, node.value));
+    });
+
+    settingsImportInput.addEventListener('change', () => {
+      const file = settingsImportInput.files && settingsImportInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => importSettings(String(reader.result || ''));
+      reader.onerror = () => showToast('Could not read that file', true);
+      reader.readAsText(file);
+      settingsImportInput.value = '';
+    });
+
+    // Opening tab (Settings › Defaults)
+    switchTab(resolveDefault('tabMode', 'tabPinned', 'tabLast'));
+    applyAppearance();
+
     // expose key utilities for testing (JSDOM environment won't execute script tags normally)
+    window.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
+    window.SETTINGS_KEY = SETTINGS_KEY;
+    window.SETTINGS_SECTIONS = SETTINGS_SECTIONS;
+    window.getSetting = getSetting;
+    window.setSetting = setSetting;
+    window.getAllSettings = () => SETTINGS;
+    window.resetSettings = resetSettings;
+    window.importSettings = importSettings;
+    window.renderSettingsPanel = renderSettingsPanel;
+    window.openSettings = openSettings;
+    window.closeSettings = closeSettings;
+    window.applyDefaultSelections = applyDefaultSelections;
+    window.buildExportFilename = buildExportFilename;
+    window.daysSinceWeekStart = daysSinceWeekStart;
     window.formatTime = formatTime;
     window.formatDateShort = formatDateShort;
     window.getDatesInRange = getDatesInRange;
@@ -1904,19 +3037,28 @@
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
     const pullDataFromSP = async () => {
-      console.log("[sp-dashboard] pullDataFromSP invoked, PluginAPI?", !!window.PluginAPI);
+      debugLog("[sp-dashboard] pullDataFromSP invoked, PluginAPI?", !!window.PluginAPI);
+      // Serialising every done task is expensive on a large vault, so the whole
+      // diagnostic block only runs when debug logging is on.
+      const logDoneTasks = (label, tasks) => {
+        if (!getSetting('debugLogging')) return;
+        const done = tasks.filter(t => t.isDone);
+        debugLog(`[sp-dashboard] ${label} done:`, JSON.stringify(done.map(t => ({ id: t.id, title: t.title, doneOn: t.doneOn })), null, 2));
+      };
       try {
         if (window.PluginAPI) {
           const activeTasks = await window.PluginAPI.getTasks() || [];
-          console.log("[sp-dashboard] received activeTasks count", activeTasks.length);
-          const activeTasksDone = activeTasks.filter(t => t.isDone);
-          console.log("[sp-dashboard] activeTasks done:", JSON.stringify(activeTasksDone.map(t => ({ id: t.id, title: t.title, doneOn: t.doneOn })), null, 2));
-          
-          const archivedTasks = await window.PluginAPI.getArchivedTasks() || [];
-          console.log("[sp-dashboard] received archivedTasks count", archivedTasks.length);
-          const archivedTasksDone = archivedTasks.filter(t => t.isDone);
-          console.log("[sp-dashboard] archivedTasks done:", JSON.stringify(archivedTasksDone.map(t => ({ id: t.id, title: t.title, doneOn: t.doneOn })), null, 2));
-          
+          debugLog("[sp-dashboard] received activeTasks count", activeTasks.length);
+          logDoneTasks('activeTasks', activeTasks);
+
+          // Settings › Data & Filtering. Skipping the archive entirely is the
+          // cheapest win available on a vault with a long history.
+          const archivedTasks = getSetting('includeArchived')
+            ? (await window.PluginAPI.getArchivedTasks() || [])
+            : [];
+          debugLog("[sp-dashboard] received archivedTasks count", archivedTasks.length);
+          logDoneTasks('archivedTasks', archivedTasks);
+
           // Deduplicate tasks: use Map to ensure each task ID appears only once
           // Active tasks take precedence over archived (appear later in spread, so overwrite)
           const taskMap = new Map();
@@ -1934,14 +3076,14 @@
             taskMap.set(task.id, task);
           });
           cachedTasks = Array.from(taskMap.values());
-          console.log("[sp-dashboard] after deduplication, unique tasks count", cachedTasks.length);
+          debugLog("[sp-dashboard] after deduplication, unique tasks count", cachedTasks.length);
           if (duplicateIds.size > 0) {
-            console.log("[sp-dashboard] duplicate task IDs found:", Array.from(duplicateIds));
+            debugLog("[sp-dashboard] duplicate task IDs found:", Array.from(duplicateIds));
           }
           const finalDoneCount = cachedTasks.filter(t => t.isDone).length;
-          console.log("[sp-dashboard] final cachedTasks done count:", finalDoneCount);
+          debugLog("[sp-dashboard] final cachedTasks done count:", finalDoneCount);
           cachedProjects = await window.PluginAPI.getAllProjects() || [];
-          console.log("[sp-dashboard] received projects count", cachedProjects.length);
+          debugLog("[sp-dashboard] received projects count", cachedProjects.length);
           // Tags are supplied via postMessage from plugin.js (host context).
           // Fall back to a direct call if the iframe API exposes it.
           if (cachedTags.length === 0) {
@@ -1950,7 +3092,7 @@
               cachedTags = (await getTagsFn.call(window.PluginAPI)) || [];
             }
           }
-          console.log("[sp-dashboard] tags count", cachedTags.length);
+          debugLog("[sp-dashboard] tags count", cachedTags.length);
           processData(cachedTasks, cachedProjects, cachedTags);
         } else {
           console.warn("[sp-dashboard] PluginAPI missing inside pullDataFromSP");
@@ -1962,8 +3104,7 @@
 
     // Listen for the light refresh trigger from plugin.js
     window.addEventListener('message', (event) => {
-      console.log("[sp-dashboard] message event received in iframe");
-      console.log(event.data)
+      debugLog("[sp-dashboard] message event received in iframe", event.data);
       if (event.data && event.data.type === 'SP_STATE_CHANGED') {
         if (Array.isArray(event.data.tags) && event.data.tags.length > 0) {
           cachedTags = event.data.tags;
@@ -1974,12 +3115,12 @@
 
     // Initial Bootstrap & Fallback Data Generation
     setTimeout(() => {
-      console.log("[sp-dashboard] bootstrap timeout fired; PluginAPI exists?", !!window.PluginAPI);
+      debugLog("[sp-dashboard] bootstrap timeout fired; PluginAPI exists?", !!window.PluginAPI);
       if (window.PluginAPI) {
         pullDataFromSP();
-        liveUpdateInterval = setInterval(pullDataFromSP, 30000);
+        restartLiveUpdate();
       } else {
-        console.log("[sp-dashboard] No PluginAPI detected. Loading mock data...");
+        debugLog("[sp-dashboard] No PluginAPI detected. Loading mock data...");
         
         // Simulating the exact screenshot payload
         const dates = [

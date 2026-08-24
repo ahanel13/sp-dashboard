@@ -69,6 +69,8 @@ describe('Date Range Reporter UI', () => {
     it('month preset should cover the full previous calendar month', () => {
       // March 15, 2026 at noon — month preset should show Mar 1–15 (current month, day 1 to today)
       vi.useFakeTimers({ now: new Date('2026-03-15T12:00:00').getTime() });
+      // The range diagnostic goes through debugLog, which is off by default.
+      window.setSetting('debugLogging', true);
       const consoleSpy = vi.spyOn(console, 'log');
       const presetSelect = document.getElementById('date-preset');
       presetSelect.value = 'month';
@@ -80,6 +82,7 @@ describe('Date Range Reporter UI', () => {
       expect(rangeLog[1]).toBe('2026-03-01'); // 1st of current month
       expect(rangeLog[2]).toBe('2026-03-15'); // today
       consoleSpy.mockRestore();
+      window.setSetting('debugLogging', false);
     });
   });
 
@@ -847,6 +850,372 @@ describe('Date Range Reporter UI', () => {
       expect(posted[0].type).toBe('SP_DASHBOARD_DOWNLOAD');
       expect(posted[0].filename).toMatch(/^dashboard-dashboard-\d{4}-\d{2}-\d{2}\.png$/);
       expect(posted[0].blob).toBeInstanceOf(Blob);
+    });
+  });
+
+  describe('Settings', () => {
+    const todayStr = toLocalDate(new Date());
+    const projects = [{ id: 'p1', title: 'Work' }, { id: 'p2', title: 'Personal' }];
+    const tags = [{ id: 'tg1', title: 'Frontend' }];
+    const tasks = [
+      { id: 't1', parentId: null, title: 'Ship feature', isDone: false, projectId: 'p1',
+        tagIds: ['tg1'], timeSpentOnDay: { [todayStr]: 7200000 } },                  // 2h, Work
+      { id: 't2', parentId: null, title: 'Water plants', isDone: false, projectId: 'p2',
+        tagIds: [], timeSpentOnDay: { [todayStr]: 1800000 } }                        // 30m, Personal
+    ];
+
+    describe('Store', () => {
+      it('starts from the documented defaults', () => {
+        expect(window.getSetting('weekStartsOn')).toBe(1);
+        expect(window.getSetting('timeFormat')).toBe('hm');
+        expect(window.getSetting('debugLogging')).toBe(false);
+        expect(window.getSetting('includeArchived')).toBe(true);
+        expect(window.getSetting('excludedProjects')).toEqual([]);
+      });
+
+      it('persists a change into a single localStorage blob', () => {
+        window.setSetting('timeFormat', 'decimal');
+        const raw = JSON.parse(localStorage.getItem(window.SETTINGS_KEY));
+        expect(raw.timeFormat).toBe('decimal');
+        expect(raw.schemaVersion).toBe(1);
+      });
+
+      it('migrates the pre-settings localStorage keys and removes them', () => {
+        localStorage.clear();
+        localStorage.setItem('sp-dashboard-date-preset', 'this-week');
+        localStorage.setItem('sp-dashboard-pie-dim', 'tag');
+        localStorage.setItem('sp-dashboard-drill-entity', 'Work');
+
+        // Re-boot the script against the seeded legacy keys.
+        document.documentElement.innerHTML = html;
+        const script = Array.from(document.querySelectorAll('script'))
+          .find(s => !s.src && s.textContent.includes('processData'));
+        new Function(script.textContent).call(window);
+
+        expect(window.getSetting('periodLast')).toBe('this-week');
+        expect(window.getSetting('pieDimLast')).toBe('tag');
+        expect(window.getSetting('drillEntityLast')).toBe('Work');
+        expect(localStorage.getItem('sp-dashboard-date-preset')).toBeNull();
+        expect(localStorage.getItem('sp-dashboard-pie-dim')).toBeNull();
+        // …and the migrated values drive the opening state.
+        expect(document.getElementById('date-preset').value).toBe('this-week');
+      });
+
+      it('ignores unknown keys and repairs values of the wrong type', () => {
+        localStorage.setItem(window.SETTINGS_KEY, JSON.stringify({
+          weekStartsOn: 'not-a-number', workingDays: 'nope', bogusKey: 42
+        }));
+        document.documentElement.innerHTML = html;
+        const script = Array.from(document.querySelectorAll('script'))
+          .find(s => !s.src && s.textContent.includes('processData'));
+        new Function(script.textContent).call(window);
+
+        expect(window.getSetting('weekStartsOn')).toBe(1);
+        expect(window.getSetting('workingDays')).toEqual([1, 2, 3, 4, 5]);
+        expect(window.getAllSettings().bogusKey).toBeUndefined();
+      });
+
+      it('reset returns every setting to its default', () => {
+        window.setSetting('timeFormat', 'minutes');
+        window.setSetting('excludedProjects', ['Personal']);
+        window.resetSettings();
+        expect(window.getSetting('timeFormat')).toBe('hm');
+        expect(window.getSetting('excludedProjects')).toEqual([]);
+      });
+
+      it('import applies a settings blob and drops keys it does not recognise', () => {
+        window.importSettings(JSON.stringify({ timeFormat: 'decimal', nonsense: true }));
+        expect(window.getSetting('timeFormat')).toBe('decimal');
+        expect(window.getAllSettings().nonsense).toBeUndefined();
+      });
+
+      it('import rejects malformed JSON without touching the current settings', () => {
+        window.setSetting('timeFormat', 'minutes');
+        window.importSettings('{ not json');
+        expect(window.getSetting('timeFormat')).toBe('minutes');
+      });
+    });
+
+    describe('General', () => {
+      it('timeFormat switches formatTime between hours, decimal and minutes', () => {
+        expect(window.formatTime(9000000)).toBe('2h 30m');
+        window.setSetting('timeFormat', 'decimal');
+        expect(window.formatTime(9000000)).toBe('2.50h');
+        window.setSetting('timeFormat', 'minutes');
+        expect(window.formatTime(9000000)).toBe('150m');
+      });
+
+      it('dateFormat iso leaves the date as a plain ISO day', () => {
+        window.setSetting('dateFormat', 'iso');
+        expect(window.formatDateShort('2026-02-22')).toBe('2026-02-22');
+        window.setSetting('dateFormat', 'eu');
+        expect(window.formatDateShort('2026-02-22')).toBe('22 Feb 2026');
+      });
+
+      it('weekStartsOn moves where "This Week" begins', () => {
+        // 2026-03-11 is a Wednesday.
+        vi.useFakeTimers({ now: new Date('2026-03-11T12:00:00').getTime() });
+        const preset = document.getElementById('date-preset');
+        preset.value = 'this-week';
+        preset.dispatchEvent(new Event('change'));
+
+        window.processData([], []);
+        // Monday start → Mon 9th through Wed 11th
+        expect(window.latestMetrics.weeklyData.labels[0]).toBe('2026-03-09');
+
+        window.setSetting('weekStartsOn', 0);
+        window.processData([], []);
+        // Sunday start → Sun 8th through Wed 11th
+        expect(window.latestMetrics.weeklyData.labels[0]).toBe('2026-03-08');
+        vi.useRealTimers();
+      });
+
+      it('hideNonWorkingDays drops weekends out of the range', () => {
+        vi.useFakeTimers({ now: new Date('2026-03-15T12:00:00').getTime() }); // a Sunday
+        const preset = document.getElementById('date-preset');
+        preset.value = 'week'; // past 7 days: Mon 9th – Sun 15th
+        preset.dispatchEvent(new Event('change'));
+
+        window.processData([], []);
+        expect(window.latestMetrics.weeklyData.labels.length).toBe(7);
+
+        window.setSetting('hideNonWorkingDays', true);
+        window.processData([], []);
+        const labels = window.latestMetrics.weeklyData.labels;
+        expect(labels.length).toBe(5);
+        expect(labels).not.toContain('2026-03-14'); // Saturday
+        expect(labels).not.toContain('2026-03-15'); // Sunday
+        vi.useRealTimers();
+      });
+    });
+
+    describe('Data & Filtering', () => {
+      it('excludedProjects removes the project from every metric', () => {
+        window.processData(tasks, projects, tags);
+        expect(document.getElementById('stat-time').innerText).toBe('2h 30m');
+        expect(window.latestMetrics.projectData['Personal']).toBe(1800000);
+
+        window.setSetting('excludedProjects', ['Personal']);
+        window.processData(tasks, projects, tags);
+        expect(document.getElementById('stat-time').innerText).toBe('2h 0m');
+        expect(window.latestMetrics.projectData['Personal']).toBeUndefined();
+        expect(window.latestMetrics.tableEntries.some(e => e.projectName === 'Personal')).toBe(false);
+      });
+
+      it('excludedTags drops any task carrying that tag', () => {
+        window.setSetting('excludedTags', ['Frontend']);
+        window.processData(tasks, projects, tags);
+        expect(document.getElementById('stat-time').innerText).toBe('0h 30m');
+        expect(window.latestMetrics.projectData['Work']).toBeUndefined();
+      });
+
+      it('minEntryMs keeps short entries out of the totals', () => {
+        window.setSetting('minEntryMs', 3600000); // 1 hour
+        window.processData(tasks, projects, tags);
+        expect(document.getElementById('stat-time').innerText).toBe('2h 0m'); // the 30m entry is gone
+        expect(window.latestMetrics.tableEntries.length).toBe(1);
+      });
+
+      it('includeRunningTimer excludes the in-progress session when off', () => {
+        const running = [{ id: 'r1', parentId: null, title: 'Timing now', isDone: false,
+          projectId: 'p1', tagIds: [], timeSpentOnDay: { [todayStr]: 3600000 }, currentSessionTime: 1800000 }];
+        window.processData(running, projects, []);
+        expect(document.getElementById('stat-time').innerText).toBe('1h 30m');
+
+        window.setSetting('includeRunningTimer', false);
+        window.processData(running, projects, []);
+        expect(document.getElementById('stat-time').innerText).toBe('1h 0m');
+      });
+
+      it('showSubtaskRows lists subtasks without changing any total', () => {
+        const withChild = [
+          { id: 'p', parentId: null, title: 'Parent', isDone: false, projectId: 'p1', tagIds: [],
+            timeSpentOnDay: { [todayStr]: 7200000 } },
+          { id: 'c', parentId: 'p', title: 'Child', isDone: false, projectId: 'p1', tagIds: [],
+            timeSpentOnDay: { [todayStr]: 3600000 } }
+        ];
+        window.processData(withChild, projects, []);
+        expect(document.getElementById('stat-time').innerText).toBe('2h 0m');
+        expect(window.latestMetrics.tableEntries.length).toBe(1);
+
+        window.setSetting('showSubtaskRows', true);
+        window.processData(withChild, projects, []);
+        expect(document.getElementById('stat-time').innerText).toBe('2h 0m'); // unchanged
+        expect(window.latestMetrics.tableEntries.length).toBe(2);
+        expect(window.latestMetrics.tableEntries.some(e => e.isSubtask)).toBe(true);
+      });
+
+      it('noDueDateOverdue counts undated open tasks as overdue', () => {
+        window.processData(tasks, projects, tags);
+        expect(document.getElementById('stat-overdue').innerText).toBe('0');
+
+        window.setSetting('noDueDateOverdue', true);
+        window.processData(tasks, projects, tags);
+        expect(document.getElementById('stat-overdue').innerText).toBe('2');
+      });
+    });
+
+    describe('Appearance', () => {
+      it('statCards hides the cards that are unchecked', () => {
+        window.processData(tasks, projects, tags);
+        expect(document.getElementById('stat-card-late').classList.contains('hidden')).toBe(false);
+
+        window.setSetting('statCards', ['time', 'completed']);
+        expect(document.getElementById('stat-card-late').classList.contains('hidden')).toBe(true);
+        expect(document.getElementById('stat-card-overdue').classList.contains('hidden')).toBe(true);
+        expect(document.getElementById('stat-card-time').classList.contains('hidden')).toBe(false);
+      });
+
+      it('pieMaxSlices rolls the tail into a single Other slice', () => {
+        const many = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, i) => ({
+          id, parentId: null, title: `Task ${id}`, isDone: false, projectId: `pr${i}`,
+          tagIds: [], timeSpentOnDay: { [todayStr]: (6 - i) * 600000 }
+        }));
+        const manyProjects = many.map((t, i) => ({ id: `pr${i}`, title: `Project ${i}` }));
+        document.getElementById('pie-chart-select').value = 'time';
+
+        window.setSetting('pieMaxSlices', 0);
+        window.processData(many, manyProjects, []);
+        expect(document.querySelectorAll('#pie-chart-element circle').length).toBe(6);
+
+        window.setSetting('pieMaxSlices', 5);
+        window.processData(many, manyProjects, []);
+        expect(document.querySelectorAll('#pie-chart-element circle').length).toBe(6); // 5 + Other
+        expect(document.getElementById('pie-legend-container').textContent).toContain('Other');
+      });
+
+      it('tablePageSize caps the Detailed List and says so', () => {
+        const dates = ['2026-01-01', '2026-01-02', '2026-01-03'];
+        const spread = [{ id: 's1', parentId: null, title: 'Spread', isDone: false, projectId: 'p1',
+          tagIds: [], timeSpentOnDay: Object.fromEntries(dates.map(d => [d, 3600000])) }];
+        const preset = document.getElementById('date-preset');
+        preset.value = 'custom';
+        document.getElementById('date-from').value = '2026-01-01';
+        document.getElementById('date-to').value = '2026-01-03';
+        preset.dispatchEvent(new Event('change'));
+
+        window.setSetting('tablePageSize', 0);
+        window.processData(spread, projects, []);
+        expect(document.querySelectorAll('#details-table-body tr').length).toBe(3);
+
+        window.setSetting('tablePageSize', 2);
+        window.processData(spread, projects, []);
+        const rows = document.querySelectorAll('#details-table-body tr');
+        expect(rows.length).toBe(3); // 2 entries + the "showing 2 of 3" footer
+        expect(rows[2].textContent).toContain('Showing 2 of 3');
+      });
+
+      it('theme puts an explicit override class on the body', () => {
+        window.setSetting('theme', 'light');
+        expect(document.body.classList.contains('force-light')).toBe(true);
+        window.setSetting('theme', 'dark');
+        expect(document.body.classList.contains('force-light')).toBe(false);
+        expect(document.body.classList.contains('force-dark')).toBe(true);
+        window.setSetting('theme', 'auto');
+        expect(document.body.classList.contains('force-dark')).toBe(false);
+      });
+    });
+
+    describe('Advanced', () => {
+      it('exportFilename honours the {tab}, {range} and {date} tokens', () => {
+        window.processData(tasks, projects, tags);
+        window.setSetting('exportFilename', 'report-{tab}');
+        expect(window.buildExportFilename('Detailed List', 'png')).toBe('report-detailed-list.png');
+        window.setSetting('exportFilename', 'x-{date}');
+        expect(window.buildExportFilename('Dashboard', 'png')).toBe(`x-${todayStr}.png`);
+      });
+
+      it('summaryFormat switches the copied summary between Slack, Markdown and CSV', () => {
+        // setSetting re-runs processData over the cached task list, which is
+        // empty here, so each format is re-fed the fixtures before asserting.
+        window.processData(tasks, projects, tags);
+        expect(window.buildTextSummary('dashboard')).toContain('*Productivity Summary*');
+
+        window.setSetting('summaryFormat', 'markdown');
+        window.processData(tasks, projects, tags);
+        expect(window.buildTextSummary('dashboard')).toContain('**Productivity Summary**');
+
+        window.setSetting('summaryFormat', 'csv');
+        window.processData(tasks, projects, tags);
+        const csv = window.buildTextSummary('dashboard');
+        expect(csv.split('\n')[0]).toBe('Metric,Value');
+        expect(csv).toContain('Total Time Tracked,2h 30m');
+      });
+
+      it('csv summary of the Detailed List quotes fields containing commas', () => {
+        const commaTask = [{ id: 'c1', parentId: null, title: 'Fix bug, then test', isDone: false,
+          projectId: 'p1', tagIds: [], timeSpentOnDay: { [todayStr]: 3600000 } }];
+        window.setSetting('summaryFormat', 'csv');
+        window.processData(commaTask, projects, []);
+        expect(window.buildTextSummary('details')).toContain('"Fix bug, then test"');
+      });
+    });
+
+    describe('Modal', () => {
+      it('the gear opens the modal and Done closes it', () => {
+        const overlay = document.getElementById('settings-overlay');
+        expect(overlay.classList.contains('hidden')).toBe(true);
+        document.getElementById('settings-btn').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(overlay.classList.contains('hidden')).toBe(false);
+        document.getElementById('settings-done').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(overlay.classList.contains('hidden')).toBe(true);
+      });
+
+      it('renders a rail entry per section and switches panels on click', () => {
+        window.openSettings();
+        const rail = document.getElementById('settings-rail');
+        expect(rail.querySelectorAll('[data-section]').length).toBe(window.SETTINGS_SECTIONS.length);
+        expect(document.querySelector('.settings-panel-title').textContent).toBe('General');
+
+        rail.querySelector('[data-section="appearance"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(document.querySelector('.settings-panel-title').textContent).toBe('Appearance');
+      });
+
+      it('clicking a control writes the setting straight through', () => {
+        window.openSettings();
+        const panel = document.getElementById('settings-panel');
+        // General is the opening section; the first row is Start of week.
+        const select = panel.querySelector('select[data-key="weekStartsOn"]');
+        select.value = '0';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(window.getSetting('weekStartsOn')).toBe(0);
+
+        const satButton = panel.querySelector('.set-day[data-value="6"]');
+        expect(satButton.classList.contains('active')).toBe(false);
+        satButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(window.getSetting('workingDays')).toContain(6);
+      });
+
+      it('a pinned control enables its value picker, remember disables it', () => {
+        window.openSettings();
+        const rail = document.getElementById('settings-rail');
+        rail.querySelector('[data-section="defaults"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const panel = document.getElementById('settings-panel');
+        expect(panel.querySelector('select[data-key="periodPinned"]').disabled).toBe(true);
+
+        panel.querySelector('button[data-key="periodMode"][data-value="pin"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(window.getSetting('periodMode')).toBe('pin');
+        expect(panel.querySelector('select[data-key="periodPinned"]').disabled).toBe(false);
+      });
+
+      it('the excluded-project picker adds and removes chips', () => {
+        window.processData(tasks, projects, tags);
+        // The chip source reads the cached project list the host supplied.
+        window.setSetting('excludedProjects', ['Personal']);
+        window.openSettings();
+        document.getElementById('settings-rail').querySelector('[data-section="data"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const chip = document.querySelector('.set-chip');
+        expect(chip.textContent).toContain('Personal');
+        chip.querySelector('button[data-remove="Personal"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(window.getSetting('excludedProjects')).toEqual([]);
+      });
     });
   });
 });
