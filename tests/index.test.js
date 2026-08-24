@@ -936,6 +936,137 @@ describe('Date Range Reporter UI', () => {
       });
     });
 
+    // An imported settings file is untrusted: it may be shared, stale or simply
+    // corrupt. Type alone is not enough — a well-typed string in the wrong
+    // place used to throw during init and take the whole dashboard down.
+    describe('Untrusted input', () => {
+      const reboot = () => {
+        document.documentElement.innerHTML = html;
+        const script = Array.from(document.querySelectorAll('script'))
+          .find(s => !s.src && s.textContent.includes('processData'));
+        new Function(script.textContent).call(window);
+      };
+
+      it('rejects an out-of-enum tab, which previously threw during init', () => {
+        window.importSettings(JSON.stringify({ tabPinned: 'evil', tabMode: 'pin' }));
+        expect(window.getSetting('tabPinned')).toBe('dashboard');
+        expect(() => reboot()).not.toThrow();
+        expect(document.getElementById('view-dashboard').classList.contains('hidden')).toBe(false);
+      });
+
+      it('rejects an out-of-enum tabLast on the remember path too', () => {
+        window.importSettings(JSON.stringify({ tabLast: 'evil', tabMode: 'remember' }));
+        // Falls back to '' — "nothing remembered" — so tabPinned decides.
+        expect(window.getSetting('tabLast')).toBe('');
+        expect(() => reboot()).not.toThrow();
+        expect(document.getElementById('view-dashboard').classList.contains('hidden')).toBe(false);
+      });
+
+      it('switchTab falls back rather than throwing on an unknown tab', () => {
+        expect(() => window.switchTab('nope')).not.toThrow();
+        expect(document.getElementById('view-dashboard').classList.contains('hidden')).toBe(false);
+      });
+
+      it('rejects out-of-enum values across every enumerated setting', () => {
+        window.importSettings(JSON.stringify({
+          palette: 'constructor', theme: 'evil', barGrouping: 'zzz',
+          periodPinned: 'nope', sortKey: 'toString', summaryFormat: 'xml'
+        }));
+        expect(window.getSetting('palette')).toBe('default');
+        expect(window.getSetting('theme')).toBe('auto');
+        expect(window.getSetting('barGrouping')).toBe('auto');
+        expect(window.getSetting('periodPinned')).toBe('today');
+        expect(window.getSetting('sortKey')).toBe('date');
+        expect(window.getSetting('summaryFormat')).toBe('slack');
+      });
+
+      it('refuses a refresh interval that is not one of the offered values', () => {
+        window.importSettings(JSON.stringify({ refreshMs: 1 }));
+        expect(window.getSetting('refreshMs')).toBe(30000);
+      });
+
+      it('clamps free-form numeric goals to their range', () => {
+        window.importSettings(JSON.stringify({ dailyTimeGoalH: 1e9, weeklyTimeGoalH: -5, dailyTaskGoal: 0 }));
+        expect(window.getSetting('dailyTimeGoalH')).toBe(24);
+        expect(window.getSetting('weeklyTimeGoalH')).toBe(1);
+        expect(window.getSetting('dailyTaskGoal')).toBe(1);
+      });
+
+      it('drops array members that are not legal values', () => {
+        window.importSettings(JSON.stringify({
+          workingDays: [0, 1, 'x', {}, 99],
+          statCards: ['time', '<svg onload=alert(1)>']
+        }));
+        expect(window.getSetting('workingDays')).toEqual([0, 1]);
+        expect(window.getSetting('statCards')).toEqual(['time']);
+      });
+
+      it('caps the exclusion lists so one file cannot bloat the store', () => {
+        window.importSettings(JSON.stringify({
+          excludedProjects: Array.from({ length: 10000 }, (_, i) => 'p' + i),
+          excludedTags: ['ok', 123, null, 'x'.repeat(5000)]
+        }));
+        expect(window.getSetting('excludedProjects').length).toBe(500);
+        expect(window.getSetting('excludedTags')).toEqual(['ok']);
+      });
+
+      it('leaves no prototype pollution behind', () => {
+        window.importSettings('{"__proto__":{"polluted":"yes"},"constructor":{"prototype":{"p2":"yes"}}}');
+        expect({}.polluted).toBeUndefined();
+        expect({}.p2).toBeUndefined();
+      });
+
+      it('keeps hostile strings as inert text in the settings UI', () => {
+        window.importSettings(JSON.stringify({ excludedProjects: ['<img src=x onerror=alert(1)>'] }));
+        window.openSettings();
+        document.getElementById('settings-rail').querySelector('[data-section="data"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const chip = document.querySelector('.set-chip');
+        expect(chip.textContent).toContain('<img src=x onerror=alert(1)>');
+        expect(document.querySelectorAll('#settings-panel img').length).toBe(0);
+      });
+
+      it('still accepts a legitimate config, including states only the UI reaches', () => {
+        window.importSettings(JSON.stringify({
+          theme: 'dark', palette: 'colorblind', refreshMs: 60000,
+          weekStartsOn: 0, dailyTimeGoalH: 8, tabPinned: 'details', tabMode: 'pin',
+          periodLast: 'custom', dateFromLast: '2026-01-01', drillEntityLast: 'Work'
+        }));
+        expect(window.getSetting('theme')).toBe('dark');
+        expect(window.getSetting('palette')).toBe('colorblind');
+        expect(window.getSetting('refreshMs')).toBe(60000);
+        expect(window.getSetting('weekStartsOn')).toBe(0);
+        expect(window.getSetting('dailyTimeGoalH')).toBe(8);
+        expect(window.getSetting('tabPinned')).toBe('details');
+        // 'custom' is reachable from the Period control but is not a pinnable default
+        expect(window.getSetting('periodLast')).toBe('custom');
+        expect(window.getSetting('dateFromLast')).toBe('2026-01-01');
+        expect(window.getSetting('drillEntityLast')).toBe('Work');
+      });
+
+      it('rejects a malformed stored date without discarding the rest', () => {
+        window.importSettings(JSON.stringify({ dateFromLast: 'not-a-date', dateToLast: '2026-03-01' }));
+        expect(window.getSetting('dateFromLast')).toBe('');
+        expect(window.getSetting('dateToLast')).toBe('2026-03-01');
+      });
+
+      it('every enumerated setting offers exactly the values it will accept', () => {
+        // The UI and the validator must read from the same list.
+        const seen = new Set();
+        window.SETTINGS_SECTIONS.forEach(section => section.rows.forEach(row =>
+          row.controls.forEach(ctrl => {
+            if (!ctrl.key || !ctrl.options || ctrl.type === 'days' || ctrl.type === 'checks') return;
+            if (typeof window.DEFAULT_SETTINGS[ctrl.key] === 'boolean') return;
+            seen.add(ctrl.key);
+            ctrl.options.forEach(o => {
+              window.importSettings(JSON.stringify({ [ctrl.key]: o.v }));
+              expect(window.getSetting(ctrl.key), `${ctrl.key} should accept ${o.v}`).toBe(o.v);
+            });
+          })));
+        expect(seen.size).toBeGreaterThan(15);
+      });
+    });
+
     describe('General', () => {
       it('timeFormat switches formatTime between hours, decimal and minutes', () => {
         expect(window.formatTime(9000000)).toBe('2h 30m');

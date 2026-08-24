@@ -873,14 +873,128 @@
       'sp-dashboard-drill-entity': 'drillEntityLast'
     };
 
-    // Coerce a stored value against its default, so a hand-edited or stale blob
-    // can never put the dashboard into a state the UI can't represent.
-    const coerceSetting = (def, val) => {
+    const sOpt = (v, l) => ({ v, l });
+
+    // The legal values for every enumerated setting, with the labels the UI
+    // shows. This is the ONLY list: SETTINGS_SECTIONS builds its controls from
+    // it, and coerceSetting validates against it, so the two cannot drift.
+    const METRIC_OPTIONS = [
+      sOpt('time', 'Time tracked'), sOpt('completed', 'Tasks completed'),
+      sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')
+    ];
+    const MODE_OPTIONS = [sOpt('remember', 'Remember'), sOpt('pin', 'Pin')];
+    const DIM_OPTIONS = [sOpt('project', 'Project'), sOpt('tag', 'Tag')];
+
+    const SETTING_OPTIONS = {
+      weekStartsOn: [sOpt(1, 'Monday'), sOpt(0, 'Sunday'), sOpt(6, 'Saturday')],
+      dateFormat: [sOpt('auto', 'Auto (locale)'), sOpt('iso', 'ISO — 2026-02-22'),
+                   sOpt('us', 'Feb 22, 2026'), sOpt('eu', '22 Feb 2026')],
+      timeFormat: [sOpt('hm', '3h 45m'), sOpt('decimal', '3.75h — decimal'), sOpt('minutes', '225m')],
+      periodMode: MODE_OPTIONS,
+      periodPinned: [sOpt('today', 'Today'), sOpt('this-week', 'This Week'), sOpt('week', 'Past Week'),
+                     sOpt('month', 'This Month'), sOpt('year', 'Past Year'),
+                     sOpt('from-weekday', 'Starting from weekday')],
+      tabMode: MODE_OPTIONS,
+      tabPinned: [sOpt('dashboard', 'Dashboard'), sOpt('details', 'Detailed List'),
+                  sOpt('drilldown', 'By Project / Tag')],
+      barMetricMode: MODE_OPTIONS,
+      barMetricPinned: METRIC_OPTIONS,
+      pieMetricMode: MODE_OPTIONS,
+      pieMetricPinned: METRIC_OPTIONS,
+      pieDimPinned: DIM_OPTIONS,
+      sortKey: [sOpt('date', 'Date'), sOpt('projectName', 'Project'), sOpt('taskTitle', 'Task'),
+                sOpt('timeSpent', 'Time Spent'), sOpt('status', 'Status')],
+      sortDir: [sOpt('asc', 'Ascending'), sOpt('desc', 'Descending')],
+      drillDimMode: MODE_OPTIONS,
+      drillDimPinned: DIM_OPTIONS,
+      minEntryMs: [sOpt(0, 'Off'), sOpt(60000, '1 minute'), sOpt(300000, '5 minutes'), sOpt(900000, '15 minutes')],
+      theme: [sOpt('auto', 'Follow app'), sOpt('light', 'Light'), sOpt('dark', 'Dark')],
+      palette: [sOpt('default', 'Default'), sOpt('colorblind', 'Colourblind-safe'),
+                sOpt('mono', 'Monochrome'), sOpt('contrast', 'High contrast')],
+      barGrouping: [sOpt('auto', 'Auto'), sOpt('daily', 'Daily'), sOpt('weekly', 'Weekly'), sOpt('monthly', 'Monthly')],
+      pieMaxSlices: [sOpt(0, 'Show all slices'), sOpt(5, 'Top 5, rest as Other'),
+                     sOpt(8, 'Top 8, rest as Other'), sOpt(10, 'Top 10, rest as Other')],
+      density: [sOpt('comfortable', 'Comfortable'), sOpt('compact', 'Compact')],
+      tablePageSize: [sOpt(50, '50'), sOpt(100, '100'), sOpt(250, '250'), sOpt(0, 'All')],
+      refreshMs: [sOpt(0, 'Off'), sOpt(10000, 'Every 10 seconds'), sOpt(30000, 'Every 30 seconds'),
+                  sOpt(60000, 'Every minute'), sOpt(300000, 'Every 5 minutes')],
+      summaryFormat: [sOpt('slack', 'Slack'), sOpt('markdown', 'Markdown'), sOpt('csv', 'CSV')]
+    };
+
+    // The `*Last` keys record what a dashboard control was last set to, so they
+    // are validated too — `tabLast` reaches switchTab() exactly as `tabPinned`
+    // does. They allow '' ("nothing remembered yet") and, where the control can
+    // reach a state that is not offered as a pinnable default, a little more
+    // than their `*Pinned` twin: Period can be left on a custom range.
+    const SETTING_LAST_VALUES = {
+      periodLast: ['today', 'this-week', 'week', 'month', 'year', 'custom', 'from-weekday'],
+      tabLast: ['dashboard', 'details', 'drilldown'],
+      barMetricLast: ['time', 'completed', 'overdue', 'late'],
+      pieMetricLast: ['time', 'completed', 'overdue', 'late'],
+      pieDimLast: ['project', 'tag'],
+      drillDimLast: ['project', 'tag'],
+      weekdayLast: ['0', '1', '2', '3', '4', '5', '6']
+    };
+
+    // Free-form numbers the user types, rather than picks. Clamped, not enumerated.
+    const SETTING_RANGES = {
+      dailyTimeGoalH: [1, 24],
+      weeklyTimeGoalH: [1, 168],
+      dailyTaskGoal: [1, 99]
+    };
+
+    // Legal members of the array-valued settings. Anything else is discarded.
+    // excludedProjects / excludedTags are omitted: they hold arbitrary project
+    // and tag names, so they are only checked for being strings.
+    const SETTING_ITEMS = {
+      workingDays: [0, 1, 2, 3, 4, 5, 6],
+      statCards: ['time', 'completed', 'overdue', 'late']
+    };
+
+    const MAX_EXCLUSIONS = 500;      // a vault will not have more than this
+    const MAX_EXCLUSION_LEN = 300;   // longest plausible project or tag name
+    const MAX_FILENAME_PATTERN = 200;
+
+    // Coerce a stored value against its default, so a hand-edited, corrupted or
+    // hostile blob can never put the dashboard into a state the UI can't
+    // represent. Type is checked first, then the value itself: an enumerated
+    // setting must name one of its options and a ranged one is clamped.
+    // Without this a bad `tabPinned` throws during init and takes the whole
+    // dashboard down with it.
+    const coerceSetting = (key, def, val) => {
       if (val === undefined || val === null) return Array.isArray(def) ? def.slice() : def;
-      if (Array.isArray(def)) return Array.isArray(val) ? val.slice() : def.slice();
-      if (typeof def === 'number') return (typeof val === 'number' && isFinite(val)) ? val : def;
+
+      if (Array.isArray(def)) {
+        if (!Array.isArray(val)) return def.slice();
+        const allowedItems = SETTING_ITEMS[key];
+        if (allowedItems) return val.filter(v => allowedItems.indexOf(v) !== -1);
+        return val
+          .filter(v => typeof v === 'string' && v.length > 0 && v.length <= MAX_EXCLUSION_LEN)
+          .slice(0, MAX_EXCLUSIONS);
+      }
+
       if (typeof def === 'boolean') return typeof val === 'boolean' ? val : def;
-      return typeof val === 'string' ? val : def;
+
+      if (typeof def === 'number') {
+        if (typeof val !== 'number' || !isFinite(val)) return def;
+        const options = SETTING_OPTIONS[key];
+        if (options) return options.some(o => o.v === val) ? val : def;
+        const range = SETTING_RANGES[key];
+        if (range) return Math.min(range[1], Math.max(range[0], Math.round(val)));
+        return val;
+      }
+
+      if (typeof val !== 'string') return def;
+      const options = SETTING_OPTIONS[key];
+      if (options) return options.some(o => o.v === val) ? val : def;
+      const lastValues = SETTING_LAST_VALUES[key];
+      if (lastValues) return (val === '' || lastValues.indexOf(val) !== -1) ? val : def;
+      if (key === 'dateFromLast' || key === 'dateToLast') {
+        return (val === '' || /^\d{4}-\d{2}-\d{2}$/.test(val)) ? val : def;
+      }
+      if (key === 'drillEntityLast') return val.slice(0, MAX_EXCLUSION_LEN);
+      if (key === 'exportFilename') return val.slice(0, MAX_FILENAME_PATTERN) || def;
+      return val;
     };
 
     const readStoredSettings = () => {
@@ -906,7 +1020,7 @@
 
       const merged = {};
       Object.keys(DEFAULT_SETTINGS).forEach(key => {
-        merged[key] = coerceSetting(DEFAULT_SETTINGS[key], stored[key]);
+        merged[key] = coerceSetting(key, DEFAULT_SETTINGS[key], stored[key]);
       });
       merged.schemaVersion = SETTINGS_SCHEMA_VERSION;
 
@@ -1005,14 +1119,19 @@
     };
 
     // --- TAB LOGIC ---
+    const TAB_IDS = ['dashboard', 'details', 'drilldown'];
     const switchTab = (tabId) => {
-      ['dashboard', 'details', 'drilldown'].forEach(id => {
+      // Fall back rather than throw: switchTab runs during init from a stored
+      // setting, and a null dereference here would abort the rest of the script
+      // — leaving no visible view and no data ever loaded.
+      const target = TAB_IDS.indexOf(tabId) !== -1 ? tabId : TAB_IDS[0];
+      TAB_IDS.forEach(id => {
         document.getElementById(`view-${id}`).classList.add('hidden');
         document.getElementById(`tab-btn-${id}`).classList.remove('active');
       });
-      document.getElementById(`view-${tabId}`).classList.remove('hidden');
-      document.getElementById(`tab-btn-${tabId}`).classList.add('active');
-      rememberSetting('tabLast', tabId);
+      document.getElementById(`view-${target}`).classList.remove('hidden');
+      document.getElementById(`tab-btn-${target}`).classList.add('active');
+      rememberSetting('tabLast', target);
     };
 
     // --- GLOBALS ---
@@ -2396,13 +2515,8 @@
     // The panel is generated from SETTINGS_SECTIONS rather than written out as
     // markup, so a new setting is one entry here plus one read of getSetting().
     // ==========================================================
-    const sOpt = (v, l) => ({ v, l });
-
-    const METRIC_OPTIONS = [
-      sOpt('time', 'Time tracked'), sOpt('completed', 'Tasks completed'),
-      sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')
-    ];
-    const MODE_OPTIONS = [sOpt('remember', 'Remember'), sOpt('pin', 'Pin')];
+    // Option lists come from SETTING_OPTIONS above, so the controls a user can
+    // reach and the values coerceSetting will accept are the same list.
     const DAY_LETTERS = [sOpt(0, 'S'), sOpt(1, 'M'), sOpt(2, 'T'), sOpt(3, 'W'), sOpt(4, 'T'), sOpt(5, 'F'), sOpt(6, 'S')];
 
     const SETTINGS_SECTIONS = [
@@ -2411,15 +2525,11 @@
         sub: 'Formats and locale, applied to every view',
         rows: [
           { label: 'Start of week', hint: 'Drives “This Week” and the day the weekly bar chart starts on',
-            controls: [{ type: 'select', key: 'weekStartsOn', numeric: true,
-              options: [sOpt(1, 'Monday'), sOpt(0, 'Sunday'), sOpt(6, 'Saturday')] }] },
+            controls: [{ type: 'select', key: 'weekStartsOn', numeric: true, options: SETTING_OPTIONS.weekStartsOn }] },
           { label: 'Date format', hint: 'Auto follows the host app’s locale',
-            controls: [{ type: 'select', key: 'dateFormat', options: [
-              sOpt('auto', 'Auto (locale)'), sOpt('iso', 'ISO — 2026-02-22'),
-              sOpt('us', 'Feb 22, 2026'), sOpt('eu', '22 Feb 2026')] }] },
+            controls: [{ type: 'select', key: 'dateFormat', options: SETTING_OPTIONS.dateFormat }] },
           { label: 'Time format', hint: 'Decimal hours is what pastes into a timesheet or invoice',
-            controls: [{ type: 'radio', key: 'timeFormat', options: [
-              sOpt('hm', '3h 45m'), sOpt('decimal', '3.75h — decimal'), sOpt('minutes', '225m')] }] },
+            controls: [{ type: 'radio', key: 'timeFormat', options: SETTING_OPTIONS.timeFormat }] },
           { label: 'Working days', hint: 'Used by the setting below',
             controls: [{ type: 'days', key: 'workingDays', options: DAY_LETTERS }] },
           { label: 'Hide non-working days in charts', hint: 'Removes those days from the range entirely, so weekends stop flattening the chart',
@@ -2431,32 +2541,25 @@
         sub: 'What each control shows when the dashboard opens. Remember keeps the last used value; Pin always starts from a fixed one.',
         rows: [
           { label: 'Period', controls: [
-            { type: 'seg', key: 'periodMode', options: MODE_OPTIONS },
-            { type: 'select', key: 'periodPinned', disabledWhen: { key: 'periodMode', is: 'remember' }, options: [
-              sOpt('today', 'Today'), sOpt('this-week', 'This Week'), sOpt('week', 'Past Week'),
-              sOpt('month', 'This Month'), sOpt('year', 'Past Year'), sOpt('from-weekday', 'Starting from weekday')] }] },
+            { type: 'seg', key: 'periodMode', options: SETTING_OPTIONS.periodMode },
+            { type: 'select', key: 'periodPinned', disabledWhen: { key: 'periodMode', is: 'remember' }, options: SETTING_OPTIONS.periodPinned }] },
           { label: 'Opening tab', controls: [
-            { type: 'seg', key: 'tabMode', options: MODE_OPTIONS },
-            { type: 'select', key: 'tabPinned', disabledWhen: { key: 'tabMode', is: 'remember' }, options: [
-              sOpt('dashboard', 'Dashboard'), sOpt('details', 'Detailed List'), sOpt('drilldown', 'By Project / Tag')] }] },
+            { type: 'seg', key: 'tabMode', options: SETTING_OPTIONS.tabMode },
+            { type: 'select', key: 'tabPinned', disabledWhen: { key: 'tabMode', is: 'remember' }, options: SETTING_OPTIONS.tabPinned }] },
           { label: 'Bar chart metric', controls: [
-            { type: 'seg', key: 'barMetricMode', options: MODE_OPTIONS },
-            { type: 'select', key: 'barMetricPinned', disabledWhen: { key: 'barMetricMode', is: 'remember' }, options: METRIC_OPTIONS }] },
+            { type: 'seg', key: 'barMetricMode', options: SETTING_OPTIONS.barMetricMode },
+            { type: 'select', key: 'barMetricPinned', disabledWhen: { key: 'barMetricMode', is: 'remember' }, options: SETTING_OPTIONS.barMetricPinned }] },
           { label: 'Pie chart metric & split', controls: [
-            { type: 'seg', key: 'pieMetricMode', options: MODE_OPTIONS },
-            { type: 'select', key: 'pieMetricPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' }, options: METRIC_OPTIONS },
-            { type: 'seg', key: 'pieDimPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' },
-              options: [sOpt('project', 'Project'), sOpt('tag', 'Tag')] }] },
+            { type: 'seg', key: 'pieMetricMode', options: SETTING_OPTIONS.pieMetricMode },
+            { type: 'select', key: 'pieMetricPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' }, options: SETTING_OPTIONS.pieMetricPinned },
+            { type: 'seg', key: 'pieDimPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' }, options: SETTING_OPTIONS.pieDimPinned }] },
           { label: 'Detailed List sort', hint: 'Where the table starts before you click a column header',
             controls: [
-              { type: 'select', key: 'sortKey', options: [
-                sOpt('date', 'Date'), sOpt('projectName', 'Project'), sOpt('taskTitle', 'Task'),
-                sOpt('timeSpent', 'Time Spent'), sOpt('status', 'Status')] },
-              { type: 'seg', key: 'sortDir', options: [sOpt('asc', 'Ascending'), sOpt('desc', 'Descending')] }] },
+              { type: 'select', key: 'sortKey', options: SETTING_OPTIONS.sortKey },
+              { type: 'seg', key: 'sortDir', options: SETTING_OPTIONS.sortDir }] },
           { label: 'By Project / Tag split', controls: [
-            { type: 'seg', key: 'drillDimMode', options: MODE_OPTIONS },
-            { type: 'seg', key: 'drillDimPinned', disabledWhen: { key: 'drillDimMode', is: 'remember' },
-              options: [sOpt('project', 'Project'), sOpt('tag', 'Tag')] }] }
+            { type: 'seg', key: 'drillDimMode', options: SETTING_OPTIONS.drillDimMode },
+            { type: 'seg', key: 'drillDimPinned', disabledWhen: { key: 'drillDimMode', is: 'remember' }, options: SETTING_OPTIONS.drillDimPinned }] }
         ]
       },
       {
@@ -2475,8 +2578,7 @@
           { label: 'List subtasks as their own rows', hint: 'Detailed List only — a parent’s time already rolls up its subtasks, so totals never change',
             controls: [{ type: 'toggle', key: 'showSubtaskRows' }] },
           { label: 'Minimum entry length', hint: 'Keeps 30-second scraps out of the totals and the table',
-            controls: [{ type: 'select', key: 'minEntryMs', numeric: true, options: [
-              sOpt(0, 'Off'), sOpt(60000, '1 minute'), sOpt(300000, '5 minutes'), sOpt(900000, '15 minutes')] }] },
+            controls: [{ type: 'select', key: 'minEntryMs', numeric: true, options: SETTING_OPTIONS.minEntryMs }] },
           { label: 'Tasks with no due date', hint: 'Replaces the fixed footnote under the Overdue card',
             controls: [{ type: 'radio', key: 'noDueDateOverdue', options: [
               sOpt(false, 'Never overdue'), sOpt(true, 'Count as overdue')] }] },
@@ -2489,31 +2591,23 @@
         sub: 'Purely visual — nothing here changes a number',
         rows: [
           { label: 'Theme', hint: 'Follow app mirrors the host’s own light/dark class',
-            controls: [{ type: 'seg', key: 'theme', options: [
-              sOpt('auto', 'Follow app'), sOpt('light', 'Light'), sOpt('dark', 'Dark')] }] },
+            controls: [{ type: 'seg', key: 'theme', options: SETTING_OPTIONS.theme }] },
           { label: 'Chart palette', hint: 'Used by the pie chart and its legend',
             controls: [
-              { type: 'select', key: 'palette', options: [
-                sOpt('default', 'Default'), sOpt('colorblind', 'Colourblind-safe'),
-                sOpt('mono', 'Monochrome'), sOpt('contrast', 'High contrast')] },
+              { type: 'select', key: 'palette', options: SETTING_OPTIONS.palette },
               { type: 'swatches' }] },
           { label: 'Bar chart grouping', hint: 'Auto keeps the existing rules: daily under a month, weekly for a month, monthly beyond',
-            controls: [{ type: 'select', key: 'barGrouping', options: [
-              sOpt('auto', 'Auto'), sOpt('daily', 'Daily'), sOpt('weekly', 'Weekly'), sOpt('monthly', 'Monthly')] }] },
+            controls: [{ type: 'select', key: 'barGrouping', options: SETTING_OPTIONS.barGrouping }] },
           { label: 'Small pie slices', hint: 'Rolls everything past the top N into one “Other” slice',
-            controls: [{ type: 'select', key: 'pieMaxSlices', numeric: true, options: [
-              sOpt(0, 'Show all slices'), sOpt(5, 'Top 5, rest as Other'),
-              sOpt(8, 'Top 8, rest as Other'), sOpt(10, 'Top 10, rest as Other')] }] },
+            controls: [{ type: 'select', key: 'pieMaxSlices', numeric: true, options: SETTING_OPTIONS.pieMaxSlices }] },
           { label: 'Density',
-            controls: [{ type: 'seg', key: 'density', options: [
-              sOpt('comfortable', 'Comfortable'), sOpt('compact', 'Compact')] }] },
+            controls: [{ type: 'seg', key: 'density', options: SETTING_OPTIONS.density }] },
           { label: 'Stat cards', hint: 'Unchecked cards are hidden and the row re-flows',
             controls: [{ type: 'checks', key: 'statCards', options: [
               sOpt('time', 'Total time tracked'), sOpt('completed', 'Tasks completed'),
               sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')] }] },
           { label: 'Detailed List rows per page',
-            controls: [{ type: 'seg', key: 'tablePageSize', numeric: true, options: [
-              sOpt(50, '50'), sOpt(100, '100'), sOpt(250, '250'), sOpt(0, 'All')] }] }
+            controls: [{ type: 'seg', key: 'tablePageSize', numeric: true, options: SETTING_OPTIONS.tablePageSize }] }
         ]
       },
       {
@@ -2542,16 +2636,13 @@
         sub: 'Refresh, export and the settings file itself',
         rows: [
           { label: 'Auto-refresh', hint: 'The dashboard also refreshes whenever the host app reports a change, so Off is not the same as stale',
-            controls: [{ type: 'select', key: 'refreshMs', numeric: true, options: [
-              sOpt(0, 'Off'), sOpt(10000, 'Every 10 seconds'), sOpt(30000, 'Every 30 seconds'),
-              sOpt(60000, 'Every minute'), sOpt(300000, 'Every 5 minutes')] }] },
+            controls: [{ type: 'select', key: 'refreshMs', numeric: true, options: SETTING_OPTIONS.refreshMs }] },
           { label: 'Debug logging', hint: 'Off by default: one log line per task, per refresh', hintWarn: true,
             controls: [{ type: 'toggle', key: 'debugLogging' }] },
           { label: 'Export filename', hint: 'Used by Download PNG. Tokens: {tab} {range} {date}',
             controls: [{ type: 'text', key: 'exportFilename', placeholder: DEFAULT_SETTINGS.exportFilename }] },
           { label: 'Copy text summary as',
-            controls: [{ type: 'seg', key: 'summaryFormat', options: [
-              sOpt('slack', 'Slack'), sOpt('markdown', 'Markdown'), sOpt('csv', 'CSV')] }] }
+            controls: [{ type: 'seg', key: 'summaryFormat', options: SETTING_OPTIONS.summaryFormat }] }
         ],
         danger: true
       }
@@ -2866,7 +2957,7 @@
         return;
       }
       Object.keys(DEFAULT_SETTINGS).forEach(key => {
-        SETTINGS[key] = coerceSetting(DEFAULT_SETTINGS[key], parsed[key]);
+        SETTINGS[key] = coerceSetting(key, DEFAULT_SETTINGS[key], parsed[key]);
       });
       SETTINGS.schemaVersion = SETTINGS_SCHEMA_VERSION;
       persistSettings();
