@@ -3198,8 +3198,22 @@
       }
     };
 
-    // Listen for the light refresh trigger from plugin.js
+    // Listen for the light refresh trigger from plugin.js.
+    //
+    // plugin.js runs in the host page and posts into this frame, so the only
+    // legitimate sender is our immediate parent. Without this check anything
+    // holding a handle on this iframe — another installed plugin, for instance
+    // — can replace the tag list and quietly change what the charts, tables and
+    // exports report. This is the mirror of the sender check plugin.js already
+    // performs in the other direction (isOwnPluginWindow).
+    //
+    // Standalone file:// development still works: with no parent frame,
+    // window.parent === window, so the mock data path is unaffected.
     window.addEventListener('message', (event) => {
+      if (event.source !== window.parent) {
+        debugWarn("[sp-dashboard] ignoring message from an unexpected sender");
+        return;
+      }
       debugLog("[sp-dashboard] message event received in iframe", event.data);
       if (event.data && event.data.type === 'SP_STATE_CHANGED') {
         if (Array.isArray(event.data.tags) && event.data.tags.length > 0) {

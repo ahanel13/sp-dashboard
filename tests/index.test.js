@@ -1016,6 +1016,45 @@ describe('Date Range Reporter UI', () => {
         expect({}.p2).toBeUndefined();
       });
 
+      // The tag picker in Settings reads the cached tag list, so it doubles as
+      // a window onto what a postMessage did or didn't manage to change.
+      const tagPickerOptions = () => {
+        window.openSettings();
+        window.renderSettingsPanel();
+        document.getElementById('settings-rail').querySelector('[data-section="data"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const picker = document.querySelectorAll('.set-chips select')[1];
+        return picker ? Array.from(picker.options).map(o => o.textContent) : [];
+      };
+
+      it('accepts SP_STATE_CHANGED from the host frame', () => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [{ id: 'h1', title: 'FromHost' }] },
+          source: window.parent
+        }));
+        expect(tagPickerOptions()).toContain('FromHost');
+      });
+
+      it('ignores SP_STATE_CHANGED from any other sender', () => {
+        // plugin.js posts from the host page. Anything else with a handle on
+        // this frame — another installed plugin — must not drive our state.
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [{ id: 'h1', title: 'FromHost' }] },
+          source: window.parent
+        }));
+        expect(tagPickerOptions()).toContain('FromHost');
+
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [{ id: 'e1', title: 'AttackerTag' }] },
+          source: { postMessage() {} }
+        }));
+        const opts = tagPickerOptions();
+        expect(opts).not.toContain('AttackerTag');
+        expect(opts).toContain('FromHost'); // the real list survived
+      });
+    });
+
+    describe('Untrusted input (continued)', () => {
       it('keeps hostile strings as inert text in the settings UI', () => {
         window.importSettings(JSON.stringify({ excludedProjects: ['<img src=x onerror=alert(1)>'] }));
         window.openSettings();
