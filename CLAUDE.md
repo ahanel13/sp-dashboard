@@ -43,6 +43,39 @@ postMessage → loadData() → PluginAPI calls → cachedTasks / cachedProjects
 
 `processData()` is the core aggregation function. It deduplicates active + archived tasks (Map by ID, active takes precedence), filters by date range, and computes: time spent, completion counts, overdue/late flags, per-day breakdowns, and per-project summaries.
 
+### Settings
+
+All user configuration lives in **one** `localStorage` key, `sp-dashboard-settings`, holding a
+JSON blob with a `schemaVersion`. Nothing else in `index.html` touches `localStorage`.
+
+```
+DEFAULT_SETTINGS          → the complete key list; also the type contract
+readStoredSettings()      → parse + migrate legacy keys + coerce against defaults
+getSetting(key)           → the only read path
+setSetting(key, value)    → write + persist + applySettings()
+rememberSetting(key, val) → record a dashboard control's last value (no re-render)
+applySettings()           → applyAppearance + restartLiveUpdate + processData + re-render panel
+```
+
+- A stored value whose type doesn't match its default is replaced by the default (`coerceSetting`),
+  and unknown keys are dropped. A hand-edited blob can't wedge the UI.
+- The nine pre-settings keys (`sp-dashboard-date-preset`, `-pie-dim`, …) are folded in once on
+  first load via `LEGACY_KEY_MAP`, then deleted.
+- **Remember vs pin**: controls in Settings › Defaults have a `*Mode` / `*Pinned` / `*Last` triple,
+  resolved by `resolveDefault()`. `remember` replays `*Last`; `pin` always uses `*Pinned`.
+- The modal UI is **generated from `SETTINGS_SECTIONS`**, not written as markup. Adding a setting is
+  one entry in `DEFAULT_SETTINGS`, one row in `SETTINGS_SECTIONS`, and one `getSetting()` read at the
+  point of use — no HTML edit. Control types: `select`, `seg`, `radio`, `checks`, `toggle`, `days`,
+  `chips`, `number`, `text`, `swatches`.
+- Settings deliberately live in a modal, **not** a fourth tab: the tab bar feeds Share / Print /
+  Copy-image, and settings must never appear in an exported report.
+
+### Debug logging
+
+Every diagnostic goes through `debugLog()` / `debugWarn()`, gated on the `debugLogging` setting and
+**off by default**. Do not add a bare `console.log` — the per-task diagnostics fire once per task per
+refresh. Genuine error paths still use `console.warn` / `console.error` unconditionally.
+
 ### Mock data fallback
 
 If `PluginAPI` is unavailable (standalone file:// development), a 500ms timeout injects mock data so the full UI renders without the host app.

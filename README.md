@@ -12,6 +12,27 @@ A lightweight dashboard plugin for [Super Productivity](https://super-productivi
 - **By Project / Tag** — drill into any project or tag for dedicated stats, a daily trend chart, and a filtered task list
 - Live updates whenever task data changes in Super Productivity
 - Adapts to light and dark themes automatically
+- **Settings** — a gear in the tab bar opens six panels of configuration (below)
+
+---
+
+## Settings
+
+Changes apply immediately; there is no Save. Everything is stored in one browser entry you can
+export, import, or reset from Settings › Advanced.
+
+| Section | What you can change |
+| --- | --- |
+| **General** | Start of week, date format, time format (`3h 45m` / `3.75h` / `225m`), working days, hide non-working days from charts |
+| **Defaults** | What each control shows on open — remember the last value, or pin a fixed one: period, opening tab, chart metrics, table sort, project/tag split |
+| **Data & Filtering** | Include archived tasks, exclude projects or tags, count the running timer, list subtasks as rows, minimum entry length, how undated tasks count toward overdue, hide empty projects/tags |
+| **Appearance** | Theme override, chart palette (incl. colourblind-safe), bar-chart grouping, "Other" grouping for small pie slices, density, which stat cards show, rows per page |
+| **Goals** | Daily time target and daily task target (dashed line on the bar chart), weekly time target (progress bar on the Total Time card) |
+| **Advanced** | Auto-refresh interval, debug logging, export filename pattern, text-summary format (Slack / Markdown / CSV), export / import / reset |
+
+Two of these are worth knowing about even if you change nothing else: **Include archived tasks** is
+the biggest speed-up available on a vault with a long history, and everything under **Data &
+Filtering** changes what the numbers mean, not just how they look.
 
 ---
 
