@@ -2361,7 +2361,12 @@
     const buildCsvSummary = (tabKey) => {
       const m = window.latestMetrics || latestMetrics;
       const cell = (v) => {
-        const s = String(v == null ? '' : v);
+        let s = String(v == null ? '' : v);
+        // Excel and LibreOffice evaluate a cell starting with =, +, - or @ as a
+        // formula, so a task named `=cmd|'/c calc'!A1` would run on open. A
+        // leading apostrophe is the conventional way to force text; it is not
+        // displayed by the spreadsheet.
+        if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const row = (cells) => cells.map(cell).join(',');

@@ -1273,6 +1273,27 @@ describe('Date Range Reporter UI', () => {
         expect(csv).toContain('Total Time Tracked,2h 30m');
       });
 
+      it('csv summary neutralises spreadsheet formula injection', () => {
+        // A CSV export leaves the plugin and is opened by another application,
+        // so a hostile task title must not be evaluated as a formula there.
+        const evil = ['=cmd|\'/c calc\'!A1', '@SUM(1+1)*cmd', '+1-1', '-2+3'].map((title, i) => ({
+          id: 'e' + i, parentId: null, title, isDone: false, projectId: 'p1',
+          tagIds: [], timeSpentOnDay: { [todayStr]: 60000 * (i + 1) }
+        }));
+        window.setSetting('summaryFormat', 'csv');
+        window.processData(evil, [{ id: 'p1', title: '-2+3' }], []);
+        const csv = window.buildTextSummary('details');
+
+        csv.split('\n').slice(1).forEach(line => {
+          line.split(',').forEach(field => {
+            expect(field.replace(/^"/, '')[0]).not.toMatch(/[=+\-@]/);
+          });
+        });
+        expect(csv).toContain("'=cmd|'/c calc'!A1");
+        expect(csv).toContain("'@SUM(1+1)*cmd");
+        expect(csv).toContain("'-2+3"); // the project name too, not just titles
+      });
+
       it('csv summary of the Detailed List quotes fields containing commas', () => {
         const commaTask = [{ id: 'c1', parentId: null, title: 'Fix bug, then test', isDone: false,
           projectId: 'p1', tagIds: [], timeSpentOnDay: { [todayStr]: 3600000 } }];
