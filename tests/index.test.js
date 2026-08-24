@@ -1035,6 +1035,27 @@ describe('Date Range Reporter UI', () => {
         expect(tagPickerOptions()).toContain('FromHost');
       });
 
+      it('keeps only well-formed tags from the host message', () => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [
+            { id: 'good', title: 'Keep' },
+            { id: 'no-title' },                       // title falls back to id
+            'a string', null, 42, [],                 // not objects at all
+            { title: 'no id' },                       // unusable without an id
+            { id: '', title: 'empty id' },
+            { id: 'extra', title: 'Fields', evil: () => {}, __proto__: { x: 1 } }
+          ] },
+          source: window.parent
+        }));
+        const opts = tagPickerOptions();
+        expect(opts).toContain('Keep');
+        expect(opts).toContain('no-title');   // id used as the label
+        expect(opts).toContain('Fields');
+        expect(opts).not.toContain('no id');
+        expect(opts).not.toContain('empty id');
+        expect({}.x).toBeUndefined();
+      });
+
       it('ignores SP_STATE_CHANGED from any other sender', () => {
         // plugin.js posts from the host page. Anything else with a handle on
         // this frame — another installed plugin — must not drive our state.
@@ -1295,6 +1316,20 @@ describe('Date Range Reporter UI', () => {
         expect(window.buildExportFilename('Dashboard', 'png')).toBe(`x-${todayStr}.png`);
       });
 
+      it('exportFilename cannot produce a traversal or flag-like name', () => {
+        window.processData(tasks, projects, tags);
+        [
+          ['../../etc/passwd', 'etc-passwd.png'],
+          ['..', 'dashboard.png'],
+          ['-rf', 'rf.png'],
+          ['.hidden', 'hidden.png'],
+          ['a/b\\c:d*e?f"g<h>i|j', 'a-b-c-d-e-f-g-h-i-j.png']
+        ].forEach(([pattern, expected]) => {
+          window.setSetting('exportFilename', pattern);
+          expect(window.buildExportFilename('Dashboard', 'png'), pattern).toBe(expected);
+        });
+      });
+
       it('summaryFormat switches the copied summary between Slack, Markdown and CSV', () => {
         // setSetting re-runs processData over the cached task list, which is
         // empty here, so each format is re-fed the fixtures before asserting.
@@ -1310,6 +1345,25 @@ describe('Date Range Reporter UI', () => {
         const csv = window.buildTextSummary('dashboard');
         expect(csv.split('\n')[0]).toBe('Metric,Value');
         expect(csv).toContain('Total Time Tracked,2h 30m');
+      });
+
+      it('csv leaves only letter- or digit-initial cells bare', () => {
+        // Allowlist, not denylist: a leading character nobody enumerated must
+        // still be quoted rather than shipped as a live formula.
+        const exotic = ['\tTAB-led', '|DDE', ' null-led', ' space-led', '=classic', '−unicode-minus'];
+        const tasks = exotic.map((title, i) => ({
+          id: 'x' + i, parentId: null, title, isDone: false, projectId: 'p1',
+          tagIds: [], timeSpentOnDay: { [todayStr]: 60000 * (i + 1) }
+        }));
+        window.setSetting('summaryFormat', 'csv');
+        window.processData(tasks, [{ id: 'p1', title: 'Safe' }], []);
+        const csv = window.buildTextSummary('details');
+
+        exotic.forEach(title => {
+          expect(csv, `${JSON.stringify(title)} must be forced to text`).toContain(`'${title}`);
+        });
+        // …while ordinary names stay untouched.
+        expect(csv).toContain(',Safe,');
       });
 
       it('csv summary neutralises spreadsheet formula injection', () => {

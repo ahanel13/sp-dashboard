@@ -954,6 +954,23 @@
     const MAX_EXCLUSIONS = 500;      // a vault will not have more than this
     const MAX_EXCLUSION_LEN = 300;   // longest plausible project or tag name
     const MAX_FILENAME_PATTERN = 200;
+    const MAX_TAGS = 2000;
+
+    // Tags arrive over postMessage, so they are host input rather than our own
+    // data. Build a clean list of exactly the two fields we use rather than
+    // filtering a dirty one — anything else on the incoming objects is dropped
+    // by never being copied across, which needs no list of what to reject.
+    const sanitizeIncomingTags = (raw) => {
+      const out = [];
+      for (const tag of raw) {
+        if (out.length >= MAX_TAGS) break;
+        if (!tag || typeof tag !== 'object') continue;
+        if (typeof tag.id !== 'string' || !tag.id || tag.id.length > MAX_EXCLUSION_LEN) continue;
+        const title = (typeof tag.title === 'string' && tag.title) ? tag.title : tag.id;
+        out.push({ id: tag.id, title: title.slice(0, MAX_EXCLUSION_LEN) });
+      }
+      return out;
+    };
 
     // Coerce a stored value against its default, so a hand-edited, corrupted or
     // hostile blob can never put the dashboard into a state the UI can't
@@ -2276,8 +2293,15 @@
         .replace(/\{tab\}/g, slug(label))
         .replace(/\{range\}/g, slug(getRangeLabel()))
         .replace(/\{date\}/g, toLocalDate(new Date()))
+        // Allowlist the permitted characters rather than stripping known-bad
+        // ones: path separators, quotes and control characters all collapse to
+        // a hyphen because they are simply not on the list.
         .replace(/[^a-zA-Z0-9._-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        // Leading dots and hyphens are dropped separately — a name like
+        // "..-cfg" or "-rf" is made only of permitted characters but still
+        // reads as a traversal attempt or a flag to whatever opens it.
+        .replace(/^[.\-]+/, '')
+        .replace(/-+$/, '');
       return `${name || 'dashboard'}.${ext}`;
     };
 
@@ -2360,13 +2384,21 @@
     // Settings › Advanced › Copy text summary as → CSV.
     const buildCsvSummary = (tabKey) => {
       const m = window.latestMetrics || latestMetrics;
+      // A cell is left bare only when it opens with a character we know is
+      // inert — a letter or a digit. Everything else gets the apostrophe that
+      // forces a spreadsheet to treat it as text.
+      //
+      // Deliberately an allowlist. The usual advice is to strip a known-bad set
+      // (= + - @ tab CR), but that list differs between Excel, LibreOffice and
+      // Sheets and grows over time, so anything omitted becomes a live formula
+      // in someone else's application. Starting from "inert unless proven
+      // otherwise" costs a leading apostrophe on names like "(internal)" —
+      // which spreadsheets do not display — and cannot be outflanked by a
+      // character nobody thought of.
+      const INERT_CELL_START = /^[\p{L}\p{N}]/u;
       const cell = (v) => {
         let s = String(v == null ? '' : v);
-        // Excel and LibreOffice evaluate a cell starting with =, +, - or @ as a
-        // formula, so a task named `=cmd|'/c calc'!A1` would run on open. A
-        // leading apostrophe is the conventional way to force text; it is not
-        // displayed by the spreadsheet.
-        if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+        if (s !== '' && !INERT_CELL_START.test(s)) s = `'${s}`;
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       };
       const row = (cells) => cells.map(cell).join(',');
@@ -3217,7 +3249,8 @@
       debugLog("[sp-dashboard] message event received in iframe", event.data);
       if (event.data && event.data.type === 'SP_STATE_CHANGED') {
         if (Array.isArray(event.data.tags) && event.data.tags.length > 0) {
-          cachedTags = event.data.tags;
+          const tags = sanitizeIncomingTags(event.data.tags);
+          if (tags.length > 0) cachedTags = tags;
         }
         pullDataFromSP();
       }
