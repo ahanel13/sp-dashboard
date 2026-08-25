@@ -1296,6 +1296,23 @@ describe('Date Range Reporter UI', () => {
         expect(rows[2].textContent).toContain('Showing 2 of 3');
       });
 
+      it('menuIcon defaults to the manifest icon and switches on click', () => {
+        expect(window.getSetting('menuIcon')).toBe('default');
+
+        window.openSettings();
+        document.getElementById('settings-rail').querySelector('[data-section="appearance"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+        const buttons = document.querySelectorAll('.set-icons .set-icon-btn');
+        expect([...buttons].map(b => b.dataset.value)).toEqual(window.MENU_ICONS.map(i => i.id));
+
+        // In real use the click lands on the preview svg, not the button.
+        document.querySelector('.set-icon-btn[data-value="clock"] svg')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(window.getSetting('menuIcon')).toBe('clock');
+        expect(document.querySelector('.set-icon-btn.active').dataset.value).toBe('clock');
+      });
+
       it('theme puts an explicit override class on the body', () => {
         window.setSetting('theme', 'light');
         expect(document.body.classList.contains('force-light')).toBe(true);
