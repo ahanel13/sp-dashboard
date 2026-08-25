@@ -936,6 +936,197 @@ describe('Date Range Reporter UI', () => {
       });
     });
 
+    // An imported settings file is untrusted: it may be shared, stale or simply
+    // corrupt. Type alone is not enough — a well-typed string in the wrong
+    // place used to throw during init and take the whole dashboard down.
+    describe('Untrusted input', () => {
+      const reboot = () => {
+        document.documentElement.innerHTML = html;
+        const script = Array.from(document.querySelectorAll('script'))
+          .find(s => !s.src && s.textContent.includes('processData'));
+        new Function(script.textContent).call(window);
+      };
+
+      it('rejects an out-of-enum tab, which previously threw during init', () => {
+        window.importSettings(JSON.stringify({ tabPinned: 'evil', tabMode: 'pin' }));
+        expect(window.getSetting('tabPinned')).toBe('dashboard');
+        expect(() => reboot()).not.toThrow();
+        expect(document.getElementById('view-dashboard').classList.contains('hidden')).toBe(false);
+      });
+
+      it('rejects an out-of-enum tabLast on the remember path too', () => {
+        window.importSettings(JSON.stringify({ tabLast: 'evil', tabMode: 'remember' }));
+        // Falls back to '' — "nothing remembered" — so tabPinned decides.
+        expect(window.getSetting('tabLast')).toBe('');
+        expect(() => reboot()).not.toThrow();
+        expect(document.getElementById('view-dashboard').classList.contains('hidden')).toBe(false);
+      });
+
+      it('switchTab falls back rather than throwing on an unknown tab', () => {
+        expect(() => window.switchTab('nope')).not.toThrow();
+        expect(document.getElementById('view-dashboard').classList.contains('hidden')).toBe(false);
+      });
+
+      it('rejects out-of-enum values across every enumerated setting', () => {
+        window.importSettings(JSON.stringify({
+          palette: 'constructor', theme: 'evil', barGrouping: 'zzz',
+          periodPinned: 'nope', sortKey: 'toString', summaryFormat: 'xml'
+        }));
+        expect(window.getSetting('palette')).toBe('default');
+        expect(window.getSetting('theme')).toBe('auto');
+        expect(window.getSetting('barGrouping')).toBe('auto');
+        expect(window.getSetting('periodPinned')).toBe('today');
+        expect(window.getSetting('sortKey')).toBe('date');
+        expect(window.getSetting('summaryFormat')).toBe('slack');
+      });
+
+      it('refuses a refresh interval that is not one of the offered values', () => {
+        window.importSettings(JSON.stringify({ refreshMs: 1 }));
+        expect(window.getSetting('refreshMs')).toBe(30000);
+      });
+
+      it('clamps free-form numeric goals to their range', () => {
+        window.importSettings(JSON.stringify({ dailyTimeGoalH: 1e9, weeklyTimeGoalH: -5, dailyTaskGoal: 0 }));
+        expect(window.getSetting('dailyTimeGoalH')).toBe(24);
+        expect(window.getSetting('weeklyTimeGoalH')).toBe(1);
+        expect(window.getSetting('dailyTaskGoal')).toBe(1);
+      });
+
+      it('drops array members that are not legal values', () => {
+        window.importSettings(JSON.stringify({
+          workingDays: [0, 1, 'x', {}, 99],
+          statCards: ['time', '<svg onload=alert(1)>']
+        }));
+        expect(window.getSetting('workingDays')).toEqual([0, 1]);
+        expect(window.getSetting('statCards')).toEqual(['time']);
+      });
+
+      it('caps the exclusion lists so one file cannot bloat the store', () => {
+        window.importSettings(JSON.stringify({
+          excludedProjects: Array.from({ length: 10000 }, (_, i) => 'p' + i),
+          excludedTags: ['ok', 123, null, 'x'.repeat(5000)]
+        }));
+        expect(window.getSetting('excludedProjects').length).toBe(500);
+        expect(window.getSetting('excludedTags')).toEqual(['ok']);
+      });
+
+      it('leaves no prototype pollution behind', () => {
+        window.importSettings('{"__proto__":{"polluted":"yes"},"constructor":{"prototype":{"p2":"yes"}}}');
+        expect({}.polluted).toBeUndefined();
+        expect({}.p2).toBeUndefined();
+      });
+
+      // The tag picker in Settings reads the cached tag list, so it doubles as
+      // a window onto what a postMessage did or didn't manage to change.
+      const tagPickerOptions = () => {
+        window.openSettings();
+        window.renderSettingsPanel();
+        document.getElementById('settings-rail').querySelector('[data-section="data"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const picker = document.querySelectorAll('.set-chips select')[1];
+        return picker ? Array.from(picker.options).map(o => o.textContent) : [];
+      };
+
+      it('accepts SP_STATE_CHANGED from the host frame', () => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [{ id: 'h1', title: 'FromHost' }] },
+          source: window.parent
+        }));
+        expect(tagPickerOptions()).toContain('FromHost');
+      });
+
+      it('keeps only well-formed tags from the host message', () => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [
+            { id: 'good', title: 'Keep' },
+            { id: 'no-title' },                       // title falls back to id
+            'a string', null, 42, [],                 // not objects at all
+            { title: 'no id' },                       // unusable without an id
+            { id: '', title: 'empty id' },
+            { id: 'extra', title: 'Fields', evil: () => {}, __proto__: { x: 1 } }
+          ] },
+          source: window.parent
+        }));
+        const opts = tagPickerOptions();
+        expect(opts).toContain('Keep');
+        expect(opts).toContain('no-title');   // id used as the label
+        expect(opts).toContain('Fields');
+        expect(opts).not.toContain('no id');
+        expect(opts).not.toContain('empty id');
+        expect({}.x).toBeUndefined();
+      });
+
+      it('ignores SP_STATE_CHANGED from any other sender', () => {
+        // plugin.js posts from the host page. Anything else with a handle on
+        // this frame — another installed plugin — must not drive our state.
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [{ id: 'h1', title: 'FromHost' }] },
+          source: window.parent
+        }));
+        expect(tagPickerOptions()).toContain('FromHost');
+
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'SP_STATE_CHANGED', tags: [{ id: 'e1', title: 'AttackerTag' }] },
+          source: { postMessage() {} }
+        }));
+        const opts = tagPickerOptions();
+        expect(opts).not.toContain('AttackerTag');
+        expect(opts).toContain('FromHost'); // the real list survived
+      });
+    });
+
+    describe('Untrusted input (continued)', () => {
+      it('keeps hostile strings as inert text in the settings UI', () => {
+        window.importSettings(JSON.stringify({ excludedProjects: ['<img src=x onerror=alert(1)>'] }));
+        window.openSettings();
+        document.getElementById('settings-rail').querySelector('[data-section="data"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const chip = document.querySelector('.set-chip');
+        expect(chip.textContent).toContain('<img src=x onerror=alert(1)>');
+        expect(document.querySelectorAll('#settings-panel img').length).toBe(0);
+      });
+
+      it('still accepts a legitimate config, including states only the UI reaches', () => {
+        window.importSettings(JSON.stringify({
+          theme: 'dark', palette: 'colorblind', refreshMs: 60000,
+          weekStartsOn: 0, dailyTimeGoalH: 8, tabPinned: 'details', tabMode: 'pin',
+          periodLast: 'custom', dateFromLast: '2026-01-01', drillEntityLast: 'Work'
+        }));
+        expect(window.getSetting('theme')).toBe('dark');
+        expect(window.getSetting('palette')).toBe('colorblind');
+        expect(window.getSetting('refreshMs')).toBe(60000);
+        expect(window.getSetting('weekStartsOn')).toBe(0);
+        expect(window.getSetting('dailyTimeGoalH')).toBe(8);
+        expect(window.getSetting('tabPinned')).toBe('details');
+        // 'custom' is reachable from the Period control but is not a pinnable default
+        expect(window.getSetting('periodLast')).toBe('custom');
+        expect(window.getSetting('dateFromLast')).toBe('2026-01-01');
+        expect(window.getSetting('drillEntityLast')).toBe('Work');
+      });
+
+      it('rejects a malformed stored date without discarding the rest', () => {
+        window.importSettings(JSON.stringify({ dateFromLast: 'not-a-date', dateToLast: '2026-03-01' }));
+        expect(window.getSetting('dateFromLast')).toBe('');
+        expect(window.getSetting('dateToLast')).toBe('2026-03-01');
+      });
+
+      it('every enumerated setting offers exactly the values it will accept', () => {
+        // The UI and the validator must read from the same list.
+        const seen = new Set();
+        window.SETTINGS_SECTIONS.forEach(section => section.rows.forEach(row =>
+          row.controls.forEach(ctrl => {
+            if (!ctrl.key || !ctrl.options || ctrl.type === 'days' || ctrl.type === 'checks') return;
+            if (typeof window.DEFAULT_SETTINGS[ctrl.key] === 'boolean') return;
+            seen.add(ctrl.key);
+            ctrl.options.forEach(o => {
+              window.importSettings(JSON.stringify({ [ctrl.key]: o.v }));
+              expect(window.getSetting(ctrl.key), `${ctrl.key} should accept ${o.v}`).toBe(o.v);
+            });
+          })));
+        expect(seen.size).toBeGreaterThan(15);
+      });
+    });
+
     describe('General', () => {
       it('timeFormat switches formatTime between hours, decimal and minutes', () => {
         expect(window.formatTime(9000000)).toBe('2h 30m');
@@ -1125,6 +1316,20 @@ describe('Date Range Reporter UI', () => {
         expect(window.buildExportFilename('Dashboard', 'png')).toBe(`x-${todayStr}.png`);
       });
 
+      it('exportFilename cannot produce a traversal or flag-like name', () => {
+        window.processData(tasks, projects, tags);
+        [
+          ['../../etc/passwd', 'etc-passwd.png'],
+          ['..', 'dashboard.png'],
+          ['-rf', 'rf.png'],
+          ['.hidden', 'hidden.png'],
+          ['a/b\\c:d*e?f"g<h>i|j', 'a-b-c-d-e-f-g-h-i-j.png']
+        ].forEach(([pattern, expected]) => {
+          window.setSetting('exportFilename', pattern);
+          expect(window.buildExportFilename('Dashboard', 'png'), pattern).toBe(expected);
+        });
+      });
+
       it('summaryFormat switches the copied summary between Slack, Markdown and CSV', () => {
         // setSetting re-runs processData over the cached task list, which is
         // empty here, so each format is re-fed the fixtures before asserting.
@@ -1140,6 +1345,46 @@ describe('Date Range Reporter UI', () => {
         const csv = window.buildTextSummary('dashboard');
         expect(csv.split('\n')[0]).toBe('Metric,Value');
         expect(csv).toContain('Total Time Tracked,2h 30m');
+      });
+
+      it('csv leaves only letter- or digit-initial cells bare', () => {
+        // Allowlist, not denylist: a leading character nobody enumerated must
+        // still be quoted rather than shipped as a live formula.
+        const exotic = ['\tTAB-led', '|DDE', ' null-led', ' space-led', '=classic', '−unicode-minus'];
+        const tasks = exotic.map((title, i) => ({
+          id: 'x' + i, parentId: null, title, isDone: false, projectId: 'p1',
+          tagIds: [], timeSpentOnDay: { [todayStr]: 60000 * (i + 1) }
+        }));
+        window.setSetting('summaryFormat', 'csv');
+        window.processData(tasks, [{ id: 'p1', title: 'Safe' }], []);
+        const csv = window.buildTextSummary('details');
+
+        exotic.forEach(title => {
+          expect(csv, `${JSON.stringify(title)} must be forced to text`).toContain(`'${title}`);
+        });
+        // …while ordinary names stay untouched.
+        expect(csv).toContain(',Safe,');
+      });
+
+      it('csv summary neutralises spreadsheet formula injection', () => {
+        // A CSV export leaves the plugin and is opened by another application,
+        // so a hostile task title must not be evaluated as a formula there.
+        const evil = ['=cmd|\'/c calc\'!A1', '@SUM(1+1)*cmd', '+1-1', '-2+3'].map((title, i) => ({
+          id: 'e' + i, parentId: null, title, isDone: false, projectId: 'p1',
+          tagIds: [], timeSpentOnDay: { [todayStr]: 60000 * (i + 1) }
+        }));
+        window.setSetting('summaryFormat', 'csv');
+        window.processData(evil, [{ id: 'p1', title: '-2+3' }], []);
+        const csv = window.buildTextSummary('details');
+
+        csv.split('\n').slice(1).forEach(line => {
+          line.split(',').forEach(field => {
+            expect(field.replace(/^"/, '')[0]).not.toMatch(/[=+\-@]/);
+          });
+        });
+        expect(csv).toContain("'=cmd|'/c calc'!A1");
+        expect(csv).toContain("'@SUM(1+1)*cmd");
+        expect(csv).toContain("'-2+3"); // the project name too, not just titles
       });
 
       it('csv summary of the Detailed List quotes fields containing commas', () => {

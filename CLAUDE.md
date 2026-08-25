@@ -50,6 +50,8 @@ JSON blob with a `schemaVersion`. Nothing else in `index.html` touches `localSto
 
 ```
 DEFAULT_SETTINGS          → the complete key list; also the type contract
+SETTING_OPTIONS           → legal values + labels for every enumerated setting
+SETTING_RANGES / _ITEMS   → bounds for free-form numbers; legal array members
 readStoredSettings()      → parse + migrate legacy keys + coerce against defaults
 getSetting(key)           → the only read path
 setSetting(key, value)    → write + persist + applySettings()
@@ -57,18 +59,48 @@ rememberSetting(key, val) → record a dashboard control's last value (no re-ren
 applySettings()           → applyAppearance + restartLiveUpdate + processData + re-render panel
 ```
 
-- A stored value whose type doesn't match its default is replaced by the default (`coerceSetting`),
-  and unknown keys are dropped. A hand-edited blob can't wedge the UI.
+**Adding a setting** — all four steps, in this order:
+
+1. A key in `DEFAULT_SETTINGS` (this is the type contract).
+2. If it is enumerated, its values in `SETTING_OPTIONS`; if it is a free-form number, its bounds in
+   `SETTING_RANGES`; if it is an array, its legal members in `SETTING_ITEMS`.
+3. A row in `SETTINGS_SECTIONS` whose control references `SETTING_OPTIONS.<key>` — never an inline
+   option list, or the UI and the validator will drift.
+4. A `getSetting()` read at the point of use. No HTML edit; the modal is generated.
+
+Control types: `select`, `seg`, `radio`, `checks`, `toggle`, `days`, `chips`, `number`, `text`,
+`swatches`.
+
+**Validation is not optional.** `coerceSetting` checks the *value*, not just its type: an enumerated
+setting must name one of its options, a number is clamped, array members are filtered, and unknown
+keys are dropped. Skipping step 2 leaves a setting that accepts anything a JSON file contains —
+which is how a bad `tabPinned` used to throw inside `switchTab()` during init and take the whole
+dashboard down with it. A test walks every control in `SETTINGS_SECTIONS` and imports each of its
+options, so a setting wired up without step 2 will fail the suite.
+
+Prefer allowlists throughout: name what is permitted rather than what is forbidden. The guards here
+all follow that shape, including the CSV export, which leaves a cell bare only when it opens with a
+letter or digit rather than stripping a known-bad set of formula characters.
+
 - The nine pre-settings keys (`sp-dashboard-date-preset`, `-pie-dim`, …) are folded in once on
   first load via `LEGACY_KEY_MAP`, then deleted.
 - **Remember vs pin**: controls in Settings › Defaults have a `*Mode` / `*Pinned` / `*Last` triple,
-  resolved by `resolveDefault()`. `remember` replays `*Last`; `pin` always uses `*Pinned`.
-- The modal UI is **generated from `SETTINGS_SECTIONS`**, not written as markup. Adding a setting is
-  one entry in `DEFAULT_SETTINGS`, one row in `SETTINGS_SECTIONS`, and one `getSetting()` read at the
-  point of use — no HTML edit. Control types: `select`, `seg`, `radio`, `checks`, `toggle`, `days`,
-  `chips`, `number`, `text`, `swatches`.
+  resolved by `resolveDefault()`. `remember` replays `*Last`; `pin` always uses `*Pinned`. The
+  `*Last` keys are validated too — several of them reach the same code paths as their `*Pinned` twin.
 - Settings deliberately live in a modal, **not** a fourth tab: the tab bar feeds Share / Print /
   Copy-image, and settings must never appear in an exported report.
+
+### Untrusted input
+
+Three things arriving from outside are treated as hostile, and each has regression tests:
+
+- **Imported settings files** — see validation above.
+- **`postMessage` into the iframe** — only `window.parent` is accepted, mirroring the sender check
+  `plugin.js` performs in the other direction (`isOwnPluginWindow`). Anything sharing the host page,
+  including another installed plugin, can otherwise reach this frame. Incoming tags are rebuilt into
+  a clean list rather than assigned wholesale.
+- **Task, project and tag names** — host data that may contain markup. Anything data-derived reaching
+  `innerHTML` goes through `escapeHtml()`; prefer `textContent` where possible.
 
 ### Debug logging
 
