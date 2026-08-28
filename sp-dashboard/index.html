@@ -374,6 +374,11 @@
     .set-chips-empty { font-size: 0.75rem; color: var(--text-color-muted, #9e9e9e); padding: 1px 4px; }
     .set-swatches { display: flex; gap: 3px; }
     .set-swatch { width: 14px; height: 14px; border-radius: 2px; }
+    .set-icons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; width: 100%; }
+    .set-icon-btn { display: flex; align-items: center; justify-content: center; height: 34px; padding: 0; border: 1px solid var(--divider-color, #333); border-radius: 4px; background: none; color: var(--text-color-muted, #9e9e9e); cursor: pointer; }
+    .set-icon-btn:hover { border-color: var(--c-primary, #03a9f4); color: var(--text-color, #fff); }
+    .set-icon-btn.active { border-color: var(--c-primary, #03a9f4); color: var(--c-primary, #03a9f4); background: rgba(3, 169, 244, 0.12); }
+    .set-icon-btn svg { display: block; width: 20px; height: 20px; }
     .set-note { font-size: 0.7rem; color: var(--text-color-muted, #9e9e9e); }
     .set-btn { background: var(--bg, #121212); color: var(--text-color, #fff); border: 1px solid var(--divider-color, #333); border-radius: 4px; padding: 0.35rem 0.8rem; font-size: 0.8rem; cursor: pointer; }
     .set-btn:hover { border-color: var(--c-primary, #03a9f4); }
@@ -846,6 +851,7 @@
       density: 'comfortable',
       statCards: ['time', 'completed', 'overdue', 'late'],
       tablePageSize: 0,             // 0 = no limit
+      menuIcon: 'default',          // id from MENU_ICONS; 'default' keeps the manifest icon
 
       // --- Goals ---
       dailyTimeGoalOn: false, dailyTimeGoalH: 6,
@@ -885,6 +891,90 @@
     const MODE_OPTIONS = [sOpt('remember', 'Remember'), sOpt('pin', 'Pin')];
     const DIM_OPTIONS = [sOpt('project', 'Project'), sOpt('tag', 'Tag')];
 
+    // The icons offered by Settings › Appearance › Menu icon. Geometry, never
+    // markup: buildIconSvg() creates each node with createElementNS and copies
+    // only whitelisted attributes, so an entry here cannot become HTML or an
+    // event handler. The same allowlist shape the rest of this file uses.
+    //
+    // KEEP IN SYNC with MENU_ICONS in plugin.js, which applies the choice to
+    // the sidebar and needs the geometry before this iframe has ever loaded.
+    const MENU_ICONS = [
+      { id: 'default', label: 'Dashboard (default)', shapes: [
+        { t: 'rect', x: 3, y: 4, width: 18, height: 18, rx: 2 },
+        { t: 'line', x1: 8, y1: 2, x2: 8, y2: 6 },
+        { t: 'line', x1: 16, y1: 2, x2: 16, y2: 6 },
+        { t: 'line', x1: 3, y1: 10, x2: 21, y2: 10 },
+        { t: 'path', d: 'M6 19l4-3l4 2l4-5' }] },
+      { id: 'bars', label: 'Bar chart', shapes: [
+        { t: 'rect', x: 4, y: 12, width: 4, height: 8 },
+        { t: 'rect', x: 10, y: 7, width: 4, height: 13 },
+        { t: 'rect', x: 16, y: 3, width: 4, height: 17 },
+        { t: 'line', x1: 3, y1: 21, x2: 21, y2: 21 }] },
+      { id: 'pie', label: 'Pie chart', shapes: [
+        { t: 'circle', cx: 12, cy: 12, r: 9 },
+        { t: 'path', d: 'M12 12L12 3A9 9 0 0 1 21 12Z' }] },
+      { id: 'activity', label: 'Activity', shapes: [
+        { t: 'polyline', points: '3 12 7 12 10 4 14 20 17 12 21 12' }] },
+      { id: 'calendar', label: 'Calendar', shapes: [
+        { t: 'rect', x: 3, y: 4, width: 18, height: 18, rx: 2 },
+        { t: 'line', x1: 8, y1: 2, x2: 8, y2: 6 },
+        { t: 'line', x1: 16, y1: 2, x2: 16, y2: 6 },
+        { t: 'line', x1: 3, y1: 10, x2: 21, y2: 10 }] },
+      { id: 'clock', label: 'Clock', shapes: [
+        { t: 'circle', cx: 12, cy: 12, r: 9 },
+        { t: 'polyline', points: '12 7 12 12 16 14' }] },
+      { id: 'target', label: 'Target', shapes: [
+        { t: 'circle', cx: 12, cy: 12, r: 9 },
+        { t: 'circle', cx: 12, cy: 12, r: 5 },
+        { t: 'circle', cx: 12, cy: 12, r: 1.5, fill: 'currentColor' }] },
+      { id: 'grid', label: 'Grid', shapes: [
+        { t: 'rect', x: 3, y: 3, width: 7, height: 7, rx: 1 },
+        { t: 'rect', x: 14, y: 3, width: 7, height: 7, rx: 1 },
+        { t: 'rect', x: 14, y: 14, width: 7, height: 7, rx: 1 },
+        { t: 'rect', x: 3, y: 14, width: 7, height: 7, rx: 1 }] },
+      { id: 'trend', label: 'Trending up', shapes: [
+        { t: 'polyline', points: '3 17 9 11 13 15 21 7' },
+        { t: 'polyline', points: '15 7 21 7 21 13' }] },
+      { id: 'gauge', label: 'Gauge', shapes: [
+        { t: 'path', d: 'M4 19a9 9 0 1 1 16 0' },
+        { t: 'line', x1: 12, y1: 19, x2: 16, y2: 12 },
+        { t: 'circle', cx: 12, cy: 19, r: 1.5, fill: 'currentColor' }] }
+    ];
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const ICON_TAGS = ['rect', 'circle', 'line', 'path', 'polyline', 'polygon'];
+    const ICON_ATTRS = ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry',
+                        'width', 'height', 'd', 'points'];
+
+    const getMenuIcon = (id) => MENU_ICONS.find(i => i.id === id) || MENU_ICONS[0];
+
+    const buildIconSvg = (def, size = 20) => {
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('width', String(size));
+      svg.setAttribute('height', String(size));
+      svg.setAttribute('fill', 'none');
+      svg.setAttribute('stroke', 'currentColor');
+      svg.setAttribute('stroke-width', '2');
+      svg.setAttribute('stroke-linecap', 'round');
+      svg.setAttribute('stroke-linejoin', 'round');
+      ((def && def.shapes) || []).forEach(shape => {
+        if (!shape || ICON_TAGS.indexOf(shape.t) === -1) return;
+        const node = document.createElementNS(SVG_NS, shape.t);
+        // fill is set per shape, not just on the <svg>: the host app's own
+        // stylesheet forces `fill: currentColor` onto the root, and a child with
+        // no fill of its own would inherit it and render as a solid blob.
+        const filled = shape.fill === 'currentColor';
+        node.setAttribute('fill', filled ? 'currentColor' : 'none');
+        if (filled) node.setAttribute('stroke', 'none');
+        ICON_ATTRS.forEach(attr => {
+          if (shape[attr] !== undefined) node.setAttribute(attr, String(shape[attr]));
+        });
+        svg.appendChild(node);
+      });
+      return svg;
+    };
+
     const SETTING_OPTIONS = {
       weekStartsOn: [sOpt(1, 'Monday'), sOpt(0, 'Sunday'), sOpt(6, 'Saturday')],
       dateFormat: [sOpt('auto', 'Auto (locale)'), sOpt('iso', 'ISO — 2026-02-22'),
@@ -918,7 +1008,8 @@
       tablePageSize: [sOpt(50, '50'), sOpt(100, '100'), sOpt(250, '250'), sOpt(0, 'All')],
       refreshMs: [sOpt(0, 'Off'), sOpt(10000, 'Every 10 seconds'), sOpt(30000, 'Every 30 seconds'),
                   sOpt(60000, 'Every minute'), sOpt(300000, 'Every 5 minutes')],
-      summaryFormat: [sOpt('slack', 'Slack'), sOpt('markdown', 'Markdown'), sOpt('csv', 'CSV')]
+      summaryFormat: [sOpt('slack', 'Slack'), sOpt('markdown', 'Markdown'), sOpt('csv', 'CSV')],
+      menuIcon: MENU_ICONS.map(i => sOpt(i.id, i.label))
     };
 
     // The `*Last` keys record what a dashboard control was last set to, so they
@@ -2644,7 +2735,9 @@
               sOpt('time', 'Total time tracked'), sOpt('completed', 'Tasks completed'),
               sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')] }] },
           { label: 'Detailed List rows per page',
-            controls: [{ type: 'seg', key: 'tablePageSize', numeric: true, options: SETTING_OPTIONS.tablePageSize }] }
+            controls: [{ type: 'seg', key: 'tablePageSize', numeric: true, options: SETTING_OPTIONS.tablePageSize }] },
+          { label: 'Menu icon', hint: 'The icon on this plugin’s row in the app sidebar. Default keeps the icon the plugin ships with.',
+            controls: [{ type: 'icons', key: 'menuIcon', options: SETTING_OPTIONS.menuIcon }] }
         ]
       },
       {
@@ -2844,6 +2937,23 @@
         return wrap;
       }
 
+      if (ctrl.type === 'icons') {
+        const wrap = mkEl('div', 'set-icons');
+        ctrl.options.forEach(o => {
+          const on = current === o.v;
+          const btn = mkEl('button', 'set-icon-btn' + (on ? ' active' : ''));
+          btn.type = 'button';
+          btn.title = o.l;
+          btn.setAttribute('aria-label', o.l);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          btn.dataset.key = ctrl.key;
+          btn.dataset.value = o.v;
+          btn.appendChild(buildIconSvg(getMenuIcon(o.v), 20));
+          wrap.appendChild(btn);
+        });
+        return wrap;
+      }
+
       if (ctrl.type === 'swatches') {
         const wrap = mkEl('div', 'set-swatches');
         getPalette().forEach(c => {
@@ -2943,11 +3053,27 @@
       }
     };
 
+    // The sidebar row lives in the host app, outside this iframe, so all we can
+    // do about it is say which icon was picked. plugin.js performs the swap, and
+    // reads the same stored setting itself at startup, so the row is already
+    // right before the dashboard has ever been opened.
+    const pushMenuIcon = () => {
+      if (!window.parent || window.parent === window) return;
+      const def = getMenuIcon(getSetting('menuIcon'));
+      try {
+        window.parent.postMessage(
+          { type: 'SP_DASHBOARD_SET_MENU_ICON', iconId: def.id, shapes: def.shapes }, '*');
+      } catch (e) {
+        debugWarn('[sp-dashboard] could not push the menu icon to the host', e);
+      }
+    };
+
     // Re-derive everything a setting could have changed. Cheap enough to run on
     // every edit, which is what lets the modal have no Save button.
     const applySettings = ({ reprocess = true } = {}) => {
       applyAppearance();
       restartLiveUpdate();
+      pushMenuIcon();
       currentSort = { key: getSetting('sortKey'), dir: getSetting('sortDir') };
       if (reprocess) processData(cachedTasks, cachedProjects, cachedTags);
       renderSettingsPanel();
@@ -3124,11 +3250,13 @@
     // Opening tab (Settings › Defaults)
     switchTab(resolveDefault('tabMode', 'tabPinned', 'tabLast'));
     applyAppearance();
+    pushMenuIcon();
 
     // expose key utilities for testing (JSDOM environment won't execute script tags normally)
     window.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
     window.SETTINGS_KEY = SETTINGS_KEY;
     window.SETTINGS_SECTIONS = SETTINGS_SECTIONS;
+    window.MENU_ICONS = MENU_ICONS;
     window.getSetting = getSetting;
     window.setSetting = setSetting;
     window.getAllSettings = () => SETTINGS;
