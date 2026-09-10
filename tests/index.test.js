@@ -1463,4 +1463,31 @@ describe('Date Range Reporter UI', () => {
       });
     });
   });
+
+  // The Total Time card's goal must match the period in view: a single day compares
+  // against the daily target, a week against the weekly target, and anything else
+  // shows no bar (rather than measuring e.g. one day against a 35h weekly goal).
+  describe('Time goal matched to the period', () => {
+    it('uses the daily target for a single-day period', () => {
+      expect(window.timeGoalKindForPeriod('today', 0)).toBe('daily');
+    });
+
+    it('uses the weekly target for week-length presets', () => {
+      expect(window.timeGoalKindForPeriod('this-week', 0)).toBe('weekly');
+      expect(window.timeGoalKindForPeriod('week', 0)).toBe('weekly');
+      expect(window.timeGoalKindForPeriod('from-weekday', 0)).toBe('weekly');
+    });
+
+    it('shows no goal for month and year periods', () => {
+      expect(window.timeGoalKindForPeriod('month', 0)).toBeNull();
+      expect(window.timeGoalKindForPeriod('year', 0)).toBeNull();
+    });
+
+    it('resolves a custom range by its day span', () => {
+      expect(window.timeGoalKindForPeriod('custom', 1)).toBe('daily');
+      expect(window.timeGoalKindForPeriod('custom', 7)).toBe('weekly');
+      expect(window.timeGoalKindForPeriod('custom', 3)).toBeNull();
+      expect(window.timeGoalKindForPeriod('custom', 30)).toBeNull();
+    });
+  });
 });

@@ -542,7 +542,7 @@
             <div class="stat-value-container">
               <span class="stat-value" id="stat-time">0h 0m</span>
             </div>
-            <!-- Weekly time goal (Settings › Goals) -->
+            <!-- Time goal, matched to the period in view (Settings › Goals) -->
             <div id="weekly-goal" class="hidden">
               <div class="progress-track">
                 <div class="progress-fill" id="weekly-goal-fill" style="width: 0%; background: #fbbf24;"></div>
@@ -1334,19 +1334,21 @@
         if (card) card.classList.toggle('hidden', !visibleCards.has(key));
       });
 
-      // Settings › Goals: weekly time target on the Total Time card
-      const weeklyGoal = document.getElementById('weekly-goal');
-      if (weeklyGoal) {
-        if (getSetting('weeklyTimeGoalOn')) {
-          const targetH = Number(getSetting('weeklyTimeGoalH')) || 0;
-          const targetMs = targetH * HOUR_MS;
+      // Settings › Goals: time target on the Total Time card, matched to the period
+      // in view — a daily target for a single day, a weekly target for a week. Other
+      // ranges get no bar, since one fixed number can't describe them (see #16).
+      const timeGoal = document.getElementById('weekly-goal');
+      if (timeGoal) {
+        const goal = timeGoalForPeriod();
+        if (goal) {
+          const targetMs = goal.targetH * HOUR_MS;
           const pct = targetMs > 0 ? Math.min(100, (metrics.totalTimeSpent / targetMs) * 100) : 0;
-          weeklyGoal.classList.remove('hidden');
+          timeGoal.classList.remove('hidden');
           document.getElementById('weekly-goal-fill').style.width = `${pct}%`;
           document.getElementById('weekly-goal-label').textContent =
-            `${Math.round(pct)}% of a ${targetH}h target`;
+            `${Math.round(pct)}% of a ${goal.targetH}h ${goal.kind} target`;
         } else {
-          weeklyGoal.classList.add('hidden');
+          timeGoal.classList.add('hidden');
         }
       }
 
@@ -1357,6 +1359,42 @@
       updateSortIndicators();
       populateDrillDropdown();
       renderDrillDown();
+    };
+
+    // Which time goal fits the period in view: a single day → the daily target,
+    // a week → the weekly target, anything else → none. A fixed hour target can't
+    // sensibly describe a month, a year, or an odd custom span, so the card hides
+    // its bar for those rather than comparing (say) one day against a weekly goal.
+    const timeGoalKindForPeriod = (preset, spanDays) => {
+      if (preset === 'today') return 'daily';
+      if (preset === 'this-week' || preset === 'week' || preset === 'from-weekday') return 'weekly';
+      if (preset === 'custom') {
+        if (spanDays === 1) return 'daily';
+        if (spanDays === 7) return 'weekly';
+      }
+      return null;
+    };
+
+    // Resolve the kind above against the enabled goal settings, returning the
+    // target hours and kind to render (or null when the matching goal is off).
+    const timeGoalForPeriod = () => {
+      const preset = document.getElementById('date-preset').value;
+      const spanDays = preset === 'custom'
+        ? getDatesInRange(
+            document.getElementById('date-from').value,
+            document.getElementById('date-to').value
+          ).length
+        : 0;
+      const kind = timeGoalKindForPeriod(preset, spanDays);
+      if (kind === 'daily' && getSetting('dailyTimeGoalOn')) {
+        const h = Number(getSetting('dailyTimeGoalH')) || 0;
+        return h > 0 ? { targetH: h, kind: 'daily' } : null;
+      }
+      if (kind === 'weekly' && getSetting('weeklyTimeGoalOn')) {
+        const h = Number(getSetting('weeklyTimeGoalH')) || 0;
+        return h > 0 ? { targetH: h, kind: 'weekly' } : null;
+      }
+      return null;
     };
 
     // Settings › Goals: the target line only makes sense against a per-day bar,
@@ -2651,15 +2689,15 @@
         id: 'goals', label: 'Goals',
         sub: 'Targets are drawn onto the Dashboard tab — a dashed line across the bar chart, a bar under the Total Time card',
         rows: [
-          { label: 'Daily time target', hint: 'Dashed line on the bar chart when it shows Time tracked, day by day',
+          { label: 'Daily time target', hint: 'Dashed line on the bar chart, and the Total Time card’s bar when a single day is in view',
             controls: [
               { type: 'toggle', key: 'dailyTimeGoalOn' },
               { type: 'number', key: 'dailyTimeGoalH', min: 1, max: 24, unit: 'hours per day',
                 disabledWhen: { key: 'dailyTimeGoalOn', is: false } }] },
-          { label: 'Weekly time target', hint: 'Progress bar under the Total Time card, against whatever range is in view',
+          { label: 'Weekly time target', hint: 'Progress bar under the Total Time card when a week-length period is in view',
             controls: [
               { type: 'toggle', key: 'weeklyTimeGoalOn' },
-              { type: 'number', key: 'weeklyTimeGoalH', min: 1, max: 168, unit: 'hours per range',
+              { type: 'number', key: 'weeklyTimeGoalH', min: 1, max: 168, unit: 'hours per week',
                 disabledWhen: { key: 'weeklyTimeGoalOn', is: false } }] },
           { label: 'Daily tasks completed', hint: 'Dashed line on the bar chart when it shows Tasks completed',
             controls: [
@@ -3146,6 +3184,7 @@
     window.getDueBounds = getDueBounds;
     window.switchTab = switchTab;
     window.processData = processData;
+    window.timeGoalKindForPeriod = timeGoalKindForPeriod;
     window.updateBarChart = updateBarChart;
     window.updatePieChart = updatePieChart;
     window.sortEntries = sortEntries;
