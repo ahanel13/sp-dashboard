@@ -824,6 +824,23 @@ describe('Date Range Reporter UI', () => {
       expect(descendant.getAttribute('style')).toBeTruthy();
     });
 
+    it('inlineComputedStyles stops at an SVG boundary', () => {
+      // Its children are drawn with literal presentation attributes already, and
+      // walking them is what made a heatmap export take seconds rather than a
+      // third of a second.
+      window.processData(mockTasks, mockProjects, mockTags);
+      const node = document.getElementById('view-dashboard');
+      const clone = node.cloneNode(true);
+      window.inlineComputedStyles(node, clone);
+      const svg = clone.querySelector('#pie-chart-element svg');
+      expect(svg).not.toBeNull();
+      expect(svg.getAttribute('style')).toBeTruthy();
+      // The slices keep their own stroke attribute and gain no inline style.
+      const slice = svg.querySelector('circle');
+      expect(slice.getAttribute('stroke')).toMatch(/^#/);
+      expect(slice.getAttribute('style')).toBeFalsy();
+    });
+
     it('pie chart renders as an inline SVG donut (prints reliably), not a conic-gradient', () => {
       document.getElementById('pie-chart-select').value = 'time';
       window.processData(mockTasks, mockProjects, mockTags);
@@ -1460,6 +1477,603 @@ describe('Date Range Reporter UI', () => {
         chip.querySelector('button[data-remove="Personal"]')
           .dispatchEvent(new MouseEvent('click', { bubbles: true }));
         expect(window.getSetting('excludedProjects')).toEqual([]);
+      });
+    });
+  });
+
+  describe('Heatmap', () => {
+    // A day inside the default 365-day span, offset back from today so the tests
+    // do not drift as the calendar moves.
+    const dayAgo = (n) => {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return toLocalDate(d);
+    };
+
+    const hmProjects = [{ id: 'p1', title: 'Alpha' }, { id: 'p2', title: 'Beta' }];
+    const hmTags = [{ id: 'tg1', title: 'Deep Work' }];
+
+    const hmTasks = () => ([
+      {
+        id: 'h1', parentId: null, title: 'Write spec', isDone: true,
+        doneOn: new Date(`${dayAgo(2)}T14:00:00`).getTime(),
+        projectId: 'p1', tagIds: ['tg1'],
+        timeSpentOnDay: { [dayAgo(2)]: 7200000, [dayAgo(5)]: 3600000 }
+      },
+      {
+        id: 'h2', parentId: null, title: 'Fix build', isDone: false,
+        projectId: 'p2', tagIds: [],
+        timeSpentOnDay: { [dayAgo(2)]: 1800000 }
+      }
+    ]);
+
+    const ctxFor = (tasks) => window.buildTaskContext(tasks, hmProjects, hmTags);
+
+    const seriesFor = (tasks, opts) => window.buildHeatmapSeries(ctxFor(tasks), Object.assign({
+      from: dayAgo(10), to: dayAgo(0), dim: 'total', metric: 'time'
+    }, opts || {}));
+
+    describe('Aggregation', () => {
+      // The reason buildTaskContext exists. Two passes over the same tasks that
+      // apply the filtering rules separately will drift; this is the guard.
+      it('total tracked time matches what processData reports for the same range', () => {
+        const tasks = hmTasks();
+        const preset = document.getElementById('date-preset');
+        preset.value = 'custom';
+        preset.dispatchEvent(new Event('change'));
+        document.getElementById('date-from').value = dayAgo(10);
+        document.getElementById('date-to').value = dayAgo(0);
+        window.processData(tasks, hmProjects, hmTags);
+
+        const series = seriesFor(tasks);
+        expect(series.total).toBe(window.latestMetrics.totalTimeSpent);
+        expect(series.total).toBe(7200000 + 3600000 + 1800000);
+      });
+
+      it('keeps a dense day axis so the calendar has no holes', () => {
+        const series = seriesFor(hmTasks());
+        expect(series.days.length).toBe(11);
+        expect(series.days).toEqual(window.getDatesInRange(dayAgo(10), dayAgo(0)));
+        // Days with nothing logged are still columns, they are just zero.
+        expect(series.rows[0].cells.length).toBe(11);
+        expect(series.rows[0].cells.filter(v => v === 0).length).toBe(9);
+      });
+
+      it('spans a spring-forward boundary without losing or gaining a day', () => {
+        const series = window.buildHeatmapSeries(ctxFor([]), {
+          from: '2026-03-01', to: '2026-03-31', dim: 'total', metric: 'time'
+        });
+        expect(series.days.length).toBe(31);
+        expect(series.days[series.days.length - 1]).toBe('2026-03-31');
+      });
+
+      it('honours the minimum entry length, and a filtered day reads as empty not zero-bucket', () => {
+        window.setSetting('minEntryMs', 3600000); // 1 minute entries dropped
+        const series = seriesFor(hmTasks());
+        // h2's 30-minute entry is below the threshold and disappears entirely.
+        expect(series.total).toBe(7200000 + 3600000);
+        window.setSetting('minEntryMs', 0);
+      });
+
+      it('drops excluded projects before anything is counted', () => {
+        window.setSetting('excludedProjects', ['Beta']);
+        const series = seriesFor(hmTasks());
+        expect(series.total).toBe(7200000 + 3600000);
+        window.setSetting('excludedProjects', []);
+      });
+
+      it('places overdue on the due day rather than carrying it forward', () => {
+        const tasks = [{
+          id: 'o1', parentId: null, title: 'Slipped', isDone: false,
+          dueDay: dayAgo(6), timeSpentOnDay: {}
+        }];
+        const series = seriesFor(tasks, { metric: 'overdue' });
+        expect(series.total).toBe(1);
+        expect(series.activeDays).toBe(1);
+        expect(series.rows[0].cells[series.days.indexOf(dayAgo(6))]).toBe(1);
+      });
+
+      it('splits a multi-tag task across every tag row, as the pie chart does', () => {
+        const tasks = [{
+          id: 'm1', parentId: null, title: 'Shared', isDone: false, projectId: 'p1',
+          tagIds: ['tg1', 'tg2'], timeSpentOnDay: { [dayAgo(1)]: 3600000 }
+        }];
+        const series = seriesFor(tasks, { dim: 'tag' });
+        expect(series.rows.length).toBe(2);
+        series.rows.forEach(r => expect(r.total).toBe(3600000));
+        // Row totals therefore exceed the grand total — that is the tag semantics.
+        expect(series.total).toBe(7200000);
+      });
+
+      it('caps rows and sums the remainder into one Other row', () => {
+        const projects = [];
+        const tasks = [];
+        for (let i = 0; i < 8; i++) {
+          projects.push({ id: `pp${i}`, title: `Project ${i}` });
+          tasks.push({
+            id: `tt${i}`, parentId: null, title: `T${i}`, isDone: false, projectId: `pp${i}`,
+            tagIds: [], timeSpentOnDay: { [dayAgo(1)]: (i + 1) * 600000 }
+          });
+        }
+        const ctx = window.buildTaskContext(tasks, projects, []);
+        const series = window.buildHeatmapSeries(ctx, {
+          from: dayAgo(10), to: dayAgo(0), dim: 'project', metric: 'time', maxRows: 3
+        });
+        expect(series.rows.length).toBe(4);
+        const other = series.rows[series.rows.length - 1];
+        expect(other.isOther).toBe(true);
+        expect(other.label).toBe('Other (5)');
+        // Nothing is lost: the kept rows plus Other still equal the grand total.
+        expect(series.rows.reduce((s, r) => s + r.total, 0)).toBe(series.total);
+        // The busiest rows are the ones kept, whatever the display order.
+        expect(other.total).toBe((1 + 2 + 3 + 4 + 5) * 600000);
+      });
+
+      it('keeps the busiest rows even when the display order is by name', () => {
+        const projects = [
+          { id: 'z', title: 'Zulu' }, { id: 'a', title: 'Alpha' }, { id: 'm', title: 'Mike' }
+        ];
+        const tasks = [
+          { id: '1', title: 'a', projectId: 'z', tagIds: [], timeSpentOnDay: { [dayAgo(1)]: 9000000 } },
+          { id: '2', title: 'b', projectId: 'a', tagIds: [], timeSpentOnDay: { [dayAgo(1)]: 60000 } },
+          { id: '3', title: 'c', projectId: 'm', tagIds: [], timeSpentOnDay: { [dayAgo(1)]: 7200000 } }
+        ];
+        const series = window.buildHeatmapSeries(window.buildTaskContext(tasks, projects, []), {
+          from: dayAgo(10), to: dayAgo(0), dim: 'project', metric: 'time', maxRows: 2, rowSort: 'name'
+        });
+        const labels = series.rows.map(r => r.label);
+        expect(labels).toEqual(['Mike', 'Zulu', 'Other (1)']);
+      });
+
+      it('groups habits by repeatCfgId when the host sends it', () => {
+        const tasks = [
+          { id: 'r1', title: 'Morning review', repeatCfgId: 'rc1', isDone: true,
+            doneOn: new Date(`${dayAgo(1)}T09:00:00`).getTime(), tagIds: [], timeSpentOnDay: {} },
+          { id: 'r2', title: 'Morning review', repeatCfgId: 'rc1', isDone: true,
+            doneOn: new Date(`${dayAgo(3)}T09:00:00`).getTime(), tagIds: [], timeSpentOnDay: {} },
+          { id: 'r3', title: 'One-off', isDone: true,
+            doneOn: new Date(`${dayAgo(2)}T09:00:00`).getTime(), tagIds: [], timeSpentOnDay: {} }
+        ];
+        const series = seriesFor(tasks, { dim: 'habit', metric: 'completed' });
+        // The one-off has no repeat id, so it is not a habit.
+        expect(series.rows.length).toBe(1);
+        expect(series.rows[0].label).toBe('Morning review');
+        expect(series.rows[0].total).toBe(2);
+      });
+
+      it('falls back to titles when no task carries a repeat id', () => {
+        const tasks = [
+          { id: 'r1', title: 'Standup', isDone: true,
+            doneOn: new Date(`${dayAgo(1)}T09:00:00`).getTime(), tagIds: [], timeSpentOnDay: {} },
+          { id: 'r2', title: 'Standup', isDone: true,
+            doneOn: new Date(`${dayAgo(3)}T09:00:00`).getTime(), tagIds: [], timeSpentOnDay: {} }
+        ];
+        const series = seriesFor(tasks, { dim: 'habit', metric: 'completed' });
+        expect(series.rows.length).toBe(1);
+        expect(series.rows[0].total).toBe(2);
+      });
+
+      it('reports the busiest day, not the busiest cell', () => {
+        // Two projects working four hours each on one day is an eight-hour day.
+        const projects = [{ id: 'a', title: 'A' }, { id: 'b', title: 'B' }];
+        const tasks = [
+          { id: '1', title: 'a', projectId: 'a', tagIds: [], timeSpentOnDay: { [dayAgo(1)]: 14400000 } },
+          { id: '2', title: 'b', projectId: 'b', tagIds: [], timeSpentOnDay: { [dayAgo(1)]: 14400000 } }
+        ];
+        const series = window.buildHeatmapSeries(window.buildTaskContext(tasks, projects, []), {
+          from: dayAgo(10), to: dayAgo(0), dim: 'project', metric: 'time'
+        });
+        expect(series.max).toBe(14400000);        // the largest single cell
+        expect(series.busiestDay).toBe(28800000); // what a reader means by the phrase
+      });
+
+      it('reports no current streak when the range ended before today', () => {
+        // "Follow the period above" pointed at a range in the past: the final run
+        // inside it is history, not a streak the user is currently on.
+        const series = window.buildHeatmapSeries(ctxFor([{
+          id: 'p', title: 'Past', tagIds: [], timeSpentOnDay: { '2026-01-30': 3600000, '2026-01-31': 3600000 }
+        }]), { from: '2026-01-01', to: '2026-01-31', dim: 'total', metric: 'time' });
+        expect(series.streak.longest).toBe(2);
+        expect(series.streak.current).toBe(0);
+      });
+
+      it('flags that habit rows fell back to titles', () => {
+        const withRepeat = seriesFor([{
+          id: 'r', title: 'Review', repeatCfgId: 'rc', isDone: true,
+          doneOn: new Date(`${dayAgo(1)}T09:00:00`).getTime(), tagIds: [], timeSpentOnDay: {}
+        }], { dim: 'habit', metric: 'completed' });
+        expect(withRepeat.usedRepeatId).toBe(true);
+
+        // Without the field the grid is *full*, not empty — every task becomes its
+        // own habit — so the substitution has to be reported explicitly.
+        const withoutRepeat = seriesFor([{
+          id: 'r', title: 'Review', isDone: true,
+          doneOn: new Date(`${dayAgo(1)}T09:00:00`).getTime(), tagIds: [], timeSpentOnDay: {}
+        }], { dim: 'habit', metric: 'completed' });
+        expect(withoutRepeat.usedRepeatId).toBe(false);
+        expect(withoutRepeat.rows.length).toBe(1);
+      });
+
+      it('counts streaks up to today, not to the end of the range', () => {
+        // Active yesterday and today; the range runs on into the future.
+        const future = new Date();
+        future.setDate(future.getDate() + 5);
+        const tasks = [{
+          id: 's1', title: 'Streak', tagIds: [],
+          timeSpentOnDay: { [dayAgo(0)]: 3600000, [dayAgo(1)]: 3600000 }
+        }];
+        const series = window.buildHeatmapSeries(ctxFor(tasks), {
+          from: dayAgo(5), to: toLocalDate(future), dim: 'total', metric: 'time'
+        });
+        // The empty days after today must not read as a broken streak.
+        expect(series.streak.current).toBe(2);
+        expect(series.streak.longest).toBe(2);
+      });
+    });
+
+    describe('Binning', () => {
+      it('one outlier does not flatten every other day (quantile)', () => {
+        const values = [1, 2, 3, 4, 5, 6, 7, 8, 1000];
+        const edges = window.computeBinEdges(values, 'quantile', 5, 0);
+        const buckets = values.map(v => window.bucketOf(v, edges));
+        // Linear binning would put everything but the outlier in bucket 0.
+        expect(new Set(buckets).size).toBeGreaterThan(2);
+        expect(window.bucketOf(1000, edges)).toBe(4);
+      });
+
+      it('linear binning is available and does exactly that', () => {
+        const edges = window.computeBinEdges([1, 2, 3, 4, 100], 'linear', 5, 0);
+        expect(edges).toEqual([20, 40, 60, 80]);
+        expect(window.bucketOf(1, edges)).toBe(0);
+        expect(window.bucketOf(100, edges)).toBe(4);
+      });
+
+      it('zero is never a colour bucket', () => {
+        const edges = window.computeBinEdges([1, 2, 3], 'linear', 5, 0);
+        expect(window.bucketOf(0, edges)).toBe(-1);
+        expect(window.bucketOf(-1, edges)).toBe(-1);
+        expect(window.bucketOf(0.5, edges)).toBe(0);
+      });
+
+      it('drops tied quantile edges rather than giving two steps the same meaning', () => {
+        // Every active day has exactly three tasks: four identical quantile edges.
+        expect(window.computeBinEdges([3, 3, 3, 3, 3, 3], 'quantile', 5, 0)).toEqual([]);
+
+        // The punchcard shape: mostly ones, with one busy hour.
+        const spiky = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 35];
+        const edges = window.computeBinEdges(spiky, 'quantile', 5, 0);
+        expect(edges).toEqual([...new Set(edges)].sort((a, b) => a - b));
+        // The busy hour still separates from the ones, which linear-over-max
+        // would not manage: its edges would be 7/14/21/28.
+        expect(window.bucketOf(35, edges)).toBeGreaterThan(window.bucketOf(1, edges));
+      });
+
+      it('the goal scale bins against the target, not the range maximum', () => {
+        const edges = window.computeBinEdges([1000, 2000], 'goal', 4, 8000);
+        expect(edges).toEqual([2000, 4000, 6000]);
+      });
+
+      it('returns no edges when there is nothing above zero', () => {
+        expect(window.computeBinEdges([0, 0], 'quantile', 5, 0)).toEqual([]);
+        expect(window.computeBinEdges([], 'linear', 5, 0)).toEqual([]);
+      });
+    });
+
+    describe('Ramps', () => {
+      it('samples a ramp to any requested number of steps', () => {
+        const stops = ['#000000', '#ffffff'];
+        expect(window.sampleRamp(stops, 3)).toEqual(['#000000', '#808080', '#ffffff']);
+        expect(window.sampleRamp(stops, 9).length).toBe(9);
+      });
+
+      it('keeps the empty cell distinct from the lowest step in every palette', () => {
+        // Otherwise "no data" and "barely any data" look identical, and the grid
+        // silently overstates its own coverage. Distance, not brightness: on a
+        // light ground the two are deliberately close in luminance and separated
+        // by hue, which is how a calendar heatmap normally reads.
+        const rgb = (hex) => {
+          const n = parseInt(hex.slice(1), 16);
+          return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        };
+        const distance = (a, b) => Math.sqrt(rgb(a).reduce((s, v, i) => s + (v - rgb(b)[i]) ** 2, 0));
+        ['default', 'colorblind', 'mono', 'contrast'].forEach(p => {
+          window.setSetting('palette', p);
+          ['light', 'dark'].forEach(theme => {
+            window.setSetting('theme', theme);
+            const ramp = window.getHeatmapRamp(5);
+            expect(distance(ramp.empty, ramp.colors[0]),
+              `${p}/${theme} empty vs first step`).toBeGreaterThan(40);
+          });
+        });
+        window.setSetting('palette', 'default');
+        window.setSetting('theme', 'auto');
+      });
+    });
+
+    describe('Punchcard', () => {
+      it('buckets completions by weekday and local hour', () => {
+        const when = new Date(`${dayAgo(1)}T14:30:00`);
+        const tasks = [{ id: 'p', title: 'Done', isDone: true, doneOn: when.getTime(), tagIds: [], timeSpentOnDay: {} }];
+        const punch = window.buildPunchcard(ctxFor(tasks), dayAgo(3), dayAgo(0));
+        expect(punch.total).toBe(1);
+        expect(punch.cells[when.getDay()][14]).toBe(1);
+      });
+
+      it('ignores completions outside the span', () => {
+        const tasks = [{
+          id: 'p', title: 'Done', isDone: true,
+          doneOn: new Date(`${dayAgo(40)}T10:00:00`).getTime(), tagIds: [], timeSpentOnDay: {}
+        }];
+        const punch = window.buildPunchcard(ctxFor(tasks), dayAgo(3), dayAgo(0));
+        expect(punch.total).toBe(0);
+      });
+    });
+
+    describe('Rendering', () => {
+      const renderWith = (tasks) => {
+        window.processData(tasks, hmProjects, hmTags);
+        window.renderHeatmap();
+      };
+
+      it('draws the calendar as SVG rects, not CSS backgrounds', () => {
+        // The pie chart had to be rebuilt for exactly this reason: print engines
+        // drop background-color, so a div grid prints blank.
+        renderWith(hmTasks());
+        const svg = document.querySelector('#hm-grid svg');
+        expect(svg).not.toBeNull();
+        const rects = svg.querySelectorAll('rect');
+        expect(rects.length).toBeGreaterThan(300); // a year of days
+        expect(rects[0].getAttribute('fill')).toMatch(/^#[0-9a-f]{6}$/i);
+      });
+
+      it('bins matrix cells against the totals it actually paints', () => {
+        // A matrix column covers a week on a long span. Binning those week totals
+        // against thresholds derived from single days puts nearly every cell in
+        // the top bucket and paints the grid one flat colour.
+        const projects = [{ id: 'a', title: 'A' }, { id: 'b', title: 'B' }];
+        const tasks = [];
+        window.getDatesInRange(dayAgo(300), dayAgo(1)).forEach((day, i) => {
+          tasks.push({
+            id: `t${i}`, title: `T${i}`, projectId: i % 2 ? 'a' : 'b', tagIds: [],
+            timeSpentOnDay: { [day]: 3600000 + (i % 5) * 1800000 }
+          });
+        });
+        window.processData(tasks, projects, []);
+        window.switchTab('heatmap');
+        window.setHeatmapDim('project');
+
+        const fills = {};
+        document.querySelectorAll('#hm-grid svg rect').forEach(r => {
+          const f = r.getAttribute('fill');
+          fills[f] = (fills[f] || 0) + 1;
+        });
+        const painted = Object.values(fills);
+        const busiest = Math.max(...painted);
+        // No single colour may swallow the grid; before the fix one held ~88%.
+        expect(busiest / painted.reduce((a, b) => a + b, 0)).toBeLessThan(0.6);
+        expect(Object.keys(fills).length).toBeGreaterThan(3);
+        window.setHeatmapDim('total');
+      });
+
+      it('draws the legend as SVG rects so it survives printing', () => {
+        renderWith(hmTasks());
+        const rects = document.querySelectorAll('#hm-legend svg rect');
+        // Empty plus one per colour step.
+        expect(rects.length).toBeGreaterThan(1);
+        expect(rects[0].getAttribute('fill')).toMatch(/^#[0-9a-f]{6}$/i);
+        expect(rects[0].querySelector('title').textContent).toBe('No data');
+        expect(document.querySelector('#hm-legend span[style*="background"]')).toBeNull();
+      });
+
+      it('ignores the daily goal scale while the goal itself is switched off', () => {
+        window.setSetting('heatmapScale', 'goal');
+        window.setSetting('dailyTimeGoalOn', false);
+        window.switchTab('heatmap');
+        renderWith(hmTasks());
+        const offFills = new Set(Array.from(document.querySelectorAll('#hm-grid svg rect'))
+          .map(r => r.getAttribute('fill')));
+        // Falls through to quantile rather than binning against an unused default.
+        expect(offFills.size).toBeGreaterThan(1);
+        window.setSetting('heatmapScale', 'quantile');
+      });
+
+      it('gives every cell a <title> for the tooltip and the screen reader', () => {
+        renderWith(hmTasks());
+        const rect = document.querySelector('#hm-grid svg rect');
+        const title = rect.querySelector('title');
+        expect(title).not.toBeNull();
+        expect(title.textContent).toContain('—');
+      });
+
+      it('renders a row per entity in the matrix, with the label as text', () => {
+        renderWith(hmTasks());
+        window.setHeatmapDim('project');
+        const texts = Array.from(document.querySelectorAll('#hm-grid svg text'))
+          .map(t => t.textContent);
+        expect(texts).toContain('Alpha');
+        expect(texts).toContain('Beta');
+        window.setHeatmapDim('total');
+      });
+
+      it('never lets a hostile project name reach the DOM as markup', () => {
+        const evil = '<img src=x onerror="window.__hm_pwned=1">';
+        const projects = [{ id: 'px', title: evil }];
+        const tasks = [{
+          id: 'tx', parentId: null, title: 'x', projectId: 'px', tagIds: [],
+          timeSpentOnDay: { [dayAgo(1)]: 3600000 }
+        }];
+        window.processData(tasks, projects, []);
+        window.setHeatmapDim('project');
+        expect(window.__hm_pwned).toBeUndefined();
+        expect(document.querySelector('#hm-grid img')).toBeNull();
+        const labels = Array.from(document.querySelectorAll('#hm-grid svg text')).map(t => t.textContent);
+        // Truncated for display, but still text — never parsed.
+        expect(labels.some(l => l.startsWith('<img'))).toBe(true);
+        window.setHeatmapDim('total');
+      });
+
+      it('shows an empty state rather than a grid of nothing', () => {
+        renderWith([]);
+        expect(document.querySelector('#hm-grid svg')).toBeNull();
+        expect(document.querySelector('#hm-grid .hm-empty').textContent).toContain('No data');
+      });
+
+      it('defers the repaint while the tab is hidden, and settles it on the way in', () => {
+        window.switchTab('dashboard');
+        document.getElementById('hm-grid').innerHTML = '';
+        // The refresh path must not pay for a year of aggregation nobody is looking at.
+        window.processData(hmTasks(), hmProjects, hmTags);
+        expect(document.querySelector('#hm-grid svg')).toBeNull();
+        window.switchTab('heatmap');
+        expect(document.querySelector('#hm-grid svg')).not.toBeNull();
+      });
+
+      it('reports coverage and streaks alongside the grid', () => {
+        renderWith(hmTasks());
+        const labels = Array.from(document.querySelectorAll('#hm-stats .hm-stat-label'))
+          .map(el => el.textContent);
+        expect(labels).toContain('Active days');
+        expect(labels).toContain('Current streak');
+        expect(labels).toContain('Longest streak');
+      });
+
+      it('hides the punchcard when the setting is off', () => {
+        window.switchTab('heatmap'); // the deferred repaint only runs for a visible tab
+        renderWith(hmTasks());
+        expect(document.getElementById('hm-punch-card').classList.contains('hidden')).toBe(false);
+        window.setSetting('heatmapPunchcard', false);
+        expect(document.getElementById('hm-punch-card').classList.contains('hidden')).toBe(true);
+        window.setSetting('heatmapPunchcard', true);
+      });
+
+      it('warns when a long span is being drawn without the archive', () => {
+        window.setSetting('includeArchived', false);
+        renderWith(hmTasks());
+        const note = document.getElementById('hm-note');
+        expect(note.classList.contains('hidden')).toBe(false);
+        expect(note.textContent).toContain('Archived tasks are excluded');
+        window.setSetting('includeArchived', true);
+      });
+    });
+
+    describe('Range', () => {
+      it('keeps its own span instead of following the header period', () => {
+        // The header defaults to Today; the heatmap must not be one square.
+        const range = window.resolveHeatmapRange();
+        expect(range.followsPeriod).toBe(false);
+        expect(window.getDatesInRange(range.from, range.to).length).toBe(365);
+      });
+
+      it('follows the header period when the span is set to zero', () => {
+        window.setSetting('heatmapSpan', 0);
+        const preset = document.getElementById('date-preset');
+        preset.value = 'custom';
+        preset.dispatchEvent(new Event('change'));
+        document.getElementById('date-from').value = '2026-01-01';
+        document.getElementById('date-to').value = '2026-01-31';
+        window.processData([], [], []);
+        const range = window.resolveHeatmapRange();
+        expect(range.followsPeriod).toBe(true);
+        expect(range.from).toBe('2026-01-01');
+        expect(range.to).toBe('2026-01-31');
+        window.setSetting('heatmapSpan', 365);
+      });
+    });
+
+    describe('Tab integration', () => {
+      it('switchTab reaches the heatmap and marks its button active', () => {
+        window.switchTab('heatmap');
+        expect(document.getElementById('view-heatmap').classList.contains('hidden')).toBe(false);
+        expect(document.getElementById('tab-btn-heatmap').classList.contains('active')).toBe(true);
+        expect(window.getSetting('tabLast')).toBe('heatmap');
+      });
+
+      it('a stored heatmap tab survives a reload instead of throwing', () => {
+        // The bug CLAUDE.md records: an unvalidated tab id threw inside switchTab
+        // during init and took the whole dashboard down.
+        window.importSettings(JSON.stringify({ tabMode: 'pin', tabPinned: 'heatmap' }));
+        expect(window.getSetting('tabPinned')).toBe('heatmap');
+        expect(() => window.switchTab(window.getSetting('tabPinned'))).not.toThrow();
+        expect(document.getElementById('view-heatmap').classList.contains('hidden')).toBe(false);
+      });
+
+      it('carries each picker\'s selected option into the exported image', () => {
+        // A <select> driven by `.value` sets a property, not markup, and
+        // cloneNode copies markup — so the export used to show every picker on
+        // its first option, captioning the image with the wrong measure.
+        window.processData(hmTasks(), hmProjects, hmTags);
+        window.switchTab('heatmap');
+        const sel = document.getElementById('hm-metric-select');
+        sel.value = 'completed';
+        sel.dispatchEvent(new Event('change'));
+
+        const node = document.getElementById('view-heatmap');
+        const clone = node.cloneNode(true);
+        window.syncClonedSelects(node, clone);
+        const clonedSel = clone.querySelector('#hm-metric-select');
+        const marked = Array.from(clonedSel.options).filter(o => o.hasAttribute('selected'));
+        expect(marked.length).toBe(1);
+        expect(marked[0].value).toBe('completed');
+      });
+
+      it('getActiveViewNode identifies the heatmap tab, so exports do not report the Dashboard', () => {
+        window.switchTab('heatmap');
+        const active = window.getActiveViewNode();
+        expect(active.key).toBe('heatmap');
+        expect(active.label).toBe('Heatmap');
+        expect(window.buildExportFilename(active.label, 'png')).toContain('heatmap');
+      });
+
+      it('the text summary reports coverage rather than transcribing the grid', () => {
+        window.processData(hmTasks(), hmProjects, hmTags);
+        window.switchTab('heatmap');
+        const text = window.buildTextSummary('heatmap');
+        expect(text).toContain('Active days');
+        expect(text).toContain('Current streak');
+        expect(text.split('\n').length).toBeLessThan(20);
+      });
+
+      it('the CSV export is entity down, days across, and keeps the formula guard', () => {
+        const projects = [{ id: 'pe', title: '=cmd|calc' }];
+        const tasks = [{
+          id: 'te', parentId: null, title: 'x', projectId: 'pe', tagIds: [],
+          timeSpentOnDay: { [dayAgo(1)]: 3600000 }
+        }];
+        // summaryFormat first: setSetting re-processes from the cached task list,
+        // which in a test is empty because processData is driven directly.
+        window.setSetting('summaryFormat', 'csv');
+        window.processData(tasks, projects, []);
+        window.setHeatmapDim('project');
+        const csv = window.buildTextSummary('heatmap');
+        const rows = csv.split('\n');
+        expect(rows[0].startsWith('Project')).toBe(true);
+        // A leading '=' is neutered by the apostrophe, and the cell is quoted
+        // because it also contains a comma-free but quotable payload.
+        expect(csv).toContain("'=cmd|calc");
+        expect(rows.length).toBe(2);
+        window.setSetting('summaryFormat', 'slack');
+        window.setHeatmapDim('total');
+      });
+    });
+
+    describe('Settings', () => {
+      it('exposes a Heatmap section whose controls all validate', () => {
+        const section = window.SETTINGS_SECTIONS.find(s => s.id === 'heatmap');
+        expect(section).toBeDefined();
+        section.rows.forEach(row => row.controls.forEach(ctrl => {
+          expect(window.DEFAULT_SETTINGS[ctrl.key]).toBeDefined();
+        }));
+      });
+
+      it('clamps the free-form heatmap numbers instead of trusting the file', () => {
+        window.importSettings(JSON.stringify({ heatmapBuckets: 99, heatmapMaxRows: -4 }));
+        expect(window.getSetting('heatmapBuckets')).toBe(9);
+        expect(window.getSetting('heatmapMaxRows')).toBe(1);
+      });
+
+      it('rejects a heatmap dimension that is not on the list', () => {
+        window.importSettings(JSON.stringify({ heatmapDimPinned: 'everything' }));
+        expect(window.getSetting('heatmapDimPinned')).toBe('total');
       });
     });
   });
