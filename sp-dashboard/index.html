@@ -149,6 +149,10 @@
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--s3, 1.5rem); margin-bottom: var(--s3, 1.5rem); }
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: var(--s3, 1.5rem); margin-bottom: var(--s3, 1.5rem); }
 
+    /* Icon presentation, hoisted off the twelve inline <svg>s. stroke-* inherit,
+       so the paths need only their `d`. index.html has a hard 100KB budget. */
+    .ico { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+
     .stat-card, .chart-card {
       background: var(--bg, #121212);
       border: 1px solid var(--divider-color, #333);
@@ -418,12 +422,56 @@
       --text-color-muted: #9e9e9e; --divider-color: #333333;
     }
 
+    /* --- HEATMAP --- */
+    .hm-controls {
+      display: flex; align-items: flex-end; gap: var(--s2, 1rem);
+      flex-wrap: wrap; margin-bottom: var(--s3, 1.5rem);
+    }
+    .hm-card { margin-bottom: var(--s3, 1.5rem); }
+    .hm-card:last-child { margin-bottom: 0; }
+
+    /* The grid is drawn at a fixed pixel size and scrolls rather than squashing:
+       a heatmap cell that reflows to sub-pixel width stops being readable. */
+    .hm-scroll { width: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
+    .hm-scroll svg { display: block; }
+
+    .hm-legend { display: flex; align-items: center; gap: 0.4rem; font-size: 0.7rem; color: var(--text-color-muted, #9e9e9e); }
+    .hm-legend-cells { display: block; flex-shrink: 0; }
+
+    .hm-stats {
+      display: flex; flex-wrap: wrap; gap: var(--s3, 1.5rem);
+      margin-top: var(--s2, 1rem); padding-top: var(--s2, 1rem);
+      border-top: 1px solid var(--divider-color, #333);
+    }
+    .hm-stat { display: flex; flex-direction: column; gap: 2px; }
+    .hm-stat-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-color-muted, #9e9e9e); }
+    .hm-stat-value { font-size: 1.05rem; font-weight: 600; }
+
+    .hm-note {
+      font-size: 0.8rem; line-height: 1.5;
+      border-left: 3px solid #fbbf24; background: rgba(251, 191, 36, 0.08);
+      padding: 0.6rem 0.9rem; border-radius: 0 4px 4px 0;
+      margin-bottom: var(--s2, 1rem);
+    }
+    .hm-empty { padding: 3rem 1rem; text-align: center; color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem; }
+
+    /* Screen-reader / export mirror of the grid. Never shown, never printed. */
+    .hm-a11y {
+      position: absolute; width: 1px; height: 1px; overflow: hidden;
+      clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+    }
+
     /* --- PRINT --- */
     .print-only { display: none; }
     @media print {
       /* Force a clean light palette so the report is legible on paper / PDF
-         regardless of the host (usually dark) theme. */
-      body {
+         regardless of the host (usually dark) theme.
+
+         Settings › Appearance › Theme is named here too: `body.force-dark` sets
+         the same custom properties at a higher specificity, so without it a
+         pinned dark theme wins and the report prints white-on-black. The heatmap
+         repaints itself for print on the assumption that this rule holds. */
+      body, body.force-light, body.force-dark {
         --bg: #ffffff; --card-bg: #ffffff; --text-color: #111111;
         --text-color-muted: #555555; --divider-color: #cccccc;
         background: #fff; color: #111; height: auto; overflow: visible;
@@ -437,6 +485,11 @@
       .view-content.hidden { display: none !important; }
       .pie-legend { max-height: none !important; overflow: visible !important; }
       .bar-chart { overflow: visible !important; }
+      /* The heatmap is drawn as SVG <rect fill> precisely so it survives this —
+         a CSS background would be dropped by most print engines (the same
+         reason the pie chart is an SVG stroke rather than a conic-gradient). */
+      .hm-scroll { overflow: visible !important; }
+      .hm-controls, .hm-a11y { display: none !important; }
       .print-only { display: block; }
       #print-header { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
     }
@@ -501,20 +554,21 @@
     <div class="main-card">
       <!-- Tabs -->
       <div class="tabs">
-        <button id="tab-btn-dashboard" class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
-        <button id="tab-btn-details" class="tab-btn" onclick="switchTab('details')">Detailed List</button>
-        <button id="tab-btn-drilldown" class="tab-btn" onclick="switchTab('drilldown')">By Project / Tag</button>
+        <button id="tab-btn-dashboard" class="tab-btn active">Dashboard</button>
+        <button id="tab-btn-details" class="tab-btn">Detailed List</button>
+        <button id="tab-btn-drilldown" class="tab-btn">By Project / Tag</button>
+        <button id="tab-btn-heatmap" class="tab-btn">Heatmap</button>
 
         <!-- Settings. Deliberately not a 4th tab: the tab bar feeds Share / Print /
              Copy image, and settings must never end up inside an exported report. -->
         <button id="settings-btn" class="settings-btn" title="Settings" aria-haspopup="dialog" aria-expanded="false">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+          <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
         </button>
 
         <!-- Share / export the currently visible tab -->
         <div class="share-wrap">
           <button id="share-btn" class="share-btn" aria-haspopup="true" aria-expanded="false" title="Share this tab">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+            <svg class="ico" viewBox="0 0 24 24"><path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
             <span>Share</span>
           </button>
           <div id="share-menu" class="share-menu hidden" role="menu">
@@ -537,7 +591,7 @@
           <div class="stat-card" id="stat-card-time">
             <div class="stat-header">
               <h3 class="stat-title">Total Time Tracked</h3>
-              <div class="stat-icon" style="background: rgba(96, 165, 250, 0.1); color: #60a5fa;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon" style="background: rgba(96, 165, 250, 0.1); color: #60a5fa;"><svg class="ico" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
               <span class="stat-value" id="stat-time">0h 0m</span>
@@ -554,7 +608,7 @@
           <div class="stat-card" id="stat-card-completed">
             <div class="stat-header">
               <h3 class="stat-title">Tasks Completed</h3>
-              <div class="stat-icon" style="background: rgba(74, 222, 128, 0.1); color: #4ade80;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon" style="background: rgba(74, 222, 128, 0.1); color: #4ade80;"><svg class="ico" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
               <span class="stat-value" id="stat-tasks">0</span>
@@ -568,7 +622,7 @@
           <div class="stat-card" id="stat-card-overdue">
             <div class="stat-header">
               <h3 class="stat-title">Overdue Tasks</h3>
-              <div class="stat-icon badge-red"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon badge-red"><svg class="ico" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container" style="align-items: center;">
               <div>
@@ -583,7 +637,7 @@
           <div class="stat-card" id="stat-card-late">
             <div class="stat-header">
               <h3 class="stat-title">Completed Late</h3>
-              <div class="stat-icon" style="background: rgba(251, 191, 36, 0.1); color: #fbbf24;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon" style="background: rgba(251, 191, 36, 0.1); color: #fbbf24;"><svg class="ico" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
               <span class="stat-value" id="stat-late">0</span>
@@ -683,8 +737,8 @@
         <!-- Controls -->
         <div style="display:flex; align-items:center; gap:var(--s2,1rem); flex-wrap:wrap; margin-bottom:var(--s3,1.5rem);">
           <div class="dim-toggle">
-            <button id="drill-dim-project" class="dim-btn active" onclick="setDrillDimension('project')">Project</button>
-            <button id="drill-dim-tag" class="dim-btn" onclick="setDrillDimension('tag')">Tag</button>
+            <button id="drill-dim-project" class="dim-btn active">Project</button>
+            <button id="drill-dim-tag" class="dim-btn">Tag</button>
           </div>
           <div class="control-box" style="flex-direction:row; align-items:center; gap:var(--s,0.5rem);">
             <label for="drill-entity-select" style="white-space:nowrap; font-size:0.875rem; color:var(--text-color-muted,#9e9e9e);">Show:</label>
@@ -697,7 +751,7 @@
           <div class="stat-card">
             <div class="stat-header">
               <h3 class="stat-title">Time Spent</h3>
-              <div class="stat-icon" style="background:rgba(96,165,250,0.1);color:#60a5fa;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon" style="background:rgba(96,165,250,0.1);color:#60a5fa;"><svg class="ico" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
               <span class="stat-value" id="drill-stat-time">0h 0m</span>
@@ -706,7 +760,7 @@
           <div class="stat-card">
             <div class="stat-header">
               <h3 class="stat-title">Tasks Completed</h3>
-              <div class="stat-icon" style="background:rgba(74,222,128,0.1);color:#4ade80;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon" style="background:rgba(74,222,128,0.1);color:#4ade80;"><svg class="ico" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
               <span class="stat-value" id="drill-stat-tasks">0</span>
@@ -715,7 +769,7 @@
           <div class="stat-card">
             <div class="stat-header">
               <h3 class="stat-title">Overdue Tasks</h3>
-              <div class="stat-icon badge-red"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon badge-red"><svg class="ico" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
               <span class="stat-value" id="drill-stat-overdue">0</span>
@@ -724,7 +778,7 @@
           <div class="stat-card">
             <div class="stat-header">
               <h3 class="stat-title">Completed Late</h3>
-              <div class="stat-icon" style="background:rgba(251,191,36,0.1);color:#fbbf24;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+              <div class="stat-icon" style="background:rgba(251,191,36,0.1);color:#fbbf24;"><svg class="ico" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
               <span class="stat-value" id="drill-stat-late">0</span>
@@ -759,6 +813,54 @@
 
       </div>
 
+      <!-- ========================================== -->
+      <!-- VIEW 4: HEATMAP                             -->
+      <!-- ========================================== -->
+      <!-- Deliberately carries its own period control rather than following the
+           header: the header defaults to "Today", and a calendar heatmap of one
+           day is a single square. "Follow the period above" is opt-in. -->
+      <div id="view-heatmap" class="view-content hidden">
+
+        <div class="hm-controls">
+          <div class="dim-toggle" id="hm-dim-toggle">
+            <button class="dim-btn active" data-dim="total">Overall</button>
+            <button class="dim-btn" data-dim="project">Project</button>
+            <button class="dim-btn" data-dim="tag">Tag</button>
+            <button class="dim-btn" data-dim="task">Task</button>
+            <button class="dim-btn" data-dim="habit">Habit</button>
+          </div>
+          <div class="control-box" style="flex-direction:row; align-items:center; gap:var(--s,0.5rem);">
+            <label for="hm-metric-select" style="white-space:nowrap;">Measure</label>
+            <select id="hm-metric-select" class="chart-select"></select>
+          </div>
+          <div class="control-box" style="flex-direction:row; align-items:center; gap:var(--s,0.5rem);">
+            <label for="hm-span-select" style="white-space:nowrap;">Span</label>
+            <select id="hm-span-select" class="chart-select"></select>
+          </div>
+        </div>
+
+        <div id="hm-note" class="hm-note hidden"></div>
+
+        <div class="chart-card hm-card">
+          <div class="card-header">
+            <h3 class="card-title" id="hm-title">Heatmap</h3>
+            <div class="hm-legend" id="hm-legend"></div>
+          </div>
+          <div class="hm-scroll" id="hm-grid"></div>
+          <div class="hm-stats" id="hm-stats"></div>
+          <div class="hm-a11y" id="hm-a11y"></div>
+        </div>
+
+        <div class="chart-card hm-card" id="hm-punch-card">
+          <div class="card-header">
+            <h3 class="card-title">When work gets finished</h3>
+            <div class="hm-legend" id="hm-punch-legend"></div>
+          </div>
+          <div class="hm-scroll" id="hm-punch"></div>
+        </div>
+
+      </div>
+
     </div>
   </div>
 
@@ -775,10 +877,10 @@
   <div id="settings-overlay" class="settings-overlay hidden">
     <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="settings-head">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
+        <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
         <h2 class="settings-title" id="settings-title">Settings</h2>
         <button class="settings-close" id="settings-close" title="Close">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"></path></svg>
+          <svg class="ico" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"></path></svg>
         </button>
       </div>
       <div class="settings-body">
@@ -827,6 +929,18 @@
       pieDimPinned: 'project', pieDimLast: '',
       sortKey: 'date', sortDir: 'desc',
       drillDimMode: 'remember', drillDimPinned: 'project', drillDimLast: '', drillEntityLast: '',
+      heatmapDimMode: 'remember', heatmapDimPinned: 'total', heatmapDimLast: '',
+      heatmapMetricMode: 'remember', heatmapMetricPinned: 'time', heatmapMetricLast: '',
+
+      // --- Heatmap ---
+      heatmapSpan: 365,             // days; 0 = follow the header period
+      heatmapScale: 'quantile',     // quantile | linear | log | goal
+      heatmapBuckets: 5,
+      heatmapMaxRows: 15,
+      heatmapRowSort: 'total',      // total | name | recent
+      heatmapShowValues: false,
+      heatmapPunchcard: true,
+      habitSource: 'repeat',        // repeat | title
 
       // --- Data & filtering ---
       includeArchived: true,
@@ -885,6 +999,24 @@
     const MODE_OPTIONS = [sOpt('remember', 'Remember'), sOpt('pin', 'Pin')];
     const DIM_OPTIONS = [sOpt('project', 'Project'), sOpt('tag', 'Tag')];
 
+    // The heatmap's own metric list. Deliberately NOT METRIC_OPTIONS: "overdue"
+    // means something different here. The bar chart carries an overdue task
+    // forward onto every day it stays open (a stock); the heatmap places it once,
+    // on its due day (a flow), because a year of carried-forward overdue reads as
+    // a solid block and says nothing. The labels say so rather than pretending.
+    const HEATMAP_METRIC_OPTIONS = [
+      sOpt('time', 'Time tracked'), sOpt('completed', 'Tasks completed'),
+      sOpt('overdue', 'Overdue, on the due day'), sOpt('late', 'Completed late')
+    ];
+    const HEATMAP_DIM_OPTIONS = [
+      sOpt('total', 'Overall'), sOpt('project', 'Project'), sOpt('tag', 'Tag'),
+      sOpt('task', 'Task'), sOpt('habit', 'Habit')
+    ];
+    const HEATMAP_SPAN_OPTIONS = [
+      sOpt(0, 'Follow the period above'), sOpt(90, 'Last 90 days'),
+      sOpt(182, 'Last 6 months'), sOpt(365, 'Last 12 months'), sOpt(730, 'Last 2 years')
+    ];
+
     const SETTING_OPTIONS = {
       weekStartsOn: [sOpt(1, 'Monday'), sOpt(0, 'Sunday'), sOpt(6, 'Saturday')],
       dateFormat: [sOpt('auto', 'Auto (locale)'), sOpt('iso', 'ISO — 2026-02-22'),
@@ -896,7 +1028,7 @@
                      sOpt('from-weekday', 'Starting from weekday')],
       tabMode: MODE_OPTIONS,
       tabPinned: [sOpt('dashboard', 'Dashboard'), sOpt('details', 'Detailed List'),
-                  sOpt('drilldown', 'By Project / Tag')],
+                  sOpt('drilldown', 'By Project / Tag'), sOpt('heatmap', 'Heatmap')],
       barMetricMode: MODE_OPTIONS,
       barMetricPinned: METRIC_OPTIONS,
       pieMetricMode: MODE_OPTIONS,
@@ -907,6 +1039,15 @@
       sortDir: [sOpt('asc', 'Ascending'), sOpt('desc', 'Descending')],
       drillDimMode: MODE_OPTIONS,
       drillDimPinned: DIM_OPTIONS,
+      heatmapDimMode: MODE_OPTIONS,
+      heatmapDimPinned: HEATMAP_DIM_OPTIONS,
+      heatmapMetricMode: MODE_OPTIONS,
+      heatmapMetricPinned: HEATMAP_METRIC_OPTIONS,
+      heatmapSpan: HEATMAP_SPAN_OPTIONS,
+      heatmapScale: [sOpt('quantile', 'Quantile — even spread'), sOpt('linear', 'Linear — true magnitude'),
+                     sOpt('log', 'Logarithmic'), sOpt('goal', 'Against the daily goal')],
+      heatmapRowSort: [sOpt('total', 'Busiest first'), sOpt('name', 'By name'), sOpt('recent', 'Most recently active')],
+      habitSource: [sOpt('repeat', 'Repeating tasks'), sOpt('title', 'Group by task title')],
       minEntryMs: [sOpt(0, 'Off'), sOpt(60000, '1 minute'), sOpt(300000, '5 minutes'), sOpt(900000, '15 minutes')],
       theme: [sOpt('auto', 'Follow app'), sOpt('light', 'Light'), sOpt('dark', 'Dark')],
       palette: [sOpt('default', 'Default'), sOpt('colorblind', 'Colourblind-safe'),
@@ -928,11 +1069,13 @@
     // than their `*Pinned` twin: Period can be left on a custom range.
     const SETTING_LAST_VALUES = {
       periodLast: ['today', 'this-week', 'week', 'month', 'year', 'custom', 'from-weekday'],
-      tabLast: ['dashboard', 'details', 'drilldown'],
+      tabLast: ['dashboard', 'details', 'drilldown', 'heatmap'],
       barMetricLast: ['time', 'completed', 'overdue', 'late'],
       pieMetricLast: ['time', 'completed', 'overdue', 'late'],
       pieDimLast: ['project', 'tag'],
       drillDimLast: ['project', 'tag'],
+      heatmapDimLast: ['total', 'project', 'tag', 'task', 'habit'],
+      heatmapMetricLast: ['time', 'completed', 'overdue', 'late'],
       weekdayLast: ['0', '1', '2', '3', '4', '5', '6']
     };
 
@@ -940,7 +1083,9 @@
     const SETTING_RANGES = {
       dailyTimeGoalH: [1, 24],
       weeklyTimeGoalH: [1, 168],
-      dailyTaskGoal: [1, 99]
+      dailyTaskGoal: [1, 99],
+      heatmapBuckets: [3, 9],
+      heatmapMaxRows: [1, 100]
     };
 
     // Legal members of the array-valued settings. Anything else is discarded.
@@ -1087,6 +1232,104 @@
     };
     const getPalette = () => PALETTES[getSetting('palette')] || PALETTES.default;
 
+    // PALETTES is categorical — nine hues for pie slices. A heatmap needs a
+    // sequential ramp, so it hangs off the SAME palette setting rather than a
+    // second control the user has to keep in sync.
+    //
+    // Light and dark are authored separately, not derived by inversion: on a
+    // light ground a ramp runs pale → saturated, on a dark ground it must run
+    // dark → bright, and inverting one into the other produces mud.
+    const HEATMAP_RAMPS = {
+      default:    { light: ['#bfe3f7', '#84c7ea', '#3d9ed3', '#166595', '#083c5c'],
+                    dark:  ['#0e3a54', '#12557a', '#1d8ec4', '#4fc3f7', '#b3e5fc'] },
+      colorblind: { light: ['#e9e3a8', '#c1d78f', '#67bd88', '#268b8c', '#11556e'],
+                    dark:  ['#123f52', '#155f6a', '#2f8f6f', '#8cc46a', '#f0e442'] },
+      mono:       { light: ['#d8d8d8', '#b4b4b4', '#8a8a8a', '#565656', '#1f1f1f'],
+                    dark:  ['#2e2e2e', '#525252', '#7d7d7d', '#b4b4b4', '#f2f2f2'] },
+      contrast:   { light: ['#ffffcc', '#ffd400', '#ef8a00', '#b03000', '#000000'],
+                    dark:  ['#4a3c00', '#7d6400', '#b89100', '#ffd400', '#ffffff'] }
+    };
+    // The "no data at all" cell. Distinct from the lowest ramp step on purpose:
+    // a day with four minutes and a day with nothing must not look the same, or
+    // every heatmap quietly overstates its own coverage.
+    //
+    // Per palette, because a single neutral grey does not stay distinct against
+    // all four — under `mono` it lands almost exactly on the ramp's darkest step,
+    // which is the one case where "empty" and "barely anything" have to differ by
+    // something other than hue.
+    const HEATMAP_EMPTY = {
+      default:    { light: '#eceff1', dark: '#20262b' },
+      colorblind: { light: '#eceff1', dark: '#20262b' },
+      mono:       { light: '#fafafa', dark: '#101010' },
+      contrast:   { light: '#dcdcdc', dark: '#171717' }
+    };
+
+    // Read a theme custom property as a literal. Anything that ends up inside an
+    // SVG needs this: the PNG export serialises the SVG away from the page
+    // stylesheet, so a var() there has nothing to resolve against.
+    const cssVar = (name, fallback) => {
+      try {
+        const v = window.getComputedStyle(document.body).getPropertyValue(name).trim();
+        return v || fallback;
+      } catch (e) { return fallback; }
+    };
+
+    const hexToRgb = (hex) => {
+      const m = /^#?([0-9a-f]{6})$/i.exec(String(hex).trim());
+      if (!m) return null;
+      const n = parseInt(m[1], 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    };
+    const rgbToHex = (rgb) => '#' + rgb.map(v => Math.max(0, Math.min(255, Math.round(v)))
+      .toString(16).padStart(2, '0')).join('');
+
+    // Sample an N-stop ramp at `count` evenly spaced positions, interpolating
+    // between stops. Lets the bucket count be a setting without needing a
+    // hand-authored ramp for every possible length.
+    const sampleRamp = (stops, count) => {
+      if (count <= 1) return [stops[stops.length - 1]];
+      const rgbStops = stops.map(hexToRgb).filter(Boolean);
+      if (rgbStops.length === 0) return new Array(count).fill('#888888');
+      if (rgbStops.length === 1) return new Array(count).fill(rgbToHex(rgbStops[0]));
+      const out = [];
+      for (let i = 0; i < count; i++) {
+        const pos = (i / (count - 1)) * (rgbStops.length - 1);
+        const lo = Math.floor(pos);
+        const hi = Math.min(rgbStops.length - 1, lo + 1);
+        const t = pos - lo;
+        out.push(rgbToHex(rgbStops[lo].map((c, k) => c + (rgbStops[hi][k] - c) * t)));
+      }
+      return out;
+    };
+
+    // Which way round the ramp goes depends on the ground it is drawn on, and
+    // the host app supplies that ground — so it is measured, not assumed.
+    // `heatmapForceLight` is set while printing, where the stylesheet forces a
+    // white page regardless of the host theme.
+    let heatmapForceLight = false;
+    const isLightSurface = () => {
+      if (heatmapForceLight) return true;
+      if (document.body.classList.contains('force-light')) return true;
+      if (document.body.classList.contains('force-dark')) return false;
+      let bg = '';
+      try { bg = window.getComputedStyle(document.body).backgroundColor || ''; } catch (e) { /* ignore */ }
+      const m = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(bg);
+      if (!m) return false; // unresolved (JSDOM, or a var() the engine kept) → the plugin's dark default
+      const [r, g, b] = [Number(m[1]), Number(m[2]), Number(m[3])];
+      return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
+    };
+
+    const getHeatmapRamp = (buckets) => {
+      const name = getSetting('palette');
+      const set = HEATMAP_RAMPS[name] || HEATMAP_RAMPS.default;
+      const empty = HEATMAP_EMPTY[name] || HEATMAP_EMPTY.default;
+      const light = isLightSurface();
+      return {
+        colors: sampleRamp(light ? set.light : set.dark, buckets),
+        empty: light ? empty.light : empty.dark
+      };
+    };
+
     // Escape data-derived strings before they go through innerHTML.
     const escapeHtml = (value) => String(value == null ? '' : value)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1136,7 +1379,7 @@
     };
 
     // --- TAB LOGIC ---
-    const TAB_IDS = ['dashboard', 'details', 'drilldown'];
+    const TAB_IDS = ['dashboard', 'details', 'drilldown', 'heatmap'];
     const switchTab = (tabId) => {
       // Fall back rather than throw: switchTab runs during init from a stored
       // setting, and a null dereference here would abort the rest of the script
@@ -1149,6 +1392,8 @@
       document.getElementById(`view-${target}`).classList.remove('hidden');
       document.getElementById(`tab-btn-${target}`).classList.add('active');
       rememberSetting('tabLast', target);
+      // Draw anything the heatmap skipped while it was off screen.
+      if (target === 'heatmap' && heatmapDirty) renderHeatmap();
     };
 
     // --- GLOBALS ---
@@ -1161,6 +1406,17 @@
     let liveUpdateInterval = null;
     let currentDrillDimension = 'project';
     let currentDrillEntity = '';
+    let currentHeatmapDim = 'total';
+    let currentHeatmapMetric = 'time';
+    let latestHeatmap = null;
+    // The context processData last worked from. The heatmap renders off exactly
+    // this rather than re-reading the caches: processData can be handed a task
+    // list directly, and a heatmap drawn from a different set of tasks than the
+    // stat cards above it is the precise failure this whole design avoids.
+    let latestTaskContext = null;
+    // Set when a refresh landed while the Heatmap tab was hidden; switchTab
+    // settles the debt on the way in.
+    let heatmapDirty = false;
 
     // helper to sort table entries by given field/key
     const sortEntries = (entries, key, dir) => {
@@ -1263,6 +1519,48 @@
       updatePieChart();
     });
 
+    // --- Heatmap controls ---
+    // The option lists come from the same constants the settings validator uses,
+    // so the tab cannot offer a value a stored setting would be rejected for.
+    const hmMetricSelect = document.getElementById('hm-metric-select');
+    const hmSpanSelect = document.getElementById('hm-span-select');
+    const hmDimToggle = document.getElementById('hm-dim-toggle');
+
+    const fillSelect = (sel, options) => {
+      sel.innerHTML = '';
+      options.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = String(o.v);
+        opt.textContent = o.l;
+        sel.appendChild(opt);
+      });
+    };
+    fillSelect(hmMetricSelect, HEATMAP_METRIC_OPTIONS);
+    fillSelect(hmSpanSelect, HEATMAP_SPAN_OPTIONS);
+
+    const setHeatmapDim = (dim) => {
+      currentHeatmapDim = dim;
+      hmDimToggle.querySelectorAll('[data-dim]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.dim === dim));
+      rememberSetting('heatmapDimLast', dim);
+      renderHeatmap();
+    };
+
+    hmDimToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-dim]');
+      if (btn) setHeatmapDim(btn.dataset.dim);
+    });
+    hmMetricSelect.addEventListener('change', () => {
+      currentHeatmapMetric = hmMetricSelect.value;
+      rememberSetting('heatmapMetricLast', hmMetricSelect.value);
+      renderHeatmap();
+    });
+    hmSpanSelect.addEventListener('change', () => {
+      // Span is a persisted setting in its own right rather than a remembered
+      // control value, so it goes through setSetting and the modal stays in sync.
+      setSetting('heatmapSpan', Number(hmSpanSelect.value) || 0);
+    });
+
     // Apply the opening state from Settings › Defaults (remember-or-pin per control).
     const applyDefaultSelections = () => {
       const preset = resolveDefault('periodMode', 'periodPinned', 'periodLast');
@@ -1282,6 +1580,13 @@
       document.getElementById('drill-dim-project').classList.toggle('active', currentDrillDimension === 'project');
       document.getElementById('drill-dim-tag').classList.toggle('active', currentDrillDimension === 'tag');
       currentDrillEntity = getSetting('drillEntityLast') || '';
+
+      currentHeatmapDim = resolveDefault('heatmapDimMode', 'heatmapDimPinned', 'heatmapDimLast');
+      currentHeatmapMetric = resolveDefault('heatmapMetricMode', 'heatmapMetricPinned', 'heatmapMetricLast');
+      hmDimToggle.querySelectorAll('[data-dim]').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.dim === currentHeatmapDim));
+      hmMetricSelect.value = currentHeatmapMetric;
+      hmSpanSelect.value = String(getSetting('heatmapSpan'));
 
       currentSort = { key: getSetting('sortKey'), dir: getSetting('sortDir') };
     };
@@ -1359,6 +1664,7 @@
       updateSortIndicators();
       populateDrillDropdown();
       renderDrillDown();
+      renderHeatmap({ onlyIfVisible: true });
     };
 
     // Which time goal fits the period in view: a single day → the daily target,
@@ -1770,8 +2076,11 @@
 
       if (totalVal === 0 || entries.length === 0) {
         // Rendered as an SVG stroke (foreground) so it prints reliably — unlike a CSS
-        // conic-gradient background, which many print/PDF engines drop.
-        pieEl.innerHTML = `${svgOpen}<circle cx="21" cy="21" r="${R}" fill="none" style="stroke: var(--divider-color, #333)" stroke-width="${SW}"></circle></svg>`;
+        // conic-gradient background, which many print/PDF engines drop. The colour is
+        // resolved to a literal here rather than left as a var(): the PNG export
+        // serialises this SVG away from the page stylesheet, where a var() has
+        // nothing left to resolve against.
+        pieEl.innerHTML = `${svgOpen}<circle cx="21" cy="21" r="${R}" fill="none" stroke="${cssVar('--divider-color', '#333')}" stroke-width="${SW}"></circle></svg>`;
         legendEl.innerHTML = '<div class="text-muted text-sm">No data for selected period</div>';
         return;
       }
@@ -1886,6 +2195,60 @@
       return { dueStart, dueEnd };
     };
 
+    // Everything that decides *what counts* — exclusions, the minimum entry
+    // length, the subtask double-counting rule, how an unfiled task is named.
+    //
+    // This lives in one place on purpose. processData and the heatmap are two
+    // separate passes over the same tasks, and if either re-implemented these
+    // rules the heatmap would quietly disagree with the stat card six inches
+    // above it. A test asserts the two totals stay equal.
+    const buildTaskContext = (tasksArr, projectsArr, tagsArr = []) => {
+      const projectMap = {};
+      (projectsArr || []).forEach(p => projectMap[p.id] = p.title);
+      const tagMap = {};
+      (tagsArr || []).forEach(t => { tagMap[t.id] = t.title || t.id; });
+
+      const projectNameOf = (task) => (task.projectId && projectMap[task.projectId])
+        ? projectMap[task.projectId]
+        : 'Uncategorized';
+      const tagNamesOf = (task) => {
+        const names = (task.tagIds || []).map(id => tagMap[id] || id);
+        return names.length ? names : ['Untagged'];
+      };
+
+      // --- Settings › Data & Filtering ---
+      const excludedProjects = new Set(getSetting('excludedProjects') || []);
+      const excludedTags = new Set(getSetting('excludedTags') || []);
+      const minEntryMs = Number(getSetting('minEntryMs')) || 0;
+
+      // Excluded work is removed before anything is counted, so every metric,
+      // chart and export below agrees on the same set of tasks.
+      const visibleTasks = (excludedProjects.size === 0 && excludedTags.size === 0)
+        ? (tasksArr || [])
+        : (tasksArr || []).filter(task =>
+            !excludedProjects.has(projectNameOf(task)) &&
+            !tagNamesOf(task).some(n => excludedTags.has(n)));
+
+      return {
+        visibleTasks,
+        projectNameOf,
+        tagNamesOf,
+        minEntryMs,
+        showSubtaskRows: !!getSetting('showSubtaskRows'),
+        includeRunningTimer: !!getSetting('includeRunningTimer'),
+        noDueDateOverdue: !!getSetting('noDueDateOverdue'),
+        // A parent's timeSpentOnDay already includes its subtasks' rolled-up
+        // time, so summing both double-counts (matching SP's own
+        // getTimeWorkedForDayForAllNonArchiveTasks$, which filters out subtasks).
+        countsTowardTotals: (task) => !task.parentId,
+        // The time this task logged on `dateStr`, after the minimum-entry filter.
+        timeOnDay: (task, dateStr) => {
+          const raw = (task.timeSpentOnDay && task.timeSpentOnDay[dateStr]) || 0;
+          return raw >= minEntryMs ? raw : 0;
+        }
+      };
+    };
+
     // process tasks/projects into metrics and update UI
     const processData = (tasksArr, projectsArr, tagsArr = []) => {
       // determine date range from preset/selectors
@@ -1926,35 +2289,15 @@
       }
       debugLog("[sp-dashboard] computed date range", dateFromStr, dateToStr, dateRange);
 
-      // Build lookup maps for faster processing
-      const projectMap = {};
-      projectsArr.forEach(p => projectMap[p.id] = p.title);
-      const tagMap = {};
-      (tagsArr || []).forEach(t => { tagMap[t.id] = t.title || t.id; });
-
-      const projectNameOf = (task) => (task.projectId && projectMap[task.projectId])
-        ? projectMap[task.projectId]
-        : 'Uncategorized';
-      const tagNamesOf = (task) => {
-        const names = (task.tagIds || []).map(id => tagMap[id] || id);
-        return names.length ? names : ['Untagged'];
-      };
-
-      // --- Settings › Data & Filtering ---
-      const excludedProjects = new Set(getSetting('excludedProjects') || []);
-      const excludedTags = new Set(getSetting('excludedTags') || []);
-      const minEntryMs = Number(getSetting('minEntryMs')) || 0;
-      const showSubtaskRows = !!getSetting('showSubtaskRows');
-      const includeRunningTimer = !!getSetting('includeRunningTimer');
-      const noDueDateOverdue = !!getSetting('noDueDateOverdue');
-
-      // Excluded work is removed before anything is counted, so every metric,
-      // chart and export below agrees on the same set of tasks.
-      const visibleTasks = (excludedProjects.size === 0 && excludedTags.size === 0)
-        ? tasksArr
-        : tasksArr.filter(task =>
-            !excludedProjects.has(projectNameOf(task)) &&
-            !tagNamesOf(task).some(n => excludedTags.has(n)));
+      // What counts, and what each task is called. Handed straight to the
+      // heatmap so both passes agree on the same tasks and the same rules.
+      const ctx = buildTaskContext(tasksArr, projectsArr, tagsArr);
+      latestTaskContext = ctx;
+      invalidateHeatmap();
+      const {
+        visibleTasks, projectNameOf, tagNamesOf,
+        showSubtaskRows, includeRunningTimer, noDueDateOverdue
+      } = ctx;
 
       let metrics = {
         totalTimeSpent: 0,
@@ -2042,15 +2385,11 @@
           dayEndObj.setDate(dayEndObj.getDate() + 1);
           const dayEnd = dayEndObj.getTime() - 1;
 
-          // Time Spent Logging
-          // Skip subtasks: a parent's timeSpentOnDay already includes its subtasks'
-          // rolled-up time, so summing both double-counts (matches SP's own
-          // getTimeWorkedForDayForAllNonArchiveTasks$, which filters out subtasks).
-          const rawSpent = (task.timeSpentOnDay && task.timeSpentOnDay[dateStr]) || 0;
-          // Settings › Data & Filtering: drop entries shorter than the threshold.
-          const spentOnDate = rawSpent >= minEntryMs ? rawSpent : 0;
+          // Time Spent Logging. The minimum-entry filter and the subtask rule
+          // both come from the shared context, so the heatmap applies the same ones.
+          const spentOnDate = ctx.timeOnDay(task, dateStr);
 
-          if (spentOnDate && !task.parentId) {
+          if (spentOnDate && ctx.countsTowardTotals(task)) {
             metrics.weeklyData.data[index] += spentOnDate;
             taskTimeInRange += spentOnDate;
 
@@ -2213,6 +2552,711 @@
       attachSortHandlers();
     };
 
+    // ==========================================================
+    // HEATMAP — AGGREGATION
+    // ==========================================================
+
+    // Super Productivity has no habit entity. The nearest thing in the data is a
+    // repeating task: each occurrence is its own task carrying the same
+    // repeatCfgId. Group on that when the host actually sends it, and fall back
+    // to grouping by title when it doesn't — the field is not in the documented
+    // plugin payload, and an approximate grid beats an empty one.
+    const habitFieldPresent = (tasks) =>
+      (tasks || []).some(t => typeof t.repeatCfgId === 'string' && !!t.repeatCfgId);
+
+    const habitKeyOf = (task, useRepeatId) => {
+      if (useRepeatId) {
+        return (typeof task.repeatCfgId === 'string' && task.repeatCfgId) ? task.repeatCfgId : null;
+      }
+      const title = String(task.title || '').trim().toLowerCase();
+      return title || null;
+    };
+
+    // Bucket edges for the value→colour scale. Returns `buckets - 1` ascending
+    // thresholds; a value at or below zero is never binned, it is "empty".
+    const computeBinEdges = (values, scale, buckets, goalValue) => {
+      const n = Math.max(2, Math.min(9, Number(buckets) || 5));
+      const positive = (values || []).filter(v => v > 0).sort((a, b) => a - b);
+      if (positive.length === 0) return [];
+      const max = positive[positive.length - 1];
+
+      const evenlyOver = (top) => {
+        const out = [];
+        for (let i = 1; i < n; i++) out.push((top * i) / n);
+        return out;
+      };
+
+      if (scale === 'goal' && goalValue > 0) return evenlyOver(goalValue);
+      if (scale === 'linear') return evenlyOver(max);
+      if (scale === 'log') {
+        const lmax = Math.log1p(max);
+        const out = [];
+        for (let i = 1; i < n; i++) out.push(Math.expm1((lmax * i) / n));
+        return out;
+      }
+
+      // Quantile — the default, because linear binning against the maximum fails
+      // on exactly this data: one eleven-hour crunch day flattens every other day
+      // to the palest step and the grid reads as empty.
+      const edges = [];
+      for (let i = 1; i < n; i++) {
+        const pos = (positive.length - 1) * (i / n);
+        const lo = Math.floor(pos);
+        const hi = Math.min(positive.length - 1, lo + 1);
+        edges.push(positive[lo] + (positive[hi] - positive[lo]) * (pos - lo));
+      }
+      // Ties collapse quantiles: on a punchcard where most cells read "1 task",
+      // four of the edges land on the same value. Dropping the duplicates costs a
+      // colour step and keeps every remaining step meaningful — which is why this
+      // returns however many edges survive rather than always `n - 1`, and why
+      // the ramp is sampled to fit the answer instead of the other way round.
+      // An edge at or above the largest value would open a bucket nothing can
+      // reach, leaving a colour on the legend that never appears on the grid —
+      // and, when every value is identical, painting the whole grid the palest
+      // step. (The goal scale keeps its out-of-range edges: being absolute, and
+      // therefore comparable between two different ranges, is the point of it.)
+      const unique = [];
+      edges.forEach(e => {
+        if (e >= max) return;
+        if (!unique.length || e > unique[unique.length - 1]) unique.push(e);
+      });
+      return unique;
+    };
+
+    const bucketOf = (value, edges) => {
+      if (!(value > 0)) return -1; // empty is its own state, never the lowest step
+      let i = 0;
+      while (i < edges.length && value > edges[i]) i++;
+      return i;
+    };
+
+    // Longest run of consecutive active days, plus the run still going. The
+    // current run is measured back from today, not from the end of the range:
+    // days that have not happened yet must not read as a broken streak.
+    const computeStreak = (days, columnTotals, today) => {
+      let longest = 0, run = 0;
+      for (let i = 0; i < days.length; i++) {
+        if (columnTotals[i] > 0) { run++; if (run > longest) longest = run; }
+        else run = 0;
+      }
+      // A run is only "current" if it reaches today. Trailing days that have not
+      // happened yet are skipped rather than treated as breaks; but a range that
+      // ended in the past — "Follow the period above" pointed at last January —
+      // has no current streak at all, and reporting its final run as one would be
+      // a straightforwardly wrong number under that label.
+      let end = days.length - 1;
+      while (end >= 0 && days[end] > today) end--;
+      let current = 0;
+      if (end >= 0 && days[end] === today) {
+        for (let i = end; i >= 0 && columnTotals[i] > 0; i--) current++;
+      }
+      return { current, longest };
+    };
+
+    // The core aggregate. Driven by each task's own entries — O(entries), not the
+    // O(tasks × days) cross product processData uses — because this runs over a
+    // year at a time and processData does not.
+    const buildHeatmapSeries = (ctx, opts) => {
+      const o = opts || {};
+      const dim = o.dim || 'total';
+      const metric = o.metric || 'time';
+      const rowSort = o.rowSort || 'total';
+      const maxRows = Math.max(1, Number(o.maxRows) || 15);
+      const today = o.today || toLocalDate(new Date());
+      const days = getDatesInRange(o.from, o.to);
+      const dayIndex = new Map();
+      days.forEach((d, i) => dayIndex.set(d, i));
+
+      const useRepeatId = getSetting('habitSource') === 'repeat' && habitFieldPresent(ctx.visibleTasks);
+      const rows = new Map();
+      const rowFor = (key, label, date) => {
+        let row = rows.get(key);
+        if (!row) {
+          row = { key, label, cells: new Array(days.length).fill(0), total: 0, lastActive: '' };
+          rows.set(key, row);
+        }
+        // Repeating tasks get renamed; the newest occurrence wins the label.
+        if (date > row.lastActive) { row.lastActive = date; if (label) row.label = label; }
+        return row;
+      };
+
+      // Which rows a task feeds. An untagged/unfiled task still lands in its
+      // synthetic bucket, matching what processData reports everywhere else.
+      const rowsForTask = (task) => {
+        if (dim === 'project') return [{ key: ctx.projectNameOf(task), label: ctx.projectNameOf(task) }];
+        if (dim === 'tag') return ctx.tagNamesOf(task).map(n => ({ key: n, label: n }));
+        if (dim === 'task') return [{ key: task.id, label: task.title || 'Untitled Task' }];
+        if (dim === 'habit') {
+          const key = habitKeyOf(task, useRepeatId);
+          return key ? [{ key, label: task.title || 'Untitled Task' }] : [];
+        }
+        return [{ key: '__all__', label: 'All work' }];
+      };
+
+      // What a task contributes, and on which day. Every metric is a flow placed
+      // on one or more specific days — see HEATMAP_METRIC_OPTIONS on why overdue
+      // is placed on the due day rather than carried forward.
+      const contributionsOf = (task) => {
+        const out = [];
+        if (metric === 'time') {
+          if (!ctx.countsTowardTotals(task)) return out;
+          const spent = task.timeSpentOnDay || {};
+          Object.keys(spent).forEach(day => {
+            if (!dayIndex.has(day)) return;
+            const ms = ctx.timeOnDay(task, day);
+            if (ms > 0) out.push({ day, value: ms });
+          });
+          if (ctx.includeRunningTimer && (task.currentSessionTime || 0) > 0 && dayIndex.has(today)) {
+            out.push({ day: today, value: task.currentSessionTime });
+          }
+          return out;
+        }
+
+        const { dueStart, dueEnd } = getDueBounds(task);
+        const doneDay = (task.isDone && task.doneOn) ? toLocalDate(new Date(task.doneOn)) : null;
+        const isLate = !!(task.isDone && task.doneOn && dueEnd !== null && task.doneOn > dueEnd);
+
+        if (metric === 'completed') {
+          if (doneDay) out.push({ day: doneDay, value: 1 });
+        } else if (metric === 'late') {
+          if (doneDay && isLate) out.push({ day: doneDay, value: 1 });
+        } else if (metric === 'overdue') {
+          // Undated open work has no day to sit on, so it cannot appear here even
+          // when Settings › Data & Filtering counts it as overdue on the cards.
+          if (dueStart !== null) {
+            const stillOpen = !task.isDone && Date.now() > dueEnd;
+            if (stillOpen || isLate) out.push({ day: toLocalDate(new Date(dueStart)), value: 1 });
+          }
+        }
+        return out.filter(c => dayIndex.has(c.day));
+      };
+
+      ctx.visibleTasks.forEach(task => {
+        const contributions = contributionsOf(task);
+        if (contributions.length === 0) return;
+        const targets = rowsForTask(task);
+        if (targets.length === 0) return;
+        targets.forEach(t => {
+          contributions.forEach(c => {
+            const row = rowFor(t.key, t.label, c.day);
+            row.cells[dayIndex.get(c.day)] += c.value;
+            row.total += c.value;
+          });
+        });
+      });
+
+      let list = Array.from(rows.values());
+
+      // Cap by size first, then order for display: picking the top N by total and
+      // *then* sorting them the way the user asked keeps "By name" from silently
+      // meaning "the alphabetically first N", which would hide the busiest rows.
+      if (dim !== 'total' && list.length > maxRows) {
+        list.sort((a, b) => b.total - a.total);
+        const kept = list.slice(0, maxRows);
+        const rest = list.slice(maxRows);
+        const other = {
+          key: '__other__', label: `Other (${rest.length})`,
+          cells: new Array(days.length).fill(0), total: 0, lastActive: '', isOther: true
+        };
+        rest.forEach(r => {
+          r.cells.forEach((v, i) => { other.cells[i] += v; });
+          other.total += r.total;
+          if (r.lastActive > other.lastActive) other.lastActive = r.lastActive;
+        });
+        list = kept;
+        if (other.total > 0) list.push(other);
+      }
+
+      const sorters = {
+        total: (a, b) => b.total - a.total,
+        name: (a, b) => String(a.label).localeCompare(String(b.label)),
+        recent: (a, b) => String(b.lastActive).localeCompare(String(a.lastActive))
+      };
+      // "Other" is a summary of what was cut, so it stays pinned to the bottom
+      // rather than sorting in among real entities.
+      list.sort((a, b) => {
+        if (a.isOther) return 1;
+        if (b.isOther) return -1;
+        return (sorters[rowSort] || sorters.total)(a, b);
+      });
+
+      const columnTotals = days.map((_, i) => list.reduce((sum, r) => sum + r.cells[i], 0));
+      let max = 0, total = 0;
+      list.forEach(r => r.cells.forEach(v => { if (v > max) max = v; total += v; }));
+
+      return {
+        dim, metric, days, rows: list, columnTotals, max, total,
+        // `max` is the largest single cell; `busiestDay` is the largest day across
+        // every row, which is what a reader means by "busiest day" on a grid that
+        // splits one day between several projects.
+        busiestDay: columnTotals.reduce((m, v) => (v > m ? v : m), 0),
+        activeDays: columnTotals.filter(v => v > 0).length,
+        streak: computeStreak(days, columnTotals, today),
+        usedRepeatId: useRepeatId,
+        truncated: rows.size > list.length
+      };
+    };
+
+    // Completions by weekday and hour. The only hour-resolved signal in the
+    // payload: timeSpentOnDay is day-granular, so there is no equivalent view
+    // for tracked time no matter how much one might want it.
+    const buildPunchcard = (ctx, from, to) => {
+      const cells = Array.from({ length: 7 }, () => new Array(24).fill(0));
+      let total = 0;
+      const fromT = new Date(from + 'T00:00:00').getTime();
+      const toObj = new Date(to + 'T00:00:00');
+      toObj.setDate(toObj.getDate() + 1);
+      const toT = toObj.getTime() - 1;
+      ctx.visibleTasks.forEach(task => {
+        if (!task.isDone || !task.doneOn) return;
+        if (task.doneOn < fromT || task.doneOn > toT) return;
+        const d = new Date(task.doneOn);
+        cells[d.getDay()][d.getHours()]++;
+        total++;
+      });
+      return { cells, total };
+    };
+
+    // ==========================================================
+    // HEATMAP — RENDERING
+    // ==========================================================
+    //
+    // Every cell is an SVG <rect fill="#rrggbb"> with a <title> child, never a
+    // <div> with a background-color. Two reasons, both learned the hard way in
+    // this file: print engines drop backgrounds (which is why the pie chart is an
+    // SVG stroke rather than a conic-gradient), and <title> gives a native
+    // tooltip and a screen-reader name for free.
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+
+    const svgEl = (name, attrs) => {
+      const el = document.createElementNS(SVG_NS, name);
+      if (attrs) Object.keys(attrs).forEach(k => el.setAttribute(k, String(attrs[k])));
+      return el;
+    };
+
+    // Labels are task, project and tag names — host data. textContent, always.
+    const svgTextEl = (attrs, text) => {
+      const el = svgEl('text', attrs);
+      el.textContent = String(text == null ? '' : text);
+      return el;
+    };
+
+    const paintCell = (parent, attrs, fill, titleText) => {
+      const rect = svgEl('rect', Object.assign({ rx: 2, fill }, attrs));
+      const title = svgEl('title');
+      title.textContent = titleText;
+      rect.appendChild(title);
+      parent.appendChild(rect);
+      return rect;
+    };
+
+    const heatmapFormatter = (metric) => metric === 'time'
+      ? (v) => formatTime(v)
+      : (v) => `${v} ${v === 1 ? 'task' : 'tasks'}`;
+
+    // A matrix column can cover more than one day — 365 columns would be
+    // sub-pixel — so the days are aggregated first, exactly as the bar chart
+    // buckets its bars.
+    //
+    // Both the renderer and the code that computes the colour thresholds go
+    // through these two functions. They must: bin a week's total against
+    // thresholds derived from single days and almost every cell lands in the top
+    // bucket, which paints the whole grid one colour and makes the legend
+    // describe numbers that are not on screen.
+    const HEATMAP_MAX_MATRIX_COLS = 53;
+    const heatmapColumnStep = (dayCount) => Math.max(1, Math.ceil(dayCount / HEATMAP_MAX_MATRIX_COLS));
+
+    const bucketRowCells = (cells, step) => {
+      if (step <= 1) return cells.slice();
+      const out = [];
+      for (let i = 0; i < cells.length; i += step) {
+        let sum = 0;
+        for (let k = i; k < i + step && k < cells.length; k++) sum += cells[k];
+        out.push(sum);
+      }
+      return out;
+    };
+
+    const HM_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const HM_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const AXIS_ATTRS = { 'font-size': 9, fill: 'currentColor', opacity: 0.6 };
+
+    // Weeks as columns, weekdays as rows. Builds its own dense day axis rather
+    // than reusing the metrics range: Settings › General can delete non-working
+    // days from that range, and a calendar with weekends surgically removed stops
+    // lining up week to week.
+    const renderCalendarHeatmap = (series, ramp, edges, fmt) => {
+      const CELL = 12, PITCH = 15, GUTTER = 30, TOP = 20;
+      const weekStart = Number(getSetting('weekStartsOn')) || 0;
+      const days = series.days;
+      const rowOfDay = (dateStr) =>
+        (new Date(dateStr + 'T00:00:00').getDay() - weekStart + 7) % 7;
+
+      const firstRow = rowOfDay(days[0]);
+      const cols = Math.floor((days.length - 1 + firstRow) / 7) + 1;
+      const width = GUTTER + cols * PITCH;
+      const height = TOP + 7 * PITCH;
+
+      const svg = svgEl('svg', {
+        width, height, viewBox: `0 0 ${width} ${height}`, role: 'img',
+        'aria-label': `${series.days.length}-day heatmap, ${fmt(series.total)} in total`
+      });
+
+      // Weekday labels: every other row, the usual convention — all seven is noise.
+      for (let r = 0; r < 7; r += 2) {
+        svg.appendChild(svgTextEl(
+          Object.assign({ x: GUTTER - 6, y: TOP + r * PITCH + CELL - 2, 'text-anchor': 'end' }, AXIS_ATTRS),
+          HM_DAY_NAMES[(r + weekStart) % 7].slice(0, 3)));
+      }
+
+      // Month ruler, walked by column rather than by day: a month whose 1st falls
+      // mid-week still starts a column, and labelling only the days that land on
+      // the top row silently drops most of the year.
+      let lastMonth = '', lastLabelCol = -99;
+      for (let c = 0; c < cols; c++) {
+        const day = days[Math.min(Math.max(0, c * 7 - firstRow), days.length - 1)];
+        const month = day.substring(0, 7);
+        if (month === lastMonth) continue;
+        lastMonth = month;
+        if (c - lastLabelCol < 3) continue; // would collide with the previous label
+        lastLabelCol = c;
+        svg.appendChild(svgTextEl(
+          Object.assign({ x: GUTTER + c * PITCH, y: TOP - 8 }, AXIS_ATTRS),
+          HM_MONTHS[parseInt(day.substring(5, 7), 10) - 1]));
+      }
+
+      const cells = series.rows.length ? series.rows[0].cells : days.map(() => 0);
+      days.forEach((day, i) => {
+        const col = Math.floor((i + firstRow) / 7);
+        const value = cells[i] || 0;
+        const b = bucketOf(value, edges);
+        paintCell(svg, { x: GUTTER + col * PITCH, y: TOP + rowOfDay(day) * PITCH, width: CELL, height: CELL },
+          b === -1 ? ramp.empty : ramp.colors[Math.min(b, ramp.colors.length - 1)],
+          `${formatDateShort(day)} — ${value > 0 ? fmt(value) : 'nothing tracked'}`);
+      });
+      return svg;
+    };
+
+    // Entities as rows, day buckets as columns. A year at one column per day is
+    // sub-pixel, so columns aggregate the same way the bar chart's do.
+    const renderMatrixHeatmap = (series, ramp, edges, fmt) => {
+      const ROW_H = 18, GAP = 3, LABEL_W = 140, TOP = 18;
+      const step = heatmapColumnStep(series.days.length);
+      const buckets = [];
+      for (let i = 0; i < series.days.length; i += step) {
+        buckets.push({ start: series.days[i], end: series.days[Math.min(series.days.length - 1, i + step - 1)], index: i });
+      }
+      const CW = step === 1 ? 12 : Math.max(8, Math.min(16, Math.floor(700 / buckets.length)));
+      const width = LABEL_W + buckets.length * (CW + GAP);
+      const height = TOP + series.rows.length * ROW_H + 4;
+
+      const svg = svgEl('svg', {
+        width, height, viewBox: `0 0 ${width} ${height}`, role: 'img',
+        'aria-label': `Heatmap of ${series.rows.length} rows over ${series.days.length} days`
+      });
+
+      // Column ruler — a date every few columns, enough to orient without crowding.
+      const labelEvery = Math.max(1, Math.ceil(buckets.length / 8));
+      buckets.forEach((b, c) => {
+        if (c % labelEvery !== 0) return;
+        svg.appendChild(svgTextEl(
+          Object.assign({ x: LABEL_W + c * (CW + GAP), y: TOP - 6 }, AXIS_ATTRS),
+          b.start.substring(5)));
+      });
+
+      const showValues = !!getSetting('heatmapShowValues');
+      series.rows.forEach((row, r) => {
+        const y = TOP + r * ROW_H;
+        // The tooltip hangs off a wrapping <g>, not off the <text> itself: an
+        // SVG <title> must be its target's first child, and nesting one inside
+        // the label would fold the tooltip into the label's own text content —
+        // which is what both a screen reader and the DOM would then read out.
+        const labelGroup = svgEl('g');
+        const lt = svgEl('title');
+        lt.textContent = `${row.label} — ${fmt(row.total)}`;
+        labelGroup.appendChild(lt);
+        labelGroup.appendChild(svgTextEl(
+          { x: LABEL_W - 8, y: y + ROW_H - 6, 'text-anchor': 'end', 'font-size': 10, opacity: 0.85, fill: 'currentColor' },
+          row.label.length > 22 ? row.label.substring(0, 21) + '…' : row.label));
+        svg.appendChild(labelGroup);
+
+        const columnValues = bucketRowCells(row.cells, step);
+        buckets.forEach((b, c) => {
+          const sum = columnValues[c] || 0;
+          const bucket = bucketOf(sum, edges);
+          const x = LABEL_W + c * (CW + GAP);
+          const span = b.start === b.end ? formatDateShort(b.start)
+            : `${formatDateShort(b.start)} – ${formatDateShort(b.end)}`;
+          paintCell(svg, { x, y, width: CW, height: ROW_H - GAP },
+            bucket === -1 ? ramp.empty : ramp.colors[Math.min(bucket, ramp.colors.length - 1)],
+            `${row.label} · ${span} — ${sum > 0 ? fmt(sum) : 'nothing tracked'}`);
+          if (showValues && sum > 0 && CW >= 12) {
+            svg.appendChild(svgTextEl(
+              { x: x + CW / 2, y: y + ROW_H - 8, 'text-anchor': 'middle', 'font-size': 8, fill: 'currentColor', opacity: 0.75 },
+              series.metric === 'time' ? Math.round(sum / HOUR_MS) : sum));
+          }
+        });
+      });
+      return svg;
+    };
+
+    const renderPunchcard = (punch, ramp, edges) => {
+      const CELL = 14, PITCH = 17, GUTTER = 34, TOP = 20;
+      const weekStart = Number(getSetting('weekStartsOn')) || 0;
+      const width = GUTTER + 24 * PITCH;
+      const height = TOP + 7 * PITCH;
+      const svg = svgEl('svg', {
+        width, height, viewBox: `0 0 ${width} ${height}`, role: 'img',
+        'aria-label': `Tasks completed by weekday and hour — ${punch.total} in total`
+      });
+
+      for (let h = 0; h < 24; h += 3) {
+        svg.appendChild(svgTextEl(
+          Object.assign({ x: GUTTER + h * PITCH, y: TOP - 7 }, AXIS_ATTRS), `${h}:00`));
+      }
+      for (let r = 0; r < 7; r++) {
+        const weekday = (r + weekStart) % 7;
+        svg.appendChild(svgTextEl(
+          Object.assign({ x: GUTTER - 6, y: TOP + r * PITCH + CELL - 2, 'text-anchor': 'end' }, AXIS_ATTRS),
+          HM_DAY_NAMES[weekday].slice(0, 3)));
+        for (let h = 0; h < 24; h++) {
+          const value = punch.cells[weekday][h];
+          const b = bucketOf(value, edges);
+          const hourLabel = `${String(h).padStart(2, '0')}:00`;
+          paintCell(svg, { x: GUTTER + h * PITCH, y: TOP + r * PITCH, width: CELL, height: CELL },
+            b === -1 ? ramp.empty : ramp.colors[Math.min(b, ramp.colors.length - 1)],
+            `${HM_DAY_NAMES[weekday]} ${hourLabel} — ${value} ${value === 1 ? 'task' : 'tasks'}`);
+        }
+      }
+      return svg;
+    };
+
+    const renderHeatmapLegend = (containerId, ramp, edges, fmt) => {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = '';
+      el.appendChild(mkEl('span', '', 'Less'));
+
+      // Drawn as SVG rects for the same reason the grid is: a CSS background is
+      // dropped by print engines, which would leave the printed report showing a
+      // correct heatmap above a row of blank squares.
+      const swatches = [{ color: ramp.empty, label: 'No data' }].concat(
+        ramp.colors.map((color, i) => {
+          const lo = i === 0 ? 0 : edges[i - 1];
+          const hi = i < edges.length ? edges[i] : null;
+          return { color, label: hi === null ? `${fmt(lo)} and up` : `${fmt(lo)} – ${fmt(hi)}` };
+        }));
+
+      const SW = 11, SGAP = 2;
+      const width = swatches.length * (SW + SGAP);
+      const svg = svgEl('svg', {
+        width, height: SW, viewBox: `0 0 ${width} ${SW}`,
+        class: 'hm-legend-cells', role: 'img', 'aria-label': 'Colour scale, least to most'
+      });
+      swatches.forEach((s, i) => {
+        paintCell(svg, { x: i * (SW + SGAP), y: 0, width: SW, height: SW }, s.color, s.label);
+      });
+      el.appendChild(svg);
+      el.appendChild(mkEl('span', '', 'More'));
+    };
+
+    // The heatmap's range is its own. Settings › Heatmap › Span can hand it back
+    // to the header period, but that is opt-in: the header defaults to "Today",
+    // and a calendar heatmap of one day is a single square.
+    const resolveHeatmapRange = () => {
+      const span = Number(getSetting('heatmapSpan')) || 0;
+      if (span > 0) {
+        const end = new Date();
+        const start = new Date(end);
+        start.setDate(end.getDate() - (span - 1));
+        return { from: toLocalDate(start), to: toLocalDate(end), followsPeriod: false };
+      }
+      const labels = (latestMetrics && latestMetrics.weeklyData && latestMetrics.weeklyData.labels) || [];
+      if (labels.length) {
+        // First and last, then re-densified: hideNonWorkingDays may have punched
+        // holes in these labels, and the calendar grid needs every day back.
+        return { from: labels[0], to: labels[labels.length - 1], followsPeriod: true };
+      }
+      const t = toLocalDate(new Date());
+      return { from: t, to: t, followsPeriod: true };
+    };
+
+    // Memoised so that switching dimension or measure — the common interactive
+    // move, and the only one that does not go through processData — re-renders
+    // without re-aggregating.
+    //
+    // It deliberately does NOT survive a refresh: processData bumps the version on
+    // every call, because pullDataFromSP hands back freshly fetched arrays each
+    // poll and proving them unchanged would cost about as much as the aggregation
+    // does. What keeps the refresh loop cheap is the visibility check in
+    // renderHeatmap, which skips the work entirely while the tab is off screen.
+    let heatmapDataVersion = 0;
+    let heatmapCache = { key: '', series: null, punch: null };
+    const invalidateHeatmap = () => { heatmapDataVersion++; };
+
+    const heatmapStat = (label, value) => {
+      const wrap = mkEl('div', 'hm-stat');
+      wrap.appendChild(mkEl('div', 'hm-stat-label', label));
+      wrap.appendChild(mkEl('div', 'hm-stat-value', value));
+      return wrap;
+    };
+
+    // A plain table mirror of the grid, off-screen. Screen readers get something
+    // linear to walk, and the CSV export reads from the same series.
+    const renderHeatmapA11y = (series, fmt) => {
+      const host = document.getElementById('hm-a11y');
+      if (!host) return;
+      host.innerHTML = '';
+      const table = document.createElement('table');
+      const caption = document.createElement('caption');
+      caption.textContent = `${series.rows.length} rows over ${series.days.length} days`;
+      table.appendChild(caption);
+      series.rows.forEach(row => {
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.textContent = row.label;
+        tr.appendChild(th);
+        const td = document.createElement('td');
+        td.textContent = fmt(row.total);
+        tr.appendChild(td);
+        table.appendChild(tr);
+      });
+      host.appendChild(table);
+    };
+
+    // `onlyIfVisible` is passed by the refresh path: aggregating a year and
+    // repainting several hundred rects every 30 seconds for a tab nobody is
+    // looking at is the one genuinely expensive thing this feature could do.
+    // The work is deferred to whenever the tab is next opened instead.
+    const renderHeatmap = (opts) => {
+      const gridEl = document.getElementById('hm-grid');
+      if (!gridEl) return;
+      const view = document.getElementById('view-heatmap');
+      if (opts && opts.onlyIfVisible && view && view.classList.contains('hidden')) {
+        heatmapDirty = true;
+        return;
+      }
+      heatmapDirty = false;
+
+      const dim = currentHeatmapDim;
+      const metric = currentHeatmapMetric;
+      const { from, to, followsPeriod } = resolveHeatmapRange();
+      const key = [heatmapDataVersion, dim, metric, from, to,
+        getSetting('heatmapMaxRows'), getSetting('heatmapRowSort'), getSetting('habitSource')].join('|');
+
+      if (heatmapCache.key !== key) {
+        const ctx = latestTaskContext || buildTaskContext(cachedTasks, cachedProjects, cachedTags);
+        heatmapCache = {
+          key,
+          series: buildHeatmapSeries(ctx, {
+            dim, metric, from, to,
+            maxRows: Number(getSetting('heatmapMaxRows')) || 15,
+            rowSort: getSetting('heatmapRowSort')
+          }),
+          punch: buildPunchcard(ctx, from, to)
+        };
+      }
+      const series = heatmapCache.series;
+      const punch = heatmapCache.punch;
+      window.latestHeatmap = series;
+      latestHeatmap = series;
+
+      const fmt = heatmapFormatter(metric);
+      const buckets = Number(getSetting('heatmapBuckets')) || 5;
+      const scale = getSetting('heatmapScale');
+      // Only a goal the user actually turned on. Binning against a target that is
+      // switched off everywhere else in the dashboard would colour the grid
+      // against a number nothing on screen mentions; with 0 here, computeBinEdges
+      // falls through to the quantile scale instead.
+      const goalValue = metric === 'time'
+        ? (getSetting('dailyTimeGoalOn') ? Number(getSetting('dailyTimeGoalH')) * HOUR_MS : 0)
+        : (getSetting('dailyTaskGoalOn') ? Number(getSetting('dailyTaskGoal')) || 0 : 0);
+      // Bin the values that will actually be painted. The calendar draws one day
+      // per cell; the matrix aggregates days into columns, so its thresholds have
+      // to be derived from the column totals or every cell saturates.
+      const columnStep = dim === 'total' ? 1 : heatmapColumnStep(series.days.length);
+      const allValues = [];
+      series.rows.forEach(r => bucketRowCells(r.cells, columnStep)
+        .forEach(v => { if (v > 0) allValues.push(v); }));
+      // A per-day goal does not describe a week-long cell, so the absolute scale
+      // is scaled to the cell it is actually colouring.
+      const edges = computeBinEdges(allValues, scale, buckets, goalValue * columnStep);
+      // The ramp is sized to the edges that survived, not to the requested bucket
+      // count: quantile can return fewer when values tie, and painting more
+      // colours than there are thresholds would give two steps the same meaning.
+      const ramp = getHeatmapRamp(edges.length + 1);
+
+      const dimLabel = (HEATMAP_DIM_OPTIONS.find(o => o.v === dim) || { l: 'Overall' }).l;
+      const metricLabel = (HEATMAP_METRIC_OPTIONS.find(o => o.v === metric) || { l: '' }).l;
+      document.getElementById('hm-title').textContent =
+        `${metricLabel} — ${dim === 'total' ? 'day by day' : `by ${dimLabel.toLowerCase()}`}`;
+
+      // A long span with the archive switched off is mostly blank for reasons
+      // that have nothing to do with the user's actual working pattern.
+      const note = document.getElementById('hm-note');
+      const messages = [];
+      if (!getSetting('includeArchived') && series.days.length > 31) {
+        messages.push('Archived tasks are excluded (Settings › Data & Filtering), so older days here will look emptier than they were.');
+      }
+      // Keyed on the fallback having engaged, not on an empty grid: when the host
+      // sends no repeat data every task becomes its own "habit", so the grid is
+      // full rather than empty and the substitution would otherwise be silent.
+      if (dim === 'habit' && getSetting('habitSource') === 'repeat' && !series.usedRepeatId) {
+        messages.push('No repeating tasks were found, so these rows are grouped by task title instead.');
+      }
+      if (followsPeriod && series.days.length < 14) {
+        messages.push('The heatmap is following the period above. Settings › Heatmap › Span can give it its own, longer range.');
+      }
+      note.textContent = messages.join(' ');
+      note.classList.toggle('hidden', messages.length === 0);
+
+      gridEl.innerHTML = '';
+      if (series.rows.length === 0 || series.total === 0) {
+        gridEl.appendChild(mkEl('div', 'hm-empty', 'No data for this measure over this span.'));
+        renderHeatmapLegend('hm-legend', ramp, edges, fmt);
+      } else {
+        gridEl.appendChild(dim === 'total'
+          ? renderCalendarHeatmap(series, ramp, edges, fmt)
+          : renderMatrixHeatmap(series, ramp, edges, fmt));
+        renderHeatmapLegend('hm-legend', ramp, edges, fmt);
+      }
+
+      const stats = document.getElementById('hm-stats');
+      stats.innerHTML = '';
+      stats.appendChild(heatmapStat('Total', fmt(series.total)));
+      stats.appendChild(heatmapStat('Active days', `${series.activeDays} of ${series.days.length}`));
+      stats.appendChild(heatmapStat('Current streak', `${series.streak.current} ${series.streak.current === 1 ? 'day' : 'days'}`));
+      stats.appendChild(heatmapStat('Longest streak', `${series.streak.longest} ${series.streak.longest === 1 ? 'day' : 'days'}`));
+      // The busiest *day*, not the busiest cell: on a project or tag grid a single
+      // cell is one entity's share of a day, and reporting that as the day's total
+      // understates every day where two projects were worked on.
+      if (series.busiestDay > 0) stats.appendChild(heatmapStat('Busiest day', fmt(series.busiestDay)));
+
+      renderHeatmapA11y(series, fmt);
+
+      // Punchcard — completions only, and bin against its own values so it is not
+      // squashed by whatever scale the main grid happens to be using.
+      const punchCard = document.getElementById('hm-punch-card');
+      const punchOn = !!getSetting('heatmapPunchcard');
+      punchCard.classList.toggle('hidden', !punchOn);
+      if (punchOn) {
+        const punchValues = [];
+        punch.cells.forEach(rowCells => rowCells.forEach(v => { if (v > 0) punchValues.push(v); }));
+        const punchEdges = computeBinEdges(punchValues, scale === 'goal' ? 'quantile' : scale, buckets, 0);
+        const punchRamp = getHeatmapRamp(punchEdges.length + 1);
+        const punchEl = document.getElementById('hm-punch');
+        punchEl.innerHTML = '';
+        if (punch.total === 0) {
+          punchEl.appendChild(mkEl('div', 'hm-empty', 'No tasks were completed in this span.'));
+        } else {
+          punchEl.appendChild(renderPunchcard(punch, punchRamp, punchEdges));
+        }
+        renderHeatmapLegend('hm-punch-legend', punchRamp, punchEdges, (v) => `${v} ${v === 1 ? 'task' : 'tasks'}`);
+      }
+    };
+
     // --- SHARE / EXPORT ---
     // Human-readable label for the range currently in view (derived from metrics, so it
     // reflects whatever preset/custom range produced the data on screen).
@@ -2229,7 +3273,8 @@
       const tabs = [
         { key: 'dashboard', label: 'Dashboard' },
         { key: 'details', label: 'Detailed List' },
-        { key: 'drilldown', label: 'By Project / Tag' }
+        { key: 'drilldown', label: 'By Project / Tag' },
+        { key: 'heatmap', label: 'Heatmap' }
       ];
       const active = tabs.find(t => !document.getElementById(`view-${t.key}`).classList.contains('hidden')) || tabs[0];
       return { ...active, node: document.getElementById(`view-${active.key}`) };
@@ -2257,19 +3302,47 @@
     // and gradients to concrete values so the SVG <foreignObject> renders identically
     // without access to the page stylesheet.
     const inlineComputedStyles = (srcRoot, destRoot) => {
-      const srcNodes = [srcRoot, ...srcRoot.querySelectorAll('*')];
-      const destNodes = [destRoot, ...destRoot.querySelectorAll('*')];
-      for (let i = 0; i < srcNodes.length; i++) {
-        const dest = destNodes[i];
-        if (!dest || dest.nodeType !== 1) continue;
-        const cs = window.getComputedStyle(srcNodes[i]);
+      const copy = (src, dest) => {
+        const cs = window.getComputedStyle(src);
         let cssText = '';
         for (let j = 0; j < cs.length; j++) {
           const prop = cs[j];
           cssText += `${prop}:${cs.getPropertyValue(prop)};`;
         }
         dest.style.cssText = cssText;
-      }
+      };
+      const walk = (src, dest) => {
+        if (!dest || dest.nodeType !== 1) return;
+        copy(src, dest);
+        // Stop at an <svg>. Everything this file draws inside one already carries
+        // literal presentation attributes, and the element itself has just been
+        // inlined, so a child's `fill="currentColor"` still resolves. Descending
+        // would mean copying ~300 computed properties onto each of a heatmap's
+        // several hundred <rect>s — the difference between a third of a second
+        // and three seconds on Download PNG.
+        if (src.tagName && src.tagName.toLowerCase() === 'svg') return;
+        const srcKids = src.children;
+        const destKids = dest.children;
+        for (let i = 0; i < srcKids.length; i++) walk(srcKids[i], destKids[i]);
+      };
+      walk(srcRoot, destRoot);
+    };
+
+    // Every <select> on a tab is driven by assigning `.value`, which sets a
+    // property and leaves the markup untouched. cloneNode copies markup, so
+    // without this the exported image shows each picker on its *first* option —
+    // an image captioned "Time tracked" over a chart of completions.
+    const syncClonedSelects = (srcRoot, destRoot) => {
+      const srcSelects = srcRoot.querySelectorAll('select');
+      const destSelects = destRoot.querySelectorAll('select');
+      srcSelects.forEach((sel, i) => {
+        const dest = destSelects[i];
+        if (!dest) return;
+        for (let k = 0; k < dest.options.length; k++) {
+          if (k === sel.selectedIndex) dest.options[k].setAttribute('selected', 'selected');
+          else dest.options[k].removeAttribute('selected');
+        }
+      });
     };
 
     // Render a DOM node to a PNG Blob using a native SVG <foreignObject> → <canvas> pipeline
@@ -2293,6 +3366,8 @@
           clone.style.margin = '0';
           const tip = clone.querySelector('#bar-tooltip');
           if (tip) tip.remove();
+
+          syncClonedSelects(node, clone);
 
           const xml = new XMLSerializer().serializeToString(clone);
           const svg =
@@ -2406,6 +3481,20 @@
       window.print();
     };
 
+    // The print stylesheet forces a white page whatever the host theme is, so the
+    // heatmap has to be repainted with its light ramp — a dark-ground ramp on
+    // white paper is unreadable. Redrawn again afterwards to restore the screen.
+    if (typeof window.addEventListener === 'function') {
+      window.addEventListener('beforeprint', () => {
+        heatmapForceLight = true;
+        try { renderHeatmap({ onlyIfVisible: true }); } catch (e) { debugWarn('[sp-dashboard] print repaint failed', e); }
+      });
+      window.addEventListener('afterprint', () => {
+        heatmapForceLight = false;
+        try { renderHeatmap({ onlyIfVisible: true }); } catch (e) { debugWarn('[sp-dashboard] print restore failed', e); }
+      });
+    }
+
     const legacyCopyText = (text) => {
       const ta = document.createElement('textarea');
       ta.value = text;
@@ -2420,6 +3509,9 @@
     };
 
     // Settings › Advanced › Copy text summary as → CSV.
+    const dimHeaderFor = (dim) =>
+      (HEATMAP_DIM_OPTIONS.find(o => o.v === dim) || { l: 'Overall' }).l;
+
     const buildCsvSummary = (tabKey) => {
       const m = window.latestMetrics || latestMetrics;
       // A cell is left bare only when it opens with a character we know is
@@ -2442,6 +3534,18 @@
       const row = (cells) => cells.map(cell).join(',');
       const rows = [];
       const statusOf = (e) => e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress';
+
+      if (tabKey === 'heatmap') {
+        // Entity down, days across — the shape that pastes into a spreadsheet and
+        // stays a heatmap. Cells go through the same inert-start guard as
+        // everything else; a date opens with a digit, so it is never prefixed.
+        const hm = window.latestHeatmap || latestHeatmap;
+        if (!hm || !hm.rows.length) return row(['No heatmap data']);
+        const fmt = heatmapFormatter(hm.metric);
+        rows.push(row([dimHeaderFor(hm.dim), ...hm.days.map(formatDateShort)]));
+        hm.rows.forEach(r => rows.push(row([r.label, ...r.cells.map(v => (v > 0 ? fmt(v) : ''))])));
+        return rows.join('\n');
+      }
 
       if (tabKey === 'details' || tabKey === 'drilldown') {
         let entries = m.tableEntries;
@@ -2522,6 +3626,25 @@
           lines.push('');
           lines.push('Tasks:');
           entries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.taskTitle} (${formatTime(e.timeSpent)})`));
+        }
+      } else if (tabKey === 'heatmap') {
+        // A 365-column grid is unreadable as pasted text, so this reports what the
+        // grid is *for* — coverage, streaks and the busiest rows — rather than
+        // transcribing it. Copy text summary as CSV gives the full grid.
+        const hm = window.latestHeatmap || latestHeatmap;
+        if (!hm || !hm.rows.length) return 'No heatmap data available.';
+        const fmt = heatmapFormatter(hm.metric);
+        const metricLabel = (HEATMAP_METRIC_OPTIONS.find(o => o.v === hm.metric) || { l: hm.metric }).l;
+        const from = hm.days[0], to = hm.days[hm.days.length - 1];
+        lines.push(`${b}${metricLabel} heatmap${b} (${formatDateShort(from)} – ${formatDateShort(to)})`);
+        lines.push(`• Total: ${fmt(hm.total)}`);
+        lines.push(`• Active days: ${hm.activeDays} of ${hm.days.length}`);
+        lines.push(`• Current streak: ${hm.streak.current} — longest ${hm.streak.longest}`);
+        if (hm.dim !== 'total') {
+          lines.push('');
+          lines.push(`${b}By ${dimHeaderFor(hm.dim).toLowerCase()}${b}`);
+          [...hm.rows].sort((a, c) => c.total - a.total)
+            .forEach(r => lines.push(`• ${r.label}: ${fmt(r.total)}`));
         }
       } else {
         lines.push(`${b}Productivity Summary${b}${suffix}`);
@@ -2634,7 +3757,14 @@
               { type: 'seg', key: 'sortDir', options: SETTING_OPTIONS.sortDir }] },
           { label: 'By Project / Tag split', controls: [
             { type: 'seg', key: 'drillDimMode', options: SETTING_OPTIONS.drillDimMode },
-            { type: 'seg', key: 'drillDimPinned', disabledWhen: { key: 'drillDimMode', is: 'remember' }, options: SETTING_OPTIONS.drillDimPinned }] }
+            { type: 'seg', key: 'drillDimPinned', disabledWhen: { key: 'drillDimMode', is: 'remember' }, options: SETTING_OPTIONS.drillDimPinned }] },
+          { label: 'Heatmap split', hint: 'Its span lives in Settings › Heatmap, because it is a filter rather than a starting position',
+            controls: [
+              { type: 'seg', key: 'heatmapDimMode', options: SETTING_OPTIONS.heatmapDimMode },
+              { type: 'select', key: 'heatmapDimPinned', disabledWhen: { key: 'heatmapDimMode', is: 'remember' }, options: SETTING_OPTIONS.heatmapDimPinned }] },
+          { label: 'Heatmap measure', controls: [
+            { type: 'seg', key: 'heatmapMetricMode', options: SETTING_OPTIONS.heatmapMetricMode },
+            { type: 'select', key: 'heatmapMetricPinned', disabledWhen: { key: 'heatmapMetricMode', is: 'remember' }, options: SETTING_OPTIONS.heatmapMetricPinned }] }
         ]
       },
       {
@@ -2683,6 +3813,28 @@
               sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')] }] },
           { label: 'Detailed List rows per page',
             controls: [{ type: 'seg', key: 'tablePageSize', numeric: true, options: SETTING_OPTIONS.tablePageSize }] }
+        ]
+      },
+      {
+        id: 'heatmap', label: 'Heatmap',
+        sub: 'The Heatmap tab keeps its own period, because the one in the header defaults to a single day',
+        rows: [
+          { label: 'Span', hint: 'How far back the grid reaches. Following the period above is available but rarely what you want here',
+            controls: [{ type: 'select', key: 'heatmapSpan', numeric: true, options: SETTING_OPTIONS.heatmapSpan }] },
+          { label: 'Colour scale', hint: 'Quantile spreads the ramp evenly over the days that have data, so one long day cannot flatten the rest',
+            controls: [{ type: 'select', key: 'heatmapScale', options: SETTING_OPTIONS.heatmapScale }] },
+          { label: 'Colour steps',
+            controls: [{ type: 'number', key: 'heatmapBuckets', min: 3, max: 9, unit: 'steps' }] },
+          { label: 'Rows shown', hint: 'Project, tag, task and habit grids only. Everything past this is summed into one “Other” row',
+            controls: [{ type: 'number', key: 'heatmapMaxRows', min: 1, max: 100, unit: 'rows' }] },
+          { label: 'Row order', hint: 'The busiest rows are always the ones kept — this only changes how the survivors are stacked',
+            controls: [{ type: 'select', key: 'heatmapRowSort', options: SETTING_OPTIONS.heatmapRowSort }] },
+          { label: 'Print the value in each cell', hint: 'Hours, or task count. Only fits on the wider grids',
+            controls: [{ type: 'toggle', key: 'heatmapShowValues' }] },
+          { label: 'Show the completion punchcard', hint: 'Weekday × hour. Completions only — tracked time is recorded per day, with no hour attached',
+            controls: [{ type: 'toggle', key: 'heatmapPunchcard' }] },
+          { label: 'What counts as a habit', hint: 'Super Productivity has no habit of its own; the nearest thing is a repeating task. Falls back to titles when the host does not send repeat data',
+            controls: [{ type: 'radio', key: 'habitSource', options: SETTING_OPTIONS.habitSource }] }
         ]
       },
       {
@@ -2987,7 +4139,12 @@
       applyAppearance();
       restartLiveUpdate();
       currentSort = { key: getSetting('sortKey'), dir: getSetting('sortDir') };
+      // Any setting can change what the heatmap aggregate contains, so the
+      // memoised series is dropped rather than guessed at.
+      invalidateHeatmap();
+      if (hmSpanSelect) hmSpanSelect.value = String(getSetting('heatmapSpan'));
       if (reprocess) processData(cachedTasks, cachedProjects, cachedTags);
+      else renderHeatmap({ onlyIfVisible: true });
       renderSettingsPanel();
     };
 
@@ -3163,6 +4320,19 @@
     switchTab(resolveDefault('tabMode', 'tabPinned', 'tabLast'));
     applyAppearance();
 
+    // Tab and drill-dimension buttons. Wired here rather than with inline onclick
+    // attributes so that switchTab / setDrillDimension need not be globals — the
+    // block below is stripped from production builds (see scripts/minify.sh).
+    TAB_IDS.forEach(id => {
+      const btn = document.getElementById(`tab-btn-${id}`);
+      if (btn) btn.addEventListener('click', () => switchTab(id));
+    });
+    ['project', 'tag'].forEach(dim => {
+      const btn = document.getElementById(`drill-dim-${dim}`);
+      if (btn) btn.addEventListener('click', () => setDrillDimension(dim));
+    });
+
+    /* BUILD:TEST-EXPORTS-START — stripped by scripts/minify.sh; tests run against source */
     // expose key utilities for testing (JSDOM environment won't execute script tags normally)
     window.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
     window.SETTINGS_KEY = SETTINGS_KEY;
@@ -3198,9 +4368,25 @@
     window.getActiveViewNode = getActiveViewNode;
     window.getRangeLabel = getRangeLabel;
     window.inlineComputedStyles = inlineComputedStyles;
+    window.syncClonedSelects = syncClonedSelects;
     window.captureNodeToPngBlob = captureNodeToPngBlob;
     window.triggerDownload = triggerDownload;
     window.renderNativePieChart = renderNativePieChart;
+    window.buildTaskContext = buildTaskContext;
+    window.buildHeatmapSeries = buildHeatmapSeries;
+    window.buildPunchcard = buildPunchcard;
+    window.computeBinEdges = computeBinEdges;
+    window.bucketOf = bucketOf;
+    window.computeStreak = computeStreak;
+    window.sampleRamp = sampleRamp;
+    window.getHeatmapRamp = getHeatmapRamp;
+    window.resolveHeatmapRange = resolveHeatmapRange;
+    window.renderHeatmap = renderHeatmap;
+    window.setHeatmapDim = setHeatmapDim;
+    window.habitKeyOf = habitKeyOf;
+    window.HEATMAP_DIM_OPTIONS = HEATMAP_DIM_OPTIONS;
+    window.HEATMAP_METRIC_OPTIONS = HEATMAP_METRIC_OPTIONS;
+    /* BUILD:TEST-EXPORTS-END */
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
     const pullDataFromSP = async () => {
@@ -3249,6 +4435,7 @@
           }
           const finalDoneCount = cachedTasks.filter(t => t.isDone).length;
           debugLog("[sp-dashboard] final cachedTasks done count:", finalDoneCount);
+          invalidateHeatmap(); // the task set just changed under the memo
           cachedProjects = await window.PluginAPI.getAllProjects() || [];
           debugLog("[sp-dashboard] received projects count", cachedProjects.length);
           // Tags are supplied via postMessage from plugin.js (host context).
@@ -3302,8 +4489,9 @@
         pullDataFromSP();
         restartLiveUpdate();
       } else {
+        /* BUILD:MOCK-START — stripped by scripts/minify.sh; only reachable on file:// */
         debugLog("[sp-dashboard] No PluginAPI detected. Loading mock data...");
-        
+
         // Simulating the exact screenshot payload
         const dates = [
           new Date('2026-02-22').toISOString().split('T')[0],
@@ -3368,7 +4556,78 @@
           }
         ];
 
+        // Four days of data is enough to show a bar chart but not a year-long
+        // heatmap, so the fallback also generates a plausible history. Everything
+        // here is done, undated and outside the Feb 17–22 window the other mock
+        // tasks occupy, so it cannot disturb the views built around them.
+        const rng = (() => { let s = 20260827; return () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296; })();
+        const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+        const HISTORY_PROJECTS = ['p1', 'p2', 'p3'];
+        const HISTORY_TAGS = [['tag-fe'], ['tag-be'], ['tag-ux'], ['tag-be', 'tag-fe']];
+        const HISTORY_TITLES = ['Refactor the parser', 'Review PRs', 'Client call', 'Write tests',
+          'Fix flaky spec', 'Update docs', 'Plan the sprint', 'Pair on billing',
+          'Migrate the schema', 'Chase invoices', 'Triage the backlog', 'Rework onboarding'];
+        cachedProjects.push({ id: 'p3', title: 'Internal Tools' });
+
+        // Work is carried across days rather than invented fresh each morning:
+        // in Super Productivity one task accumulates timeSpentOnDay over its
+        // whole life, and a mock that ignores that makes the Task grid look like
+        // a diagonal line of one-day rows.
+        const cursor = new Date();
+        let openWork = [];
+        let seq = 0;
+        for (let back = 330; back >= 1; back--) {
+          cursor.setTime(Date.now() - back * 86400000);
+          const iso = toLocalDate(cursor);
+          if (iso >= '2026-02-17' && iso <= '2026-02-22') continue;
+          const weekday = cursor.getDay();
+          // Weekends are quiet rather than empty, which is most of what makes a
+          // heatmap worth looking at in the first place.
+          if (rng() > ((weekday === 0 || weekday === 6) ? 0.2 : 0.85)) continue;
+
+          while (openWork.length < 2 + Math.floor(rng() * 2)) {
+            const task = {
+              id: `mock-h-${++seq}`, parentId: null, title: pick(HISTORY_TITLES),
+              isDone: false, projectId: pick(HISTORY_PROJECTS),
+              tagIds: pick(HISTORY_TAGS).slice(), timeSpentOnDay: {}
+            };
+            cachedTasks.push(task);
+            openWork.push(task);
+          }
+          openWork.forEach(task => {
+            if (rng() > 0.7) return;
+            task.timeSpentOnDay[iso] = Math.round((900000 + rng() * 9000000) / 60000) * 60000;
+          });
+          if (rng() < 0.3) {
+            const finished = openWork.shift();
+            finished.isDone = true;
+            const at = new Date(cursor);
+            at.setHours(10 + Math.floor(rng() * 8), Math.floor(rng() * 60), 0, 0);
+            finished.doneOn = at.getTime();
+          }
+
+          // A repeating task, so the Habit grid has something real to group on.
+          if (weekday !== 0 && weekday !== 6 && rng() < 0.75) {
+            const at = new Date(cursor);
+            at.setHours(9, 15, 0, 0);
+            cachedTasks.push({
+              id: `mock-r-${back}`, parentId: null, title: 'Morning review',
+              repeatCfgId: 'repeat-morning-review',
+              isDone: true, doneOn: at.getTime(), projectId: 'p1', tagIds: [],
+              timeSpentOnDay: { [iso]: 900000 }
+            });
+          }
+        }
+        // Anything still open at the end would be counted as unplanned work and
+        // change the Overdue card the other mock tasks are built around.
+        openWork.forEach(task => {
+          task.isDone = true;
+          task.doneOn = Date.now() - 86400000;
+        });
+
+        invalidateHeatmap();
         processData(cachedTasks, cachedProjects, cachedTags);
+        /* BUILD:MOCK-END */
       }
     }, 500);
 

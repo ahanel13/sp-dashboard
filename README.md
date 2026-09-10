@@ -10,9 +10,10 @@ A lightweight dashboard plugin for [Super Productivity](https://super-productivi
 - **Dashboard** — key metrics (time tracked, tasks completed, overdue, late), daily trend bar chart, and project/tag breakdown pie chart
 - **Detailed List** — sortable table of every time entry with project, task, duration, and status
 - **By Project / Tag** — drill into any project or tag for dedicated stats, a daily trend chart, and a filtered task list
+- **Heatmap** — a year of work at a glance: a calendar grid of tracked time, completions, overdue or late work, the same broken out per project, tag, task or habit, plus a weekday × hour punchcard of when things actually get finished
 - Live updates whenever task data changes in Super Productivity
 - Adapts to light and dark themes automatically
-- **Settings** — a gear in the tab bar opens six panels of configuration (below)
+- **Settings** — a gear in the tab bar opens seven panels of configuration (below)
 
 ---
 
@@ -24,9 +25,10 @@ export, import, or reset from Settings › Advanced.
 | Section | What you can change |
 | --- | --- |
 | **General** | Start of week, date format, time format (`3h 45m` / `3.75h` / `225m`), working days, hide non-working days from charts |
-| **Defaults** | What each control shows on open — remember the last value, or pin a fixed one: period, opening tab, chart metrics, table sort, project/tag split |
+| **Defaults** | What each control shows on open — remember the last value, or pin a fixed one: period, opening tab, chart metrics, table sort, project/tag split, heatmap split and measure |
 | **Data & Filtering** | Include archived tasks, exclude projects or tags, count the running timer, list subtasks as rows, minimum entry length, how undated tasks count toward overdue, hide empty projects/tags |
 | **Appearance** | Theme override, chart palette (incl. colourblind-safe), bar-chart grouping, "Other" grouping for small pie slices, density, which stat cards show, rows per page |
+| **Heatmap** | Span (the Heatmap tab keeps its own period), colour scale and number of steps, rows shown and their order, values printed in cells, the punchcard, what counts as a habit |
 | **Goals** | Daily time target and daily task target (dashed line on the bar chart), weekly time target (progress bar on the Total Time card) |
 | **Advanced** | Auto-refresh interval, debug logging, export filename pattern, text-summary format (Slack / Markdown / CSV), export / import / reset |
 
@@ -46,6 +48,9 @@ Filtering** changes what the numbers mean, not just how they look.
 
 ![By Project / Tag View](assets/drilldown.png)
 *Drill-down view showing stats, daily trend, and tasks for a selected project or tag.*
+
+![Heatmap View](assets/heatmap.png)
+*Twelve months of tracked time, with coverage and streaks, above a punchcard of when tasks get completed.*
 
 ---
 

@@ -61,5 +61,18 @@ import fs from 'fs';
   await page.screenshot({ path: drillPath, fullPage: true });
   console.log('Drilldown screenshot saved to', drillPath);
 
+  // Heatmap. Unlike the tabs above it keeps its own span, so the custom range set
+  // at the top of this script does not apply — it draws its default 12 months.
+  await page.evaluate(() => window.switchTab && window.switchTab('heatmap'));
+  await new Promise(resolve => setTimeout(resolve, 500));
+  await page.evaluate(() => {
+    const viewContent = document.getElementById('view-heatmap');
+    if (viewContent) { viewContent.style.overflow = 'visible'; viewContent.style.height = 'auto'; }
+  });
+  await new Promise(resolve => setTimeout(resolve, 300));
+  const heatPath = path.join(outDir, 'heatmap.png');
+  await page.screenshot({ path: heatPath, fullPage: true });
+  console.log('Heatmap screenshot saved to', heatPath);
+
   await browser.close();
 })();
