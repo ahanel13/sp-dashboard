@@ -802,6 +802,11 @@
 
 
   <script>
+    // Say who we are, first thing. The host renders every plugin view as an
+    // unmarked same-origin iframe, so this stamp is how plugin.js tells our
+    // view apart from another plugin's before it posts task data into it.
+    document.documentElement.setAttribute('data-sp-plugin', 'sp-dashboard');
+
     // ==========================================================
     // SETTINGS STORE
     // One JSON blob in localStorage. Nothing else in this file writes
@@ -899,12 +904,18 @@
     // KEEP IN SYNC with MENU_ICONS in plugin.js, which applies the choice to
     // the sidebar and needs the geometry before this iframe has ever loaded.
     const MENU_ICONS = [
+      // Mirrors icon.svg exactly -- this one is a preview of the file the host
+      // renders, not a design of its own.
       { id: 'default', label: 'Dashboard (default)', shapes: [
-        { t: 'rect', x: 3, y: 4, width: 18, height: 18, rx: 2 },
-        { t: 'line', x1: 8, y1: 2, x2: 8, y2: 6 },
+        { t: 'rect', x: 3, y: 4, width: 18, height: 18, rx: 2, ry: 2 },
         { t: 'line', x1: 16, y1: 2, x2: 16, y2: 6 },
+        { t: 'line', x1: 8, y1: 2, x2: 8, y2: 6 },
         { t: 'line', x1: 3, y1: 10, x2: 21, y2: 10 },
-        { t: 'path', d: 'M6 19l4-3l4 2l4-5' }] },
+        { t: 'path', d: 'M6 19l4-3l4 2l4-5' },
+        { t: 'circle', cx: 6, cy: 19, r: 1, fill: 'currentColor' },
+        { t: 'circle', cx: 10, cy: 16, r: 1, fill: 'currentColor' },
+        { t: 'circle', cx: 14, cy: 18, r: 1, fill: 'currentColor' },
+        { t: 'circle', cx: 18, cy: 13, r: 1, fill: 'currentColor' }] },
       { id: 'bars', label: 'Bar chart', shapes: [
         { t: 'rect', x: 4, y: 12, width: 4, height: 8 },
         { t: 'rect', x: 10, y: 7, width: 4, height: 13 },
@@ -2943,6 +2954,7 @@
           const on = current === o.v;
           const btn = mkEl('button', 'set-icon-btn' + (on ? ' active' : ''));
           btn.type = 'button';
+          btn.disabled = disabled;
           btn.title = o.l;
           btn.setAttribute('aria-label', o.l);
           btn.setAttribute('aria-pressed', on ? 'true' : 'false');

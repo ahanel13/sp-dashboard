@@ -13,20 +13,59 @@ console.log("[sp-dashboard plugin] Date Range Reporter plugin loaded!");
 // Must match the "id" field in manifest.json.template.
 const PLUGIN_ID = 'sp-dashboard';
 
-// Super Productivity loads every plugin's view via `iframe.srcdoc` (no `src` URL),
-// and marks the iframe's owner with `data-plugin-id`. Since the iframe carries
-// `allow-same-origin`, we can read `frameElement` off the sender's Window to find
-// the exact DOM element that sent a message and check its owning plugin id --
-// this is what actually distinguishes our iframe from any other installed
-// plugin's, unlike matching on `src` (which is always empty under `srcdoc`).
-function isOwnPluginWindow(win) {
-  if (!win) return false;
+// Finding our own view iframe among everything else on the host page.
+//
+// Older hosts marked each plugin's iframe with `data-plugin-id`, which is what
+// this file used to match on. Super Productivity 16 renders the plugin view as
+// an unmarked `<iframe class="plugin-iframe">` on a blob URL, so that selector
+// now matches nothing -- taking live refresh and the download bridge with it.
+// Neither attribute nor class is worth trusting on its own, so identity is
+// established twice over:
+//
+//   - the route. `showIndexHtmlAsView()` navigates to /plugins/<id>/index and
+//     only one plugin view is mounted at a time, so the route names whose view
+//     is on screen. A plugin's side panel can put a second `.plugin-iframe` on
+//     the page, which is why the route alone is not enough.
+//   - the document. index.html stamps `data-sp-plugin` on its own <html> as
+//     soon as it runs. The iframe is same-origin (blob URLs inherit the opener's
+//     origin, and the sandbox carries allow-same-origin), so we can read it.
+//     A frame that has finished loading without the stamp belongs to someone
+//     else; one that is still loading has simply not stamped itself yet.
+//
+// The legacy attribute is still checked first, so this keeps working on hosts
+// that do mark their iframes.
+const OWN_VIEW_ROUTE = '/plugins/' + PLUGIN_ID + '/index';
+
+function isOwnPluginRoute() {
+  // Electron runs the app off file:// with hash routing; the web build uses
+  // real paths. Both spell the route the same way.
+  return (location.hash + ' ' + location.pathname).indexOf(OWN_VIEW_ROUTE) !== -1;
+}
+
+function isOwnPluginFrame(iframe) {
   try {
-    const el = win.frameElement;
-    return !!el && el.getAttribute('data-plugin-id') === PLUGIN_ID;
+    const doc = iframe.contentDocument;
+    if (!doc || !doc.documentElement) return false;
+    const stamp = doc.documentElement.getAttribute('data-sp-plugin');
+    if (stamp) return stamp === PLUGIN_ID;
+    return doc.readyState === 'loading';
   } catch (e) {
+    // Not same-origin, so not a frame we can vouch for.
     return false;
   }
+}
+
+function ownPluginIframes() {
+  const tagged = document.querySelectorAll('iframe[data-plugin-id="' + PLUGIN_ID + '"]');
+  if (tagged.length) return Array.from(tagged);
+  if (!isOwnPluginRoute()) return [];
+  return Array.from(document.querySelectorAll('iframe.plugin-iframe')).filter(isOwnPluginFrame);
+}
+
+// Only our own view may ask us to act on its behalf.
+function isOwnPluginWindow(win) {
+  if (!win) return false;
+  return ownPluginIframes().some((iframe) => iframe.contentWindow === win);
 }
 
 // The dashboard iframe is sandboxed and typically cannot start a file download itself.
@@ -54,19 +93,23 @@ window.addEventListener('message', (event) => {
 // ==========================================================
 // MENU ICON (Settings > Appearance > Menu icon)
 // Super Productivity draws a plugin's sidebar row from the SVG in its
-// manifest and offers no API for changing it afterwards, so the user's
-// choice is applied by replacing the rendered node. Two things make that
-// safe rather than a blind DOM hack:
-//   - the row carries `data-plugin-id`, so we only ever touch our own;
+// manifest and offers no API for changing it afterwards: registerMenuEntry
+// is append-only, and the entry's own `icon` is ignored outright for any
+// plugin that ships an icon.svg. So the user's choice is applied by
+// replacing the rendered node. Two things make that safe rather than a
+// blind DOM hack:
+//   - we only touch a row we have positively identified as ours, see
+//     ownMenuIconHosts() below;
 //   - the node we replace is `div.plugin-svg-icon`, the host's own
 //     container for a plugin-supplied icon, not app chrome.
 // The original children are stashed before the first swap, so picking
 // "Dashboard (default)" restores the manifest icon exactly.
 //
-// The setting itself is written by the dashboard iframe. Its localStorage
-// is this window's localStorage (the iframe is `srcdoc` + allow-same-origin),
-// so the icon can be applied at startup, before the dashboard has ever been
-// opened. Live changes arrive as SP_DASHBOARD_SET_MENU_ICON.
+// The setting itself is written by the dashboard iframe, whose localStorage
+// is this window's localStorage (the view is a same-origin blob URL with
+// allow-same-origin), so the icon can be applied at startup, before the
+// dashboard has ever been opened. Live changes arrive as
+// SP_DASHBOARD_SET_MENU_ICON.
 //
 // KEEP IN SYNC with MENU_ICONS in index.html, which draws the pickers from
 // the same geometry.
@@ -75,12 +118,18 @@ const SETTINGS_KEY = 'sp-dashboard-settings';
 const DEFAULT_ICON_ID = 'default';
 
 const MENU_ICONS = [
+  // Mirrors icon.svg exactly -- this one is a preview of the file the host
+  // renders, not a design of its own.
   { id: 'default', label: 'Dashboard (default)', shapes: [
-    { t: 'rect', x: 3, y: 4, width: 18, height: 18, rx: 2 },
-    { t: 'line', x1: 8, y1: 2, x2: 8, y2: 6 },
+    { t: 'rect', x: 3, y: 4, width: 18, height: 18, rx: 2, ry: 2 },
     { t: 'line', x1: 16, y1: 2, x2: 16, y2: 6 },
+    { t: 'line', x1: 8, y1: 2, x2: 8, y2: 6 },
     { t: 'line', x1: 3, y1: 10, x2: 21, y2: 10 },
-    { t: 'path', d: 'M6 19l4-3l4 2l4-5' }] },
+    { t: 'path', d: 'M6 19l4-3l4 2l4-5' },
+    { t: 'circle', cx: 6, cy: 19, r: 1, fill: 'currentColor' },
+    { t: 'circle', cx: 10, cy: 16, r: 1, fill: 'currentColor' },
+    { t: 'circle', cx: 14, cy: 18, r: 1, fill: 'currentColor' },
+    { t: 'circle', cx: 18, cy: 13, r: 1, fill: 'currentColor' }] },
   { id: 'bars', label: 'Bar chart', shapes: [
     { t: 'rect', x: 4, y: 12, width: 4, height: 8 },
     { t: 'rect', x: 10, y: 7, width: 4, height: 13 },
@@ -174,11 +223,26 @@ let currentIconId = readStoredIconId();
 let currentIconShapes = findMenuIcon(currentIconId).shapes;
 const originalIconNodes = new WeakMap();
 
+// Nothing in the sidebar says which plugin a row belongs to -- `pluginId` is an
+// Angular input and never reaches the DOM -- so the row is identified by what
+// the host put inside it. For a plugin that ships an icon, the host injects that
+// file's markup verbatim into `div.plugin-svg-icon`, which makes a shape out of
+// our own icon.svg the one honest signature available. OWN_ICON_MARKER is the
+// trend path from icon.svg; a test asserts the two still agree.
+//
+// Rows we have already swapped no longer carry it, so they are remembered by the
+// marker we leave behind instead. The scope is `nav-item`, which keeps this away
+// from the identical-looking icons rendered on the plugin settings page.
+const OWN_ICON_MARKER = 'M6 19l4-3l4 2l4-5';
+
+function ownMenuIconHosts() {
+  return Array.from(document.querySelectorAll('nav-item plugin-icon .plugin-svg-icon'))
+    .filter((host) => host.dataset.spDashboardIcon !== undefined
+      || host.innerHTML.indexOf(OWN_ICON_MARKER) !== -1);
+}
+
 function applyMenuIcon() {
-  const hosts = document.querySelectorAll(
-    'nav-item[data-plugin-id="' + PLUGIN_ID + '"] .plugin-svg-icon'
-  );
-  hosts.forEach((host) => {
+  ownMenuIconHosts().forEach((host) => {
     // Already showing this icon -- nothing to do. This is what keeps the
     // MutationObserver below from turning every nav repaint into DOM work.
     if (host.dataset.spDashboardIcon === currentIconId) return;
@@ -247,7 +311,7 @@ window.addEventListener('message', (event) => {
 // Whenever the user adds a task, tracks time, or changes a project, this fires.
 PluginAPI.registerHook(PluginAPI.Hooks.ACTION, async (action) => {
   console.log("[sp-dashboard plugin] ACTION hook triggered", action.type);
-  const iframes = document.querySelectorAll(`iframe[data-plugin-id="${PLUGIN_ID}"]`);
+  const iframes = ownPluginIframes();
   if (!iframes.length) return;
 
   // Fetch tags from host context (more API access than the sandboxed iframe)

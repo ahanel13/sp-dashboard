@@ -28,6 +28,33 @@ This is a **Super Productivity plugin** — a sandboxed iframe widget. All UI lo
 - **`sp-dashboard/plugin.js`** — runs in the host app context. Registers an ACTION Redux hook with `PluginAPI.addEventListener`, then fires a `postMessage` to the iframe on every state change. This is the only bridge between the host app and the UI.
 - **`sp-dashboard/index.html`** — runs in an isolated iframe. Receives `SP_STATE_CHANGED` messages and pulls fresh data via `PluginAPI.getTasks()` / `getArchivedTasks()` / `getAllProjects()`. All rendering, state, and logic lives here.
 
+### Finding our own iframe, and our own sidebar row
+
+Nothing the host renders says which plugin a node belongs to. `pluginId` is an Angular input on
+`<nav-item>` / `<plugin-icon>` and never reaches the DOM, and the view iframe is an unmarked
+`<iframe class="plugin-iframe">` on a blob URL. `data-plugin-id` does not exist anywhere in Super
+Productivity 16 — this file used to claim it did, and both the live refresh and the download bridge
+were silently dead as a result. Identity is therefore established from what the host *does* tell us,
+always twice over:
+
+- **The view iframe** (`ownPluginIframes`) — the legacy `data-plugin-id` attribute first, for older
+  hosts; otherwise the route (`/plugins/sp-dashboard/index`, the only plugin view mounted at a time)
+  *and* the `data-sp-plugin` stamp that `index.html` puts on its own `<html>` as its first statement.
+  A second `.plugin-iframe` can share the page — another plugin's side panel — so the route alone is
+  not enough; a frame that finished loading without the stamp is someone else's.
+- **The sidebar row** (`ownMenuIconHosts`) — the host injects a plugin's own `icon.svg` verbatim into
+  `div.plugin-svg-icon`, so a shape from that file (`OWN_ICON_MARKER`) is the one honest signature
+  available. Rows already swapped no longer carry it and are remembered by the marker left behind.
+  The lookup is scoped to `nav-item` because the plugin settings page renders the same icons.
+
+Both are covered by tests that build Super Productivity's real markup. **Verify DOM assumptions
+against the running app**, not against the tests — the tests construct their own DOM and will pass
+against a host that has moved on.
+
+The iframe shares this window's `localStorage` (blob URLs inherit the opener's origin, and the
+sandbox carries `allow-same-origin`), which is how `plugin.js` applies the menu icon at startup
+before the dashboard has ever been opened.
+
 Available PluginAPI methods (beyond data fetching): `showSnack({ msg, ico })` for toast notifications, `getStorage()` / `setStorage(data)` for persistence (declared in manifest but currently unused).
 
 ### Data flow inside index.html

@@ -1481,3 +1481,260 @@ describe('Date Range Reporter UI', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// plugin.js runs in the host app, not in the iframe, so it gets its own harness.
+// Everything it does is DOM archaeology against Super Productivity's markup --
+// which is exactly the code that broke silently when the host changed shape --
+// so these tests build the host's real DOM and check what it finds in it.
+// ---------------------------------------------------------------------------
+describe('plugin.js (host context)', () => {
+  const pluginSrc = readFileSync(resolve(__dirname, '../sp-dashboard/plugin.js'), 'utf8');
+  const iconSvg = readFileSync(resolve(__dirname, '../sp-dashboard/icon.svg'), 'utf8');
+
+  // The file is a plain script with no exports; hand the internals back so the
+  // lookups can be exercised directly.
+  const loadPlugin = () => {
+    const exports = `
+      return {
+        MENU_ICONS, OWN_ICON_MARKER, applyMenuIcon, ownMenuIconHosts,
+        ownPluginIframes, isOwnPluginWindow, isOwnPluginRoute, buildIconSvg
+      };`;
+    return new Function(pluginSrc + exports).call(window);
+  };
+
+  // One plugin row as Super Productivity 16 actually renders it: no attribute
+  // anywhere says which plugin it belongs to, and the icon is the plugin's own
+  // file, injected verbatim.
+  const navRow = (label, iconMarkup) => `
+    <nav-item class="g-multi-btn-wrapper ng-star-inserted">
+      <button mat-menu-item class="mat-mdc-menu-item nav-link ng-star-inserted" role="menuitem">
+        <span class="mat-mdc-menu-item-text">
+          <plugin-icon class="nav-icon ng-star-inserted">
+            <div class="plugin-svg-icon ng-star-inserted" style="width: 24px; height: 24px;">${iconMarkup}</div>
+          </plugin-icon>
+          <span class="nav-label">${label}</span>
+        </span>
+      </button>
+    </nav-item>`;
+
+  const otherPluginIcon =
+    '<svg viewBox="0 0 24 24"><path d="M1 1l2 2"></path></svg>';
+
+  beforeEach(() => {
+    localStorage.clear();
+    document.documentElement.innerHTML = '<head></head><body></body>';
+    // A timer left running by an index.html test can still reach for these.
+    global.PluginAPI = {
+      Hooks: { ACTION: 'action' },
+      registerHook: vi.fn(),
+      getTags: vi.fn(async () => []),
+      getTasks: vi.fn(async () => []),
+      getArchivedTasks: vi.fn(async () => []),
+      getAllProjects: vi.fn(async () => []),
+    };
+    window.PluginAPI = global.PluginAPI;
+  });
+
+  describe('identifying our own sidebar row', () => {
+    it('finds the row the host drew from our icon.svg, and only that row', () => {
+      document.body.innerHTML =
+        navRow('Some Other Plugin', otherPluginIcon) +
+        navRow('Dashboard', iconSvg);
+
+      const { ownMenuIconHosts } = loadPlugin();
+      const hosts = ownMenuIconHosts();
+
+      expect(hosts).toHaveLength(1);
+      expect(hosts[0].closest('nav-item').querySelector('.nav-label').textContent)
+        .toBe('Dashboard');
+    });
+
+    it('leaves the plugin settings page alone', () => {
+      // The same <plugin-icon> markup renders on the plugin management cards.
+      document.body.innerHTML = `
+        <plugin-management>
+          <mat-card>
+            <plugin-icon><div class="plugin-svg-icon">${iconSvg}</div></plugin-icon>
+          </mat-card>
+        </plugin-management>`;
+
+      expect(loadPlugin().ownMenuIconHosts()).toHaveLength(0);
+    });
+
+    it('still recognises a row after it has been swapped', () => {
+      // The chosen icon replaces our icon.svg, so the signature is gone and the
+      // marker left behind is what keeps the row findable.
+      document.body.innerHTML = navRow('Dashboard', iconSvg);
+      const plugin = loadPlugin();
+
+      const host = document.querySelector('.plugin-svg-icon');
+      host.innerHTML = '<svg><circle cx="1" cy="1" r="1"></circle></svg>';
+      host.dataset.spDashboardIcon = 'clock';
+
+      expect(plugin.ownMenuIconHosts()).toEqual([host]);
+    });
+
+    it('applies the stored choice at startup, before the view is ever opened', () => {
+      // plugin.js reads the setting out of the shared localStorage itself, which
+      // is the whole reason the sidebar is right on a cold start.
+      document.body.innerHTML = navRow('Dashboard', iconSvg);
+      localStorage.setItem('sp-dashboard-settings', JSON.stringify({ menuIcon: 'clock' }));
+
+      const plugin = loadPlugin();
+      const host = document.querySelector('.plugin-svg-icon');
+      plugin.applyMenuIcon();
+
+      expect(host.dataset.spDashboardIcon).toBe('clock');
+      expect(host.innerHTML).not.toContain(plugin.OWN_ICON_MARKER);
+      expect(host.querySelector('svg')).toBeTruthy();
+    });
+
+    it('puts the manifest icon back when the user picks "default" again', () => {
+      window.location.hash = '#/plugins/sp-dashboard/index';
+      document.body.innerHTML =
+        navRow('Dashboard', iconSvg) + '<iframe class="plugin-iframe"></iframe>';
+      const view = document.querySelector('iframe');
+      view.contentDocument.documentElement.setAttribute('data-sp-plugin', 'sp-dashboard');
+      localStorage.setItem('sp-dashboard-settings', JSON.stringify({ menuIcon: 'clock' }));
+
+      const plugin = loadPlugin();
+      const host = document.querySelector('.plugin-svg-icon');
+      plugin.applyMenuIcon();
+      expect(host.innerHTML).not.toContain(plugin.OWN_ICON_MARKER);
+
+      // The live path: the dashboard tells the host what was picked.
+      window.dispatchEvent(new MessageEvent('message', {
+        source: view.contentWindow,
+        data: { type: 'SP_DASHBOARD_SET_MENU_ICON', iconId: 'default' },
+      }));
+
+      expect(host.dataset.spDashboardIcon).toBe('default');
+      expect(host.innerHTML).toContain(plugin.OWN_ICON_MARKER);
+    });
+
+    it('ignores a menu icon message from another plugin\'s frame', () => {
+      window.location.hash = '#/plugins/sp-dashboard/index';
+      document.body.innerHTML =
+        navRow('Dashboard', iconSvg) + '<iframe class="plugin-iframe"></iframe>';
+      const theirs = document.querySelector('iframe');
+      theirs.contentDocument.documentElement.setAttribute('data-sp-plugin', 'other-plugin');
+
+      const plugin = loadPlugin();
+      const host = document.querySelector('.plugin-svg-icon');
+
+      window.dispatchEvent(new MessageEvent('message', {
+        source: theirs.contentWindow,
+        data: { type: 'SP_DASHBOARD_SET_MENU_ICON', iconId: 'clock' },
+      }));
+
+      expect(host.dataset.spDashboardIcon).toBeUndefined();
+      expect(host.innerHTML).toContain(plugin.OWN_ICON_MARKER);
+    });
+  });
+
+  describe('identifying our own view iframe', () => {
+    const setRoute = (hash) => { window.location.hash = hash; };
+
+    it('accepts an iframe the host has tagged, on any route', () => {
+      setRoute('#/today');
+      document.body.innerHTML = '<iframe data-plugin-id="sp-dashboard"></iframe>';
+
+      expect(loadPlugin().ownPluginIframes()).toHaveLength(1);
+    });
+
+    it('accepts the untagged view iframe when the route names us', () => {
+      setRoute('#/plugins/sp-dashboard/index');
+      document.body.innerHTML = '<iframe class="plugin-iframe"></iframe>';
+      const iframe = document.querySelector('iframe');
+      iframe.contentDocument.documentElement.setAttribute('data-sp-plugin', 'sp-dashboard');
+
+      expect(loadPlugin().ownPluginIframes()).toEqual([iframe]);
+    });
+
+    it('rejects another plugin view on another plugin\'s route', () => {
+      setRoute('#/plugins/some-other-plugin/index');
+      document.body.innerHTML = '<iframe class="plugin-iframe"></iframe>';
+
+      expect(loadPlugin().ownPluginIframes()).toHaveLength(0);
+    });
+
+    it('rejects a loaded frame that has not stamped itself as ours', () => {
+      // A side panel from another plugin can sit on the page while our own view
+      // is open; the route says "sp-dashboard" but that frame is not ours.
+      setRoute('#/plugins/sp-dashboard/index');
+      document.body.innerHTML =
+        '<iframe class="plugin-iframe" id="theirs"></iframe>' +
+        '<iframe class="plugin-iframe" id="ours"></iframe>';
+      const theirs = document.getElementById('theirs');
+      const ours = document.getElementById('ours');
+      theirs.contentDocument.documentElement.setAttribute('data-sp-plugin', 'other-plugin');
+      ours.contentDocument.documentElement.setAttribute('data-sp-plugin', 'sp-dashboard');
+
+      expect(loadPlugin().ownPluginIframes()).toEqual([ours]);
+    });
+
+    it('only trusts messages from our own view', () => {
+      setRoute('#/plugins/sp-dashboard/index');
+      document.body.innerHTML =
+        '<iframe class="plugin-iframe" id="ours"></iframe>' +
+        '<iframe class="plugin-iframe" id="theirs"></iframe>';
+      const ours = document.getElementById('ours');
+      const theirs = document.getElementById('theirs');
+      ours.contentDocument.documentElement.setAttribute('data-sp-plugin', 'sp-dashboard');
+      theirs.contentDocument.documentElement.setAttribute('data-sp-plugin', 'other-plugin');
+
+      const { isOwnPluginWindow } = loadPlugin();
+      expect(isOwnPluginWindow(ours.contentWindow)).toBe(true);
+      expect(isOwnPluginWindow(theirs.contentWindow)).toBe(false);
+      expect(isOwnPluginWindow(window)).toBe(false);
+      expect(isOwnPluginWindow(null)).toBe(false);
+    });
+  });
+
+  describe('the two copies that have to stay in step', () => {
+    it('signs the sidebar row with a shape that is really in icon.svg', () => {
+      // If icon.svg is ever redrawn without updating the marker, the menu icon
+      // setting stops finding its row -- silently. This is that tripwire.
+      expect(iconSvg).toContain(loadPlugin().OWN_ICON_MARKER);
+    });
+
+    it('offers the same icons here as the dashboard draws in its picker', () => {
+      // MENU_ICONS is duplicated: plugin.js needs the geometry before the
+      // iframe has ever loaded, and index.html needs it to draw the pickers.
+      document.documentElement.innerHTML = html;
+      const scriptElement = Array.from(document.querySelectorAll('script'))
+        .find((s) => !s.src && s.textContent.includes('processData'));
+      new Function(scriptElement.textContent).call(window);
+
+      expect(loadPlugin().MENU_ICONS).toEqual(window.MENU_ICONS);
+    });
+
+    it('previews the default icon exactly as icon.svg draws it', () => {
+      // The reported failure was subtler than a missing icon: the preview was a
+      // slightly different drawing from the file it restores.
+      const svg = new DOMParser().parseFromString(iconSvg, 'image/svg+xml');
+      const geometry = (el) => {
+        const out = { t: el.tagName };
+        ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'width', 'height', 'd']
+          .forEach((a) => { if (el.hasAttribute(a)) out[a] = el.getAttribute(a); });
+        if (el.getAttribute('fill') && el.getAttribute('fill') !== 'none') out.filled = true;
+        return out;
+      };
+      const fromFile = Array.from(svg.documentElement.children).map(geometry);
+
+      const fromDescriptor = loadPlugin().MENU_ICONS
+        .find((i) => i.id === 'default').shapes
+        .map((shape) => {
+          const out = { t: shape.t };
+          Object.keys(shape).forEach((k) => {
+            if (k !== 't' && k !== 'fill') out[k] = String(shape[k]);
+          });
+          if (shape.fill === 'currentColor') out.filled = true;
+          return out;
+        });
+
+      expect(fromDescriptor).toEqual(fromFile);
+    });
+  });
+});
