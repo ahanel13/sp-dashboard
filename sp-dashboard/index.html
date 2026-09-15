@@ -1013,7 +1013,11 @@
         const options = SETTING_OPTIONS[key];
         if (options) return options.some(o => o.v === val) ? val : def;
         const range = SETTING_RANGES[key];
-        if (range) return Math.min(range[1], Math.max(range[0], Math.round(val)));
+        // roundToHours snaps to 0.05 (1/20) instead of a whole number
+        if (range) {
+          const stepped = key === 'roundToHours' ? Math.round(val * 20) / 20 : Math.round(val);
+          return Math.min(range[1], Math.max(range[0], stepped));
+        }
         return val;
       }
 
