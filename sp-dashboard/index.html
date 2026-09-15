@@ -258,6 +258,14 @@
     .details-table tr:last-child td { border-bottom: none; }
     .details-table tr:hover { background: rgba(255, 255, 255, 0.03); }
     .time-cell { font-family: monospace; font-size: 0.9rem; }
+    .actions-col { text-align: center; width: 2.5rem; }
+    .round-btn {
+      background: none; border: none; cursor: pointer; border-radius: 4px;
+      color: var(--text-color-muted, #9e9e9e); padding: 0.15rem 0.35rem; font-size: 0.9rem; line-height: 1;
+    }
+    .round-btn:hover { color: var(--c-primary, #03a9f4); background: rgba(255, 255, 255, 0.06); }
+    .round-btn:disabled { opacity: 0.4; cursor: default; }
+    .details-toolbar { padding: 0.5rem var(--s2, 1rem); border-bottom: 1px solid var(--divider-color, #333); display: flex; justify-content: flex-end; }
 
     /* --- SHARE / EXPORT --- */
     .share-wrap { position: relative; display: flex; align-items: center; }
@@ -352,7 +360,9 @@
     }
     .set-ctl input[type="text"], .set-ctl input[type="number"] { cursor: auto; }
     /* A target is one or two digits — no need for the full control width. */
-    .set-ctl input[type="number"] { width: 84px; }
+    .set-ctl input[type="number"] { width: 84px; appearance: textfield; -moz-appearance: textfield; }
+    .set-ctl input[type="number"]::-webkit-inner-spin-button,
+    .set-ctl input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     .set-ctl select:disabled, .set-ctl input:disabled { opacity: 0.4; cursor: not-allowed; }
     .set-opt { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; background: none; border: none; color: var(--text-color, #fff); padding: 0; text-align: left; }
     .set-mark { width: 14px; height: 14px; flex-shrink: 0; border: 2px solid var(--text-color-muted, #9e9e9e); box-sizing: border-box; }
@@ -641,6 +651,9 @@
       <!-- VIEW 2: DETAILED LIST                      -->
       <!-- ========================================== -->
       <div id="view-details" class="view-content no-padding hidden">
+        <div class="details-toolbar">
+          <button id="round-all-btn" class="share-menu-item" type="button" title="Round every entry in view">Round All</button>
+        </div>
         <table class="details-table">
           <thead>
             <tr>
@@ -649,6 +662,7 @@
               <th data-sort="taskTitle">Task</th>
               <th data-sort="timeSpent">Time Spent</th>
               <th data-sort="status">Status</th>
+              <th class="actions-col">Actions</th>
             </tr>
           </thead>
           <tbody id="details-table-body">
@@ -835,6 +849,7 @@
       includeRunningTimer: true,
       showSubtaskRows: false,
       minEntryMs: 0,
+      roundToHours: 1,
       noDueDateOverdue: false,
       hideEmptyEntities: true,
 
@@ -940,7 +955,8 @@
     const SETTING_RANGES = {
       dailyTimeGoalH: [1, 24],
       weeklyTimeGoalH: [1, 168],
-      dailyTaskGoal: [1, 99]
+      dailyTaskGoal: [1, 99],
+      roundToHours: [0.05, 8]
     };
 
     // Legal members of the array-valued settings. Anything else is discarded.
@@ -997,7 +1013,11 @@
         const options = SETTING_OPTIONS[key];
         if (options) return options.some(o => o.v === val) ? val : def;
         const range = SETTING_RANGES[key];
-        if (range) return Math.min(range[1], Math.max(range[0], Math.round(val)));
+        // roundToHours snaps to 0.05 (1/20) instead of a whole number
+        if (range) {
+          const stepped = key === 'roundToHours' ? Math.round(val * 20) / 20 : Math.round(val);
+          return Math.min(range[1], Math.max(range[0], stepped));
+        }
         return val;
       }
 
@@ -1105,6 +1125,10 @@
       const minutes = totalMinutes % 60;
       return `${hours}h ${minutes}m`;
     };
+
+    // Nearest-increment rounding for the Round / Round All buttons
+    const roundToNearest = (ms, incrementMs) =>
+      (!incrementMs || incrementMs <= 0) ? ms : Math.round(ms / incrementMs) * incrementMs;
 
     const toLocalDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
@@ -1768,9 +1792,9 @@
 
     const renderTable = (entries) => {
       const tbody = document.getElementById('details-table-body');
-      
+
       if (entries.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 3rem;">No tracked time found for this date range.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 3rem;">No tracked time found for this date range.</td></tr>`;
         return;
       }
 
@@ -1795,11 +1819,12 @@
                 : `<span class="badge badge-progress">In Progress</span>`
             }
           </td>
+          <td class="actions-col">${actionsCellHtml(entry)}</td>
         </tr>
       `).join('');
 
       if (shown.length < entries.length) {
-        tbody.innerHTML += `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 1rem; font-size: 0.8rem;">Showing ${shown.length} of ${entries.length} entries — raise the limit in Settings &rsaquo; Appearance.</td></tr>`;
+        tbody.innerHTML += `<tr><td colspan="6" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 1rem; font-size: 0.8rem;">Showing ${shown.length} of ${entries.length} entries — raise the limit in Settings &rsaquo; Appearance.</td></tr>`;
       }
     };
 
@@ -1827,6 +1852,149 @@
           </td>
         </tr>
       `).join('');
+    };
+
+    // --- ROUND / ROUND ALL ---
+    const getRoundIncrementMs = () => Math.round((Number(getSetting('roundToHours')) || 1) * HOUR_MS);
+    // Per-entry undo: taskId::date -> the value before last round
+    // Cleared for an entry once it's undone
+    const roundHistory = Object.create(null);
+    const roundHistoryKey = (taskId, date) => `${taskId}::${date}`;
+
+    // The Detailed List row's Actions cell: Undo once a row has been rounded
+    // or Round if it's roundable (not an archived task)
+    const actionsCellHtml = (entry) => {
+      if (!entry.taskId) return '';
+      const undoable = roundHistoryKey(entry.taskId, entry.date) in roundHistory;
+      if (!undoable && !entry.roundable) return '';
+      const action = undoable ? 'undo-round' : 'round';
+      const label = undoable ? 'Undo rounding' : 'Round to nearest';
+      const icon = undoable ? '↺' : '↕';
+      return `<button class="round-btn" data-action="${action}" data-task-id="${escapeHtml(entry.taskId)}" data-date="${escapeHtml(entry.date)}" title="${label}" aria-label="${label}">${icon}</button>`;
+    };
+
+    // Given the full entry set and an increment, what would Round All change?
+    const computeRoundAllPreview = (entries, incrementMs) => {
+      let addedMs = 0, removedMs = 0;
+      const changing = [];
+      entries.forEach(entry => {
+        if (!entry.roundable) return;
+        const rounded = roundToNearest(entry.timeSpent, incrementMs);
+        const delta = rounded - entry.timeSpent;
+        if (delta === 0) return;
+        if (delta > 0) addedMs += delta; else removedMs += -delta;
+        changing.push({ ...entry, rounded });
+      });
+      return { addedMs, removedMs, netMs: addedMs - removedMs, changingCount: changing.length, changing };
+    };
+
+    // Builds the PluginAPI.updateTask payload for (task, date) -> new time
+    // for that task. Shared by Round, Round All and Undo.
+    const buildValueUpdate = (task, dateStr, targetMs) => {
+      const currentMap = { ...(task.timeSpentOnDay || {}) };
+      const original = currentMap[dateStr] || 0;
+      if (targetMs === original) return null; // No update
+      currentMap[dateStr] = targetMs;
+      return {
+        previous: original,
+        updates: {
+          timeSpentOnDay: currentMap,
+          timeSpent: Math.max(0, (Number(task.timeSpent) || 0) + (targetMs - original))
+        }
+      };
+    };
+    
+    
+    const appendNote = (notes, line) => {
+      const base = (notes || '').trimEnd();
+      return base ? `${base}\n${line}` : line;
+    };
+
+    // Builds full PluginAPI.updateTask payload for time and notes updates
+    const buildRoundUpdate = (task, dateStr) => {
+      const original = (task.timeSpentOnDay || {})[dateStr] || 0;
+      const build = buildValueUpdate(task, dateStr, roundToNearest(original, getRoundIncrementMs()));
+      if (!build) return null;
+      build.previousNotes = task.notes || '';
+      build.updates.notes = appendNote(task.notes, `Unrounded: ${(original / HOUR_MS).toFixed(2)}`);
+      return build;
+    };
+
+    // Applies a batch of writes sequentially since two entries can share a task 
+    // (on different days), and concurrent updateTask calls could overwrite
+    // each other. Also Records/clears each entry's undo history as it goes
+    const applyBuilds = async (items, build, verb) => {
+      const failed = [];
+      let succeeded = 0;
+      for (const item of items) {
+        const task = cachedTasks.find(t => t.id === item.taskId);
+        if (!task || task.__spArchived) { failed.push(item); continue; }
+        const b = build(task, item);
+        if (!b) continue;
+        try {
+          await window.PluginAPI.updateTask(item.taskId, b.updates);
+          Object.assign(task, b.updates);
+          const key = roundHistoryKey(item.taskId, item.date);
+          if (verb === 'round') roundHistory[key] = { time: b.previous, notes: b.previousNotes };
+          else delete roundHistory[key]; // Undone
+          succeeded++;
+        } catch (err) {
+          console.warn(`[sp-dashboard] failed to ${verb} entry`, item.taskId, item.date, err);
+          failed.push(item);
+        }
+      }
+      processData(cachedTasks, cachedProjects, cachedTags);
+      const done = verb === 'round' ? 'Rounded' : 'Undid';
+      showToast(
+        failed.length === 0
+          ? `${done} ${succeeded} ${succeeded === 1 ? 'entry' : 'entries'}.`
+          : `${done} ${succeeded} of ${items.length} entries — ${failed.length} failed, see console.`,
+        failed.length > 0
+      );
+    };
+
+    const roundAllApply = (changingEntries) =>
+      applyBuilds(changingEntries, (task, entry) => buildRoundUpdate(task, entry.date), 'round');
+
+    // Disables the clicked button for the duration of an update
+    const withBtn = async (btnEl, fn) => {
+      if (btnEl) btnEl.disabled = true;
+      await fn();
+      if (btnEl) btnEl.disabled = false;
+    };
+
+    const roundOneEntry = (taskId, dateStr, btnEl) =>
+      withBtn(btnEl, () => roundAllApply([{ taskId, date: dateStr }]));
+
+    // Reverts one row's most recent round, restoring the time and notes it had before.
+    const undoOneEntry = (taskId, dateStr, btnEl) => {
+      const key = roundHistoryKey(taskId, dateStr);
+      if (!(key in roundHistory)) return;
+      const { time, notes } = roundHistory[key];
+      return withBtn(btnEl, () => applyBuilds([{ taskId, date: dateStr }], (task, item) => {
+        const b = buildValueUpdate(task, item.date, time);
+        if (b) b.updates.notes = notes;
+        return b;
+      }, 'undo'));
+    };
+
+    const roundAllPreview = () => {
+      if (!latestMetrics) return;
+      const incrementMs = getRoundIncrementMs();
+      const preview = computeRoundAllPreview(latestMetrics.tableEntries, incrementMs);
+      if (preview.changingCount === 0) {
+        showToast('Nothing to round');
+        return;
+      }
+      const parts = [];
+      if (preview.addedMs > 0) parts.push(`${formatTime(preview.addedMs)} added`);
+      if (preview.removedMs > 0) parts.push(`${formatTime(preview.removedMs)} removed`);
+      const netLabel = preview.netMs === 0 ? 'net 0' : `net ${preview.netMs > 0 ? '+' : '-'}${formatTime(Math.abs(preview.netMs))}`;
+      const count = preview.changingCount === 1 ? '1 entry' : `${preview.changingCount} entries`;
+      const msg = `Round ${count} to ${formatTime(incrementMs)}? ${parts.join(', ')} (${netLabel}).`;
+      if (typeof window.confirm !== 'function' || window.confirm(msg)) {
+        roundAllApply(preview.changing);
+      }
     };
 
     // helper for normalizing a task's dueDay to day boundaries (UTC)
@@ -2031,7 +2199,11 @@
               isDone: task.isDone,
               overdue: isOverdue,
               late: isLate,
-              tagNames: tNames
+              tagNames: tNames,
+              taskId: task.id,
+              isArchived: !!task.__spArchived,
+              // Round / Round All only ever touch a non-archived task
+              roundable: !task.__spArchived
             });
           } else if (spentOnDate && task.parentId && showSubtaskRows) {
             // Listed for visibility only: the parent's timeSpentOnDay already
@@ -2616,6 +2788,8 @@
             controls: [{ type: 'toggle', key: 'showSubtaskRows' }] },
           { label: 'Minimum entry length', hint: 'Keeps 30-second scraps out of the totals and the table',
             controls: [{ type: 'select', key: 'minEntryMs', numeric: true, options: SETTING_OPTIONS.minEntryMs }] },
+          { label: 'Round-to increment', hint: 'For the Round / Round All buttons in Detailed List',
+            controls: [{ type: 'number', key: 'roundToHours', min: 0.05, max: 4, step: 0.05, unit: 'hours' }] },
           { label: 'Tasks with no due date', hint: 'Replaces the fixed footnote under the Overdue card',
             controls: [{ type: 'radio', key: 'noDueDateOverdue', options: [
               sOpt(false, 'Never overdue'), sOpt(true, 'Count as overdue')] }] },
@@ -2835,6 +3009,7 @@
           input.dataset.numeric = '1';
           if (ctrl.min !== undefined) input.min = String(ctrl.min);
           if (ctrl.max !== undefined) input.max = String(ctrl.max);
+          input.step = ctrl.step !== undefined ? String(ctrl.step) : '1';
         }
         if (ctrl.placeholder) input.placeholder = ctrl.placeholder;
         input.value = String(current);
@@ -3031,6 +3206,15 @@
       if (btn) btn.setAttribute('aria-expanded', 'false');
     };
 
+    // --- ROUND / ROUND ALL WIRING ---
+    document.getElementById('details-table-body').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action="round"], button[data-action="undo-round"]');
+      if (!btn) return;
+      const fn = btn.dataset.action === 'round' ? roundOneEntry : undoOneEntry;
+      fn(btn.dataset.taskId, btn.dataset.date, btn);
+    });
+    document.getElementById('round-all-btn').addEventListener('click', roundAllPreview);
+
     // --- SETTINGS WIRING ---
     const settingsOverlay = document.getElementById('settings-overlay');
     const settingsRail = document.getElementById('settings-rail');
@@ -3132,6 +3316,7 @@
     window.getSetting = getSetting;
     window.setSetting = setSetting;
     window.getAllSettings = () => SETTINGS;
+    window.getCachedTasks = () => cachedTasks;
     window.resetSettings = resetSettings;
     window.importSettings = importSettings;
     window.renderSettingsPanel = renderSettingsPanel;
@@ -3150,6 +3335,11 @@
     window.updatePieChart = updatePieChart;
     window.sortEntries = sortEntries;
     window.renderOverdueSection = renderOverdueSection;
+    window.roundToNearest = roundToNearest;
+    window.computeRoundAllPreview = computeRoundAllPreview;
+    window.roundOneEntry = roundOneEntry;
+    window.roundAllApply = roundAllApply;
+    window.undoOneEntry = undoOneEntry;
     window.renderDrillDown = renderDrillDown;
     window.renderDrillTable = renderDrillTable;
     window.setDrillDimension = setDrillDimension;
@@ -3195,13 +3385,16 @@
             if (taskMap.has(task.id)) {
               duplicateIds.add(task.id);
             }
-            taskMap.set(task.id, task);
+            // Tagged so Round/Round All can tell an archived-only task apart
+            // from an active one after the merge below overwrites it — a
+            // clone, so the host's own archived-task objects aren't mutated.
+            taskMap.set(task.id, { ...task, __spArchived: true });
           });
           activeTasks.forEach(task => {
             if (taskMap.has(task.id)) {
               duplicateIds.add(task.id);
             }
-            taskMap.set(task.id, task);
+            taskMap.set(task.id, task); // active always wins, and carries no __spArchived flag
           });
           cachedTasks = Array.from(taskMap.values());
           debugLog("[sp-dashboard] after deduplication, unique tasks count", cachedTasks.length);
