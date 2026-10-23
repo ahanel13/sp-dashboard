@@ -4,7 +4,8 @@ set -euo pipefail
 # Super Productivity caps a plugin's index.html at MAX_PLUGIN_MANIFEST_SIZE — 102400
 # bytes — and serves it to the iframe via srcdoc, so nothing can be split into a
 # sibling file. Everything below exists to fit the budget; `make build` fails loudly
-# if the result goes over.
+# if the result goes over. Hosts that give index.html its own larger cap (see
+# super-productivity#10578 / #11062) can be targeted with SP_INDEX_LIMIT=<bytes>.
 
 # Runnable directly as well as through `npm run build:min`, which is the only reason
 # node_modules/.bin would already be on PATH.
@@ -13,7 +14,7 @@ PATH="$(cd "$(dirname "$0")/.." && pwd)/node_modules/.bin:$PATH"
 PROJECT="$1"
 SRC="$PROJECT/index.html"
 OUT="build/$PROJECT/index.html"
-LIMIT=102400
+LIMIT="${SP_INDEX_LIMIT:-102400}"
 STAGE="$(mktemp -t sp-dashboard-src.XXXXXX.html)"
 trap 'rm -f "$STAGE"' EXIT
 
