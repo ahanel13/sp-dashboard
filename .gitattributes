@@ -1,2 +1,0 @@
-# Track large binary assets using Git LFS
-assets/*.png filter=lfs diff=lfs merge=lfs -text
