@@ -197,10 +197,11 @@
     /* Bar chart tooltip positioned at pointer */
     .bar-tooltip {
       position: fixed; pointer-events: none; background: var(--card-bg, #1e1e1e); border: 1px solid var(--divider-color, #333);
-      padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 1000; display: none;
+      padding: 4px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity .15s ease, visibility 0s linear .15s;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
-    .bar-tooltip.visible { display: block; }
+    .bar-tooltip.visible { opacity: 1; visibility: visible; transition-delay: 0s; }
+    @media (prefers-reduced-motion: reduce) { .bar-tooltip { transition: none; } }
 
     .y-grid-line {
       position: absolute; left: 0; right: 0; height: 1px;
@@ -217,9 +218,12 @@
 
     .pie-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; gap: 2rem; }
     .pie-chart {
-      width: 180px; height: 180px; flex-shrink: 0;
+      position: relative; width: 180px; height: 180px; flex-shrink: 0;
     }
     .pie-chart svg { display: block; width: 100%; height: 100%; }
+    .pie-total { position: absolute; inset: 28%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; pointer-events: none; }
+    .pie-total-label { font-size: 0.65rem; color: var(--text-color-muted, #9e9e9e); }
+    .pie-total-value { font-size: 0.875rem; font-weight: 600; overflow-wrap: anywhere; }
     .pie-legend { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 0.5rem; }
     .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; }
     .legend-label { display: flex; align-items: center; gap: 0.5rem; color: var(--text-color-muted, #9e9e9e); }
@@ -1436,7 +1440,15 @@
       const timeFmt = (v) => `${(v / 3600000).toFixed(1)}h`;
       const countFmt = (v) => `${Math.round(v)} tasks`;
       if (type === 'time') {
-        renderNativePieChart(isTag ? latestMetrics.tagData : latestMetrics.projectData, timeFmt);
+        renderNativePieChart(isTag ? latestMetrics.tagData : latestMetrics.projectData, timeFmt, true);
+        // Tags may overlap: use the range's unique tracked time, not the sum of slices.
+        const total = document.createElement('div');
+        total.id = 'pie-total';
+        total.className = 'pie-total';
+        total.innerHTML = '<span class="pie-total-label"></span><span class="pie-total-value"></span>';
+        total.firstChild.textContent = 'Period total';
+        total.lastChild.textContent = formatTime(latestMetrics.totalTimeSpent);
+        document.getElementById('pie-chart-element').append(total);
       } else if (type === 'completed') {
         renderNativePieChart(isTag ? latestMetrics.tagCompletedData : latestMetrics.projectCompletedData, countFmt);
       } else if (type === 'overdue') {
@@ -1721,13 +1733,15 @@
       setupBarTooltip();
     };
 
-    const setupBarTooltip = () => {
+    const setupBarTooltip = (selector = '.bar-chart .bar') => {
       const tooltip = document.getElementById('bar-tooltip');
-      const bars = document.querySelectorAll('.bar-chart .bar');
+      const bars = document.querySelectorAll(selector);
       
       bars.forEach(bar => {
         bar.addEventListener('mouseenter', (e) => {
           tooltip.textContent = bar.getAttribute('data-val');
+          tooltip.style.left = (e.clientX + 8) + 'px';
+          tooltip.style.top = (e.clientY - 12) + 'px';
           tooltip.classList.add('visible');
         });
         
@@ -1743,7 +1757,8 @@
       });
     };
 
-    const renderNativePieChart = (projectData, formatFn) => {
+    const renderNativePieChart = (projectData, formatFn, isTime = false) => {
+      document.getElementById('bar-tooltip').classList.remove('visible');
       const pieEl = document.getElementById('pie-chart-element');
       const legendEl = document.getElementById('pie-legend-container');
       legendEl.innerHTML = '';
@@ -1788,7 +1803,8 @@
         // slices sit end-to-end clockwise (matching the previous conic-gradient).
         segments += `<circle cx="21" cy="21" r="${R}" fill="none" stroke="${color}" stroke-width="${SW}"` +
           ` stroke-dasharray="${percent.toFixed(4)} ${(100 - percent).toFixed(4)}"` +
-          ` stroke-dashoffset="${(25 - currentPercent).toFixed(4)}"></circle>`;
+          ` stroke-dashoffset="${(25 - currentPercent).toFixed(4)}"` +
+          (isTime ? ` data-val="${escapeHtml(name)}: ${formatTime(val)}"` : '') + '></circle>';
         currentPercent += percent;
 
         legendEl.innerHTML += `
@@ -1802,6 +1818,7 @@
         `;
       });
       pieEl.innerHTML = `${svgOpen}${segments}</svg>`;
+      if (isTime) setupBarTooltip('#pie-chart-element circle[data-val]');
     };
 
     const renderTable = (entries) => {

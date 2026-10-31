@@ -28,6 +28,51 @@ describe('Date Range Reporter UI', () => {
     }
   });
 
+  describe('Pie chart period total', () => {
+    const selectRange = (from, to) => {
+      document.getElementById('date-preset').value = 'custom';
+      document.getElementById('date-from').value = from;
+      document.getElementById('date-to').value = to;
+      document.getElementById('pie-chart-select').value = 'time';
+    };
+
+    it('updates the total with the selected range and does not double count tags or subtasks', () => {
+      const tasks = [
+        { id: 'parent', projectId: 'p', tagIds: ['a', 'b'], timeSpentOnDay: {
+          '2026-10-01': 5400000, '2026-10-02': 3600000, '2026-09-30': 7200000
+        } },
+        { id: 'child', parentId: 'parent', projectId: 'p', timeSpentOnDay: { '2026-10-01': 1800000 } }
+      ];
+      const projects = [{ id: 'p', title: 'Study' }];
+      selectRange('2026-10-01', '2026-10-02');
+      window.processData(tasks, projects);
+      expect(document.querySelector('.pie-total-value').textContent).toBe('2h 30m');
+      const slice = document.querySelector('#pie-chart-element circle[data-val]');
+      slice.dispatchEvent(new MouseEvent('mouseenter', { clientX: 100, clientY: 100 }));
+      expect(document.getElementById('bar-tooltip').textContent).toBe('Study: 2h 30m');
+      expect(document.getElementById('bar-tooltip').classList.contains('visible')).toBe(true);
+      slice.dispatchEvent(new MouseEvent('mouseleave'));
+      expect(document.getElementById('bar-tooltip').classList.contains('visible')).toBe(false);
+      document.getElementById('pie-dim-tag').click();
+      expect(document.querySelector('.pie-total-value').textContent).toBe('2h 30m');
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData(tasks, projects);
+      expect(document.querySelector('.pie-total-value').textContent).toBe('1h 30m');
+      document.getElementById('pie-chart-select').value = 'completed';
+      window.updatePieChart();
+      expect(document.getElementById('pie-total')).toBeNull();
+    });
+
+    it('shows zero for an empty range and respects time formatting', () => {
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData([], []);
+      expect(document.querySelector('.pie-total-value').textContent).toBe('0h 0m');
+      expect(document.querySelector('.pie-total-label').textContent).toBe('Period total');
+      window.setSetting('timeFormat', 'minutes');
+      expect(document.querySelector('.pie-total-value').textContent).toBe('0m');
+    });
+  });
+
   describe('Utility Functions', () => {
     it('should correctly format time in milliseconds to hours and minutes', () => {
       // Testing the formatTime function defined in the script
