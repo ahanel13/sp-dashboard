@@ -810,6 +810,7 @@
       schemaVersion: SETTINGS_SCHEMA_VERSION,
 
       // --- General ---
+      language: 'auto',             // auto | en | zh-CN
       weekStartsOn: 1,              // 0 Sun, 1 Mon, 6 Sat
       dateFormat: 'auto',           // auto | iso | us | eu
       timeFormat: 'hm',             // hm | decimal | minutes
@@ -886,6 +887,7 @@
     const DIM_OPTIONS = [sOpt('project', 'Project'), sOpt('tag', 'Tag')];
 
     const SETTING_OPTIONS = {
+      language: [sOpt('auto', 'Auto / 自动'), sOpt('en', 'English'), sOpt('zh-CN', '简体中文')],
       weekStartsOn: [sOpt(1, 'Monday'), sOpt(0, 'Sunday'), sOpt(6, 'Saturday')],
       dateFormat: [sOpt('auto', 'Auto (locale)'), sOpt('iso', 'ISO — 2026-02-22'),
                    sOpt('us', 'Feb 22, 2026'), sOpt('eu', '22 Feb 2026')],
@@ -1056,6 +1058,240 @@
 
     const getSetting = (key) => SETTINGS[key];
 
+    // Translate only plugin-owned labels. Project and task names remain untouched.
+    // Auto follows the browser locale; the explicit setting works independently
+    // of the host and is persisted together with the existing dashboard settings.
+    const ZH_CN = {
+  "Dashboard": "仪表盘",
+  "Select a time period to view metrics": "选择时间范围查看统计",
+  "From": "开始",
+  "To": "结束",
+  "Period": "时间范围",
+  "Today": "今天",
+  "This Week": "本周",
+  "Past Week": "过去一周",
+  "This Month": "本月",
+  "Past Year": "过去一年",
+  "Custom Range...": "自定义范围…",
+  "Starting from weekday": "从星期几开始",
+  "Weekday": "星期",
+  "Monday": "周一",
+  "Tuesday": "周二",
+  "Wednesday": "周三",
+  "Thursday": "周四",
+  "Friday": "周五",
+  "Saturday": "周六",
+  "Sunday": "周日",
+  "Detailed List": "详细列表",
+  "By Project / Tag": "按项目 / 标签",
+  "Settings": "设置",
+  "Close": "关闭",
+  "Share this tab": "分享当前页面",
+  "Share": "分享",
+  "Copy image": "复制图片",
+  "Download PNG": "下载 PNG",
+  "Print / Save as PDF": "打印 / 保存为 PDF",
+  "Copy text summary": "复制文字摘要",
+  "Total Time Tracked": "总记录时长",
+  "Tasks Completed": "已完成任务",
+  "Overdue Tasks": "逾期任务",
+  "Completed Late": "逾期完成",
+  "tasks": "项任务",
+  "Needs Attention": "需要关注",
+  "Daily Trends": "每日趋势",
+  "Time Tracked": "记录时长",
+  "Tasks Overdue": "逾期任务",
+  "Breakdown": "分类统计",
+  "Project": "项目",
+  "Tag": "标签",
+  "Date": "日期",
+  "Task": "任务",
+  "Time Spent": "用时",
+  "Status": "状态",
+  "OVERDUE & LATE": "逾期与逾期完成",
+  "Due Date": "截止日期",
+  "Show:": "显示：",
+  "Daily Time": "每日时长",
+  "Changes apply as you make them — there is no Save": "更改会立即生效，无需保存",
+  "Done": "完成",
+  "No data": "暂无数据",
+  "No entries for this selection.": "此选择暂无记录。",
+  "Late": "逾期完成",
+  "Overdue": "已逾期",
+  "In Progress": "进行中",
+  "No data for selected period": "所选时段暂无数据",
+  "No tracked time found for this date range.": "所选日期范围内没有时间记录。",
+  "General": "常规",
+  "Formats and locale, applied to every view": "适用于所有视图的格式和地区设置",
+  "Start of week": "每周开始日",
+  "Drives “This Week” and the day the weekly bar chart starts on": "决定“本周”和每周柱状图的起始日",
+  "Date format": "日期格式",
+  "Auto follows the host app’s locale": "自动跟随应用的地区设置",
+  "Time format": "时间格式",
+  "Decimal hours is what pastes into a timesheet or invoice": "小数小时适用于工时表或账单",
+  "Working days": "工作日",
+  "Used by the setting below": "用于下方设置",
+  "Hide non-working days in charts": "图表中隐藏非工作日",
+  "Removes those days from the range entirely, so weekends stop flattening the chart": "从图表范围中移除这些日期",
+  "Defaults": "默认选项",
+  "What each control shows when the dashboard opens. Remember keeps the last used value; Pin always starts from a fixed one.": "设置打开仪表盘时的选项。“记住”保留上次选择；“固定”每次使用指定值。",
+  "Opening tab": "默认页面",
+  "Bar chart metric": "柱状图指标",
+  "Pie chart metric & split": "饼图指标与分类",
+  "Detailed List sort": "详细列表排序",
+  "Where the table starts before you click a column header": "点击表头之前的默认排序",
+  "By Project / Tag split": "按项目 / 标签分类",
+  "Remember": "记住",
+  "Pin": "固定",
+  "Time tracked": "记录时长",
+  "Tasks completed": "已完成任务",
+  "Tasks overdue": "逾期任务",
+  "Completed late": "逾期完成",
+  "Ascending": "升序",
+  "Descending": "降序",
+  "Auto (locale)": "自动（地区设置）",
+  "3.75h — decimal": "3.75h — 小时小数",
+  "Off": "关闭",
+  "On": "开启",
+  "1 minute": "1 分钟",
+  "5 minutes": "5 分钟",
+  "15 minutes": "15 分钟",
+  "Data & Filtering": "数据与筛选",
+  "Everything here changes what the numbers mean, not just how they look": "此处的设置会改变统计数据的含义",
+  "Include archived tasks": "包含已归档任务",
+  "Turning this off is the single biggest speed-up on a vault with a long archive": "关闭后可加快大量归档任务的加载速度",
+  "Excluded projects": "排除的项目",
+  "Dropped from every stat, chart and table": "从所有统计、图表和表格中排除",
+  "Excluded tags": "排除的标签",
+  "A task carrying any excluded tag is dropped": "排除带有任何已选标签的任务",
+  "Count the running timer": "计入正在运行的计时",
+  "Adds the in-progress session to today’s total": "将当前计时加入今日总计",
+  "List subtasks as their own rows": "将子任务单独列出",
+  "Detailed List only — a parent’s time already rolls up its subtasks, so totals never change": "仅影响详细列表；父任务已包含子任务时间，总计不会改变",
+  "Minimum entry length": "最短记录时长",
+  "Keeps 30-second scraps out of the totals and the table": "从总计和表格中排除过短的记录",
+  "Tasks with no due date": "无截止日期的任务",
+  "Replaces the fixed footnote under the Overdue card": "决定逾期卡片下方的提示",
+  "Never overdue": "不视为逾期",
+  "Count as overdue": "计为逾期",
+  "Hide empty projects & tags": "隐藏无数据的项目和标签",
+  "Trims the By Project / Tag dropdown to entities with data in range": "仅在下拉列表中显示所选时段有数据的项目和标签",
+  "Appearance": "外观",
+  "Purely visual — nothing here changes a number": "仅改变外观，不影响统计数值",
+  "Theme": "主题",
+  "Follow app mirrors the host’s own light/dark class": "跟随应用的浅色或深色模式",
+  "Follow app": "跟随应用",
+  "Light": "浅色",
+  "Dark": "深色",
+  "Chart palette": "图表配色",
+  "Used by the pie chart and its legend": "用于饼图和图例",
+  "Default": "默认",
+  "Colourblind-safe": "色觉友好",
+  "Monochrome": "单色",
+  "High contrast": "高对比度",
+  "Bar chart grouping": "柱状图分组",
+  "Auto keeps the existing rules: daily under a month, weekly for a month, monthly beyond": "自动按时间范围选择每日、每周或每月分组",
+  "Auto": "自动",
+  "Daily": "每日",
+  "Weekly": "每周",
+  "Monthly": "每月",
+  "Small pie slices": "饼图小分类",
+  "Rolls everything past the top N into one “Other” slice": "将前 N 项以外的分类合并为“其他”",
+  "Show all slices": "显示所有分类",
+  "Top 5, rest as Other": "前 5 项，其余归为其他",
+  "Top 8, rest as Other": "前 8 项，其余归为其他",
+  "Top 10, rest as Other": "前 10 项，其余归为其他",
+  "Density": "显示密度",
+  "Comfortable": "舒适",
+  "Compact": "紧凑",
+  "Stat cards": "统计卡片",
+  "Unchecked cards are hidden and the row re-flows": "隐藏未勾选的卡片并重新排列",
+  "Total time tracked": "总记录时长",
+  "Detailed List rows per page": "详细列表每页行数",
+  "All": "全部",
+  "Goals": "目标",
+  "Targets are drawn onto the Dashboard tab — a dashed line across the bar chart, a bar under the Total Time card": "目标显示在仪表盘的柱状图和总时长卡片中",
+  "Daily time target": "每日时长目标",
+  "Dashed line on the bar chart, and the Total Time card’s bar when a single day is in view": "在柱状图及单日总时长卡片中显示目标",
+  "hours per day": "小时 / 天",
+  "Weekly time target": "每周时长目标",
+  "Progress bar under the Total Time card when a week-length period is in view": "查看一周时在总时长卡片下显示进度",
+  "hours per week": "小时 / 周",
+  "Daily tasks completed": "每日完成任务目标",
+  "Dashed line on the bar chart when it shows Tasks completed": "在已完成任务柱状图中显示目标线",
+  "tasks per day": "项任务 / 天",
+  "Advanced": "高级",
+  "Refresh, export and the settings file itself": "刷新、导出及设置文件",
+  "Auto-refresh": "自动刷新",
+  "The dashboard also refreshes whenever the host app reports a change, so Off is not the same as stale": "应用数据发生变化时仪表盘仍会刷新",
+  "Every 10 seconds": "每 10 秒",
+  "Every 30 seconds": "每 30 秒",
+  "Every minute": "每分钟",
+  "Every 5 minutes": "每 5 分钟",
+  "Debug logging": "调试日志",
+  "Off by default: one log line per task, per refresh": "默认关闭；每次刷新为每项任务记录一行",
+  "Export filename": "导出文件名",
+  "Used by Download PNG. Tokens: {tab} {range} {date}": "用于下载 PNG。可用变量：{tab} {range} {date}",
+  "Copy text summary as": "文字摘要格式",
+  "Export settings…": "导出设置…",
+  "Import settings…": "导入设置…",
+  "Reset to defaults": "恢复默认设置",
+  "Settings file": "设置文件",
+  "Export…": "导出…",
+  "Import…": "导入…",
+  "Reset everything": "重置全部",
+  "+ Add…": "+ 添加…",
+  "Nothing left to exclude": "没有更多可排除项",
+  "Nothing to exclude yet": "暂无可排除项",
+  "Settings exported": "设置已导出",
+  "Settings imported": "设置已导入",
+  "Settings reset to defaults": "设置已恢复默认",
+  "That file is not valid JSON": "该文件不是有效的 JSON",
+  "That file is not a settings export": "该文件不是设置导出文件",
+  "Could not read that file": "无法读取文件",
+  "Reset every dashboard setting to its default?": "确定将所有仪表盘设置恢复默认吗？",
+  "Could not capture image": "无法生成图片",
+  "Image copied to clipboard": "图片已复制到剪贴板",
+  "Couldn't copy image — downloaded it instead": "无法复制图片，已改为下载",
+  "Image downloaded": "图片已下载",
+  "Summary copied to clipboard": "摘要已复制到剪贴板",
+  "Could not copy summary": "无法复制摘要",
+  "Time": "时间",
+  "Metric": "指标",
+  "Value": "数值",
+  "Range": "时间范围",
+  "Tasks Total": "任务总数",
+  "No data available.": "暂无数据。",
+  "Detailed Time Log": "详细时间记录",
+  "No tracked time found": "没有时间记录",
+  "Overdue & Late": "逾期与逾期完成",
+  "(none)": "（无）",
+  "Productivity Summary": "效率摘要",
+  "Time by Project": "各项目用时",
+  "Tasks:": "任务："
+};
+    const isChinese = () => getSetting('language') === 'zh-CN' ||
+      (getSetting('language') === 'auto' && /^zh(?:-|$)/i.test(navigator.language || ''));
+    const translate = (text) => isChinese() ? (ZH_CN[text] || text) : text;
+    const staticTextNodes = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (node.parentElement.closest('script, style')) continue;
+      const original = node.nodeValue.trim();
+      if (Object.prototype.hasOwnProperty.call(ZH_CN, original)) staticTextNodes.push([node, node.nodeValue, original]);
+    }
+    const staticAttrs = [...document.querySelectorAll('[title]')]
+      .filter(el => Object.prototype.hasOwnProperty.call(ZH_CN, el.title))
+      .map(el => [el, el.title]);
+    const translateStatic = () => {
+      document.documentElement.lang = isChinese() ? 'zh-CN' : 'en';
+      staticTextNodes.forEach(([node, original, trimmed]) => {
+        node.nodeValue = original.replace(trimmed, translate(trimmed));
+      });
+      staticAttrs.forEach(([el, original]) => { el.title = translate(original); });
+    };
+
     // Records what a dashboard control was last set to. Never fights a pinned
     // value — pinning only decides what happens on the next open.
     const rememberSetting = (key, value) => {
@@ -1117,7 +1353,7 @@
       if (isNaN(d.getTime())) return String(dateStr);
       if (fmt === 'eu') return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       const locale = fmt === 'us' ? 'en-US'
-        : ((typeof navigator !== 'undefined' && navigator.language) || 'en-US');
+        : (isChinese() ? 'zh-CN' : ((typeof navigator !== 'undefined' && navigator.language) || 'en-US'));
       return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
@@ -1297,7 +1533,7 @@
 
       document.getElementById('stat-time').innerText = formatTime(metrics.totalTimeSpent);
       document.getElementById('stat-tasks').innerText = String(metrics.totalCompleted);
-      document.getElementById('stat-tasks-total').innerText = `/ ${metrics.totalTasks} total`;
+      document.getElementById('stat-tasks-total').innerText = isChinese() ? `/ 共 ${metrics.totalTasks} 项` : `/ ${metrics.totalTasks} total`;
       
       // Progress: completion rate of active tasks in the date range
       // totalCompleted = unique tasks completed
@@ -1321,7 +1557,7 @@
         overdueEl.classList.remove('text-red');
         if (metrics.unplannedCount > 0) {
           overdueNote.classList.remove('hidden');
-          overdueNote.innerText = `${metrics.unplannedCount} task(s) have no due date so overdue is unavailable`;
+          overdueNote.innerText = isChinese() ? `${metrics.unplannedCount} 项任务没有截止日期，无法判断是否逾期` : `${metrics.unplannedCount} task(s) have no due date so overdue is unavailable`;
         } else {
           overdueNote.classList.add('hidden');
         }
@@ -1346,7 +1582,7 @@
           timeGoal.classList.remove('hidden');
           document.getElementById('weekly-goal-fill').style.width = `${pct}%`;
           document.getElementById('weekly-goal-label').textContent =
-            `${Math.round(pct)}% of a ${goal.targetH}h ${goal.kind} target`;
+            isChinese() ? `已完成${goal.kind === 'daily' ? '每日' : '每周'} ${goal.targetH} 小时目标的 ${Math.round(pct)}%` : `${Math.round(pct)}% of a ${goal.targetH}h ${goal.kind} target`;
         } else {
           timeGoal.classList.add('hidden');
         }
@@ -1402,11 +1638,11 @@
     const getDailyGoal = (type) => {
       if (type === 'time' && getSetting('dailyTimeGoalOn')) {
         const h = Number(getSetting('dailyTimeGoalH')) || 0;
-        return h > 0 ? { value: h * HOUR_MS, label: `${h}h target` } : null;
+        return h > 0 ? { value: h * HOUR_MS, label: isChinese() ? `${h} 小时目标` : `${h}h target` } : null;
       }
       if (type === 'completed' && getSetting('dailyTaskGoalOn')) {
         const n = Number(getSetting('dailyTaskGoal')) || 0;
-        return n > 0 ? { value: n, label: `${n} task target` } : null;
+        return n > 0 ? { value: n, label: isChinese() ? `${n} 项任务目标` : `${n} task target` } : null;
       }
       return null;
     };
@@ -1421,11 +1657,11 @@
       if (type === 'time') {
         renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, timeYFn, HOUR, goal);
       } else if (type === 'completed') {
-        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', (v) => `${Math.round(v)} tasks`, taskYFn, 1, goal);
+        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', (v) => isChinese() ? `${Math.round(v)} 项任务` : `${Math.round(v)} tasks`, taskYFn, 1, goal);
       } else if (type === 'overdue') {
-        renderGenericBarChart(latestMetrics.overduePerDay, 'bar-chart-container', '#f87171', (v) => `${Math.round(v)} tasks`, taskYFn);
+        renderGenericBarChart(latestMetrics.overduePerDay, 'bar-chart-container', '#f87171', (v) => isChinese() ? `${Math.round(v)} 项任务` : `${Math.round(v)} tasks`, taskYFn);
       } else if (type === 'late') {
-        renderGenericBarChart(latestMetrics.latePerDay, 'bar-chart-container', '#fbbf24', (v) => `${Math.round(v)} tasks`, taskYFn);
+        renderGenericBarChart(latestMetrics.latePerDay, 'bar-chart-container', '#fbbf24', (v) => isChinese() ? `${Math.round(v)} 项任务` : `${Math.round(v)} tasks`, taskYFn);
       }
     };
 
@@ -1434,7 +1670,7 @@
       const type = document.getElementById('pie-chart-select').value;
       const isTag = pieDimension === 'tag';
       const timeFmt = (v) => `${(v / 3600000).toFixed(1)}h`;
-      const countFmt = (v) => `${Math.round(v)} tasks`;
+      const countFmt = (v) => isChinese() ? `${Math.round(v)} 项任务` : `${Math.round(v)} tasks`;
       if (type === 'time') {
         renderNativePieChart(isTag ? latestMetrics.tagData : latestMetrics.projectData, timeFmt);
       } else if (type === 'completed') {
@@ -1490,7 +1726,7 @@
       select.innerHTML = '';
       if (names.length === 0) {
         const opt = document.createElement('option');
-        opt.textContent = 'No data';
+        opt.textContent = translate('No data');
         select.appendChild(opt);
         currentDrillEntity = '';
         return;
@@ -1533,7 +1769,7 @@
         const td = document.createElement('td');
         td.colSpan = 4;
         td.style.cssText = 'text-align:center;color:var(--text-color-muted,#9e9e9e);padding:3rem;';
-        td.textContent = 'No entries for this selection.';
+        td.textContent = translate('No entries for this selection.');
         tr.appendChild(td);
         tbody.appendChild(tr);
         return;
@@ -1560,16 +1796,16 @@
         const badge = document.createElement('span');
         if (entry.late) {
           badge.className = 'badge badge-yellow';
-          badge.textContent = 'Late';
+          badge.textContent = translate('Late');
         } else if (entry.overdue) {
           badge.className = 'badge badge-red';
-          badge.textContent = 'Overdue';
+          badge.textContent = translate('Overdue');
         } else if (entry.isDone) {
           badge.className = 'badge badge-done';
-          badge.textContent = 'Done';
+          badge.textContent = translate('Done');
         } else {
           badge.className = 'badge badge-progress';
-          badge.textContent = 'In Progress';
+          badge.textContent = translate('In Progress');
         }
         tdStatus.appendChild(badge);
         tr.appendChild(tdStatus);
@@ -1601,7 +1837,7 @@
         data: dateRange.map(d => entityDailyMap[d] || 0)
       };
 
-      document.getElementById('drill-chart-title').textContent = entity + ' — Daily Time';
+      document.getElementById('drill-chart-title').textContent = entity + ' — ' + translate('Daily Time');
       renderGenericBarChart(dailyChartData, 'drill-bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, (v) => `${Math.round(v / 3600000)}h`, 3600000);
 
       const filteredEntries = latestMetrics.tableEntries.filter(e => {
@@ -1756,7 +1992,7 @@
       if (maxSlices > 0 && entries.length > maxSlices) {
         const rest = entries.slice(maxSlices).reduce((sum, [, v]) => sum + v, 0);
         entries = entries.slice(0, maxSlices);
-        if (rest > 0) entries.push(['Other', rest]);
+        if (rest > 0) entries.push([isChinese() ? '其他' : 'Other', rest]);
       }
 
       const totalVal = entries.reduce((acc, curr) => acc + curr[1], 0);
@@ -1772,7 +2008,7 @@
         // Rendered as an SVG stroke (foreground) so it prints reliably — unlike a CSS
         // conic-gradient background, which many print/PDF engines drop.
         pieEl.innerHTML = `${svgOpen}<circle cx="21" cy="21" r="${R}" fill="none" style="stroke: var(--divider-color, #333)" stroke-width="${SW}"></circle></svg>`;
-        legendEl.innerHTML = '<div class="text-muted text-sm">No data for selected period</div>';
+        legendEl.innerHTML = `<div class="text-muted text-sm">${translate('No data for selected period')}</div>`;
         return;
       }
 
@@ -1808,7 +2044,7 @@
       const tbody = document.getElementById('details-table-body');
       
       if (entries.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 3rem;">No tracked time found for this date range.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 3rem;">${translate('No tracked time found for this date range.')}</td></tr>`;
         return;
       }
 
@@ -1825,19 +2061,19 @@
           <td>
             ${
               entry.late
-                ? `<span class="badge badge-yellow">Late</span>`
+                ? `<span class="badge badge-yellow">${translate('Late')}</span>`
                 : entry.overdue
-                ? `<span class="badge badge-red">Overdue</span>`
+                ? `<span class="badge badge-red">${translate('Overdue')}</span>`
                 : entry.isDone
-                ? `<span class="badge badge-done">Done</span>`
-                : `<span class="badge badge-progress">In Progress</span>`
+                ? `<span class="badge badge-done">${translate('Done')}</span>`
+                : `<span class="badge badge-progress">${translate('In Progress')}</span>`
             }
           </td>
         </tr>
       `).join('');
 
       if (shown.length < entries.length) {
-        tbody.innerHTML += `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 1rem; font-size: 0.8rem;">Showing ${shown.length} of ${entries.length} entries — raise the limit in Settings &rsaquo; Appearance.</td></tr>`;
+        tbody.innerHTML += `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 1rem; font-size: 0.8rem;">${isChinese() ? `显示 ${shown.length} / ${entries.length} 条记录；可在“设置 › 外观”中提高上限。` : `Showing ${shown.length} of ${entries.length} entries — raise the limit in Settings &rsaquo; Appearance.`}</td></tr>`;
       }
     };
 
@@ -1859,8 +2095,8 @@
           <td class="time-cell">${escapeHtml(formatTime(entry.timeSpent))}</td>
           <td>
             ${entry.late
-              ? `<span class="badge badge-yellow">Late</span>`
-              : `<span class="badge badge-red">Overdue</span>`
+              ? `<span class="badge badge-yellow">${translate('Late')}</span>`
+              : `<span class="badge badge-red">${translate('Overdue')}</span>`
             }
           </td>
         </tr>
@@ -2239,13 +2475,13 @@
     const showToast = (msg, isError) => {
       try {
         if (window.PluginAPI && typeof window.PluginAPI.showSnack === 'function') {
-          window.PluginAPI.showSnack({ msg, ico: isError ? 'error' : 'check' });
+          window.PluginAPI.showSnack({ msg: translate(msg), ico: isError ? 'error' : 'check' });
           return;
         }
       } catch (e) { /* fall through to inline toast */ }
       const el = document.getElementById('toast');
       if (!el) return;
-      el.textContent = msg;
+      el.textContent = translate(msg);
       el.classList.toggle('toast-error', !!isError);
       el.classList.add('visible');
       clearTimeout(showToast._t);
@@ -2402,7 +2638,7 @@
     const printActiveTab = () => {
       const { label } = getActiveViewNode();
       const ph = document.getElementById('print-header');
-      if (ph) ph.textContent = `${label}${getRangeLabel() ? ' — ' + getRangeLabel() : ''}`;
+      if (ph) ph.textContent = `${translate(label)}${getRangeLabel() ? ' — ' + getRangeLabel() : ''}`;
       window.print();
     };
 
@@ -2441,7 +2677,7 @@
       };
       const row = (cells) => cells.map(cell).join(',');
       const rows = [];
-      const statusOf = (e) => e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress';
+      const statusOf = (e) => translate(e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress');
 
       if (tabKey === 'details' || tabKey === 'drilldown') {
         let entries = m.tableEntries;
@@ -2452,22 +2688,22 @@
           entries = entries.filter(e =>
             isTag ? (e.tagNames && e.tagNames.includes(currentDrillEntity)) : e.projectName === currentDrillEntity);
         }
-        rows.push(row(['Date', 'Project', 'Task', 'Time', 'Status']));
+        rows.push(row(['Date', 'Project', 'Task', 'Time', 'Status'].map(translate)));
         entries.forEach(e => rows.push(row([
           formatDateShort(e.date), e.projectName, e.taskTitle, formatTime(e.timeSpent), statusOf(e)
         ])));
       } else {
-        rows.push(row(['Metric', 'Value']));
-        rows.push(row(['Range', getRangeLabel()]));
-        rows.push(row(['Total Time Tracked', formatTime(m.totalTimeSpent)]));
-        rows.push(row(['Tasks Completed', m.totalCompleted]));
-        rows.push(row(['Tasks Total', m.totalTasks]));
-        rows.push(row(['Overdue Tasks', m.overdueTasks]));
-        rows.push(row(['Completed Late', m.lateCompleted]));
+        rows.push(row(['Metric', 'Value'].map(translate)));
+        rows.push(row([translate('Range'), getRangeLabel()]));
+        rows.push(row([translate('Total Time Tracked'), formatTime(m.totalTimeSpent)]));
+        rows.push(row([translate('Tasks Completed'), m.totalCompleted]));
+        rows.push(row([translate('Tasks Total'), m.totalTasks]));
+        rows.push(row([translate('Overdue Tasks'), m.overdueTasks]));
+        rows.push(row([translate('Completed Late'), m.lateCompleted]));
         Object.entries(m.projectData || {})
           .filter(([, v]) => v > 0)
           .sort((a, b) => b[1] - a[1])
-          .forEach(([name, ms]) => rows.push(row([`Time — ${name}`, formatTime(ms)])));
+          .forEach(([name, ms]) => rows.push(row([`${translate('Time')} — ${name}`, formatTime(ms)])));
       }
       return rows.join('\n');
     };
@@ -2477,7 +2713,7 @@
     // Advanced can switch to real Markdown or CSV.
     const buildTextSummary = (tabKey) => {
       const m = window.latestMetrics || latestMetrics;
-      if (!m) return 'No data available.';
+      if (!m) return translate('No data available.');
       const format = getSetting('summaryFormat');
       if (format === 'csv') return buildCsvSummary(tabKey);
       const b = format === 'markdown' ? '**' : '*';
@@ -2486,53 +2722,53 @@
       const lines = [];
 
       if (tabKey === 'details') {
-        lines.push(`${b}Detailed Time Log${b}${suffix}`);
+        lines.push(`${b}${translate('Detailed Time Log')}${b}${suffix}`);
         lines.push('');
-        lines.push('| Date | Project | Task | Time | Status |');
+        lines.push(`| ${['Date', 'Project', 'Task', 'Time', 'Status'].map(translate).join(' | ')} |`);
         lines.push('| --- | --- | --- | --- | --- |');
         const sorted = sortEntries(m.tableEntries, currentSort.key, currentSort.dir);
         if (sorted.length) {
           sorted.forEach(e => {
-            const status = e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress';
+            const status = translate(e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress');
             lines.push(`| ${formatDateShort(e.date)} | ${e.projectName} | ${e.taskTitle} | ${formatTime(e.timeSpent)} | ${status} |`);
           });
         } else {
-          lines.push('| — | — | No tracked time found | — | — |');
+          lines.push(`| — | — | ${translate('No tracked time found')} | — | — |`);
         }
         if (m.overdueEntries && m.overdueEntries.length) {
           lines.push('');
-          lines.push(`${b}Overdue & Late${b}`);
+          lines.push(`${b}${translate('Overdue & Late')}${b}`);
           m.overdueEntries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.projectName}: ${e.taskTitle}`));
         }
       } else if (tabKey === 'drilldown') {
         const isTag = currentDrillDimension === 'tag';
-        const entity = currentDrillEntity || '(none)';
+        const entity = currentDrillEntity || translate('(none)');
         const timeMs = (isTag ? m.tagData : m.projectData)[entity] || 0;
         const completed = (isTag ? m.tagCompletedData : m.projectCompletedData)[entity] || 0;
         const overdue = (isTag ? m.tagOverdueData : m.projectOverdueData)[entity] || 0;
         const late = (isTag ? m.tagLateData : m.projectLateData)[entity] || 0;
-        lines.push(`${b}${isTag ? 'Tag' : 'Project'}: ${entity}${b}${suffix}`);
-        lines.push(`• Time Spent: ${formatTime(timeMs)}`);
-        lines.push(`• Tasks Completed: ${completed}`);
-        lines.push(`• Overdue Tasks: ${overdue}`);
-        lines.push(`• Completed Late: ${late}`);
+        lines.push(`${b}${translate(isTag ? 'Tag' : 'Project')}: ${entity}${b}${suffix}`);
+        lines.push(`• ${translate('Time Spent')}: ${formatTime(timeMs)}`);
+        lines.push(`• ${translate('Tasks Completed')}: ${completed}`);
+        lines.push(`• ${translate('Overdue Tasks')}: ${overdue}`);
+        lines.push(`• ${translate('Completed Late')}: ${late}`);
         const entries = m.tableEntries.filter(e =>
           isTag ? (e.tagNames && e.tagNames.includes(entity)) : e.projectName === entity);
         if (entries.length) {
           lines.push('');
-          lines.push('Tasks:');
+          lines.push(translate('Tasks:'));
           entries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.taskTitle} (${formatTime(e.timeSpent)})`));
         }
       } else {
-        lines.push(`${b}Productivity Summary${b}${suffix}`);
-        lines.push(`• Total Time Tracked: ${formatTime(m.totalTimeSpent)}`);
-        lines.push(`• Tasks Completed: ${m.totalCompleted} / ${m.totalTasks}`);
-        lines.push(`• Overdue Tasks: ${m.overdueTasks}`);
-        lines.push(`• Completed Late: ${m.lateCompleted}`);
+        lines.push(`${b}${translate('Productivity Summary')}${b}${suffix}`);
+        lines.push(`• ${translate('Total Time Tracked')}: ${formatTime(m.totalTimeSpent)}`);
+        lines.push(`• ${translate('Tasks Completed')}: ${m.totalCompleted} / ${m.totalTasks}`);
+        lines.push(`• ${translate('Overdue Tasks')}: ${m.overdueTasks}`);
+        lines.push(`• ${translate('Completed Late')}: ${m.lateCompleted}`);
         const projects = Object.entries(m.projectData || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
         if (projects.length) {
           lines.push('');
-          lines.push(`${b}Time by Project${b}`);
+          lines.push(`${b}${translate('Time by Project')}${b}`);
           projects.forEach(([name, ms]) => lines.push(`• ${name}: ${formatTime(ms)}`));
         }
       }
@@ -2599,6 +2835,7 @@
         id: 'general', label: 'General',
         sub: 'Formats and locale, applied to every view',
         rows: [
+          { label: 'Language / 语言', controls: [{ type: 'select', key: 'language', options: SETTING_OPTIONS.language }] },
           { label: 'Start of week', hint: 'Drives “This Week” and the day the weekly bar chart starts on',
             controls: [{ type: 'select', key: 'weekStartsOn', numeric: true, options: SETTING_OPTIONS.weekStartsOn }] },
           { label: 'Date format', hint: 'Auto follows the host app’s locale',
@@ -2752,11 +2989,12 @@
         const sel = document.createElement('select');
         sel.disabled = disabled;
         sel.dataset.key = ctrl.key;
+        if (ctrl.key === 'language') sel.setAttribute('aria-label', 'Language / 语言');
         if (ctrl.numeric) sel.dataset.numeric = '1';
         ctrl.options.forEach(o => {
           const option = document.createElement('option');
           option.value = String(o.v);
-          option.textContent = o.l;
+          option.textContent = translate(o.l);
           sel.appendChild(option);
         });
         sel.value = String(current);
@@ -2766,7 +3004,7 @@
       if (ctrl.type === 'seg') {
         const wrap = mkEl('div', 'set-seg');
         ctrl.options.forEach(o => {
-          const btn = mkEl('button', String(current) === String(o.v) ? 'active' : '', o.l);
+          const btn = mkEl('button', String(current) === String(o.v) ? 'active' : '', translate(o.l));
           btn.type = 'button';
           btn.disabled = disabled;
           btn.dataset.key = ctrl.key;
@@ -2792,7 +3030,7 @@
           btn.dataset.kind = isCheck ? 'check' : 'radio';
           if (typeof o.v === 'boolean') btn.dataset.bool = '1';
           btn.appendChild(mkEl('span', `set-mark ${isCheck ? 'check' : 'radio'}`));
-          btn.appendChild(mkEl('span', '', o.l));
+          btn.appendChild(mkEl('span', '', translate(o.l)));
           wrap.appendChild(btn);
         });
         return wrap;
@@ -2801,7 +3039,7 @@
       if (ctrl.type === 'toggle') {
         const wrap = mkEl('div', 'set-seg');
         [sOpt(true, 'On'), sOpt(false, 'Off')].forEach(o => {
-          const btn = mkEl('button', current === o.v ? 'active' : '', o.l);
+          const btn = mkEl('button', current === o.v ? 'active' : '', translate(o.l));
           btn.type = 'button';
           btn.dataset.key = ctrl.key;
           btn.dataset.value = String(o.v);
@@ -2815,7 +3053,7 @@
         const wrap = mkEl('div', 'set-days');
         ctrl.options.forEach(o => {
           const on = (current || []).indexOf(o.v) !== -1;
-          const btn = mkEl('button', `set-day${on ? ' active' : ''}`, o.l);
+          const btn = mkEl('button', `set-day${on ? ' active' : ''}`, isChinese() ? ['日', '一', '二', '三', '四', '五', '六'][o.v] : o.l);
           btn.type = 'button';
           btn.dataset.key = ctrl.key;
           btn.dataset.value = String(o.v);
@@ -2843,14 +3081,14 @@
         const remaining = chipSourceNames(ctrl.source).filter(n => chosen.indexOf(n) === -1);
         if (remaining.length === 0) {
           wrap.appendChild(mkEl('span', 'set-chips-empty',
-            chosen.length ? 'Nothing left to exclude' : 'Nothing to exclude yet'));
+            translate(chosen.length ? 'Nothing left to exclude' : 'Nothing to exclude yet')));
         } else {
           const sel = document.createElement('select');
           sel.dataset.key = ctrl.key;
           sel.dataset.add = '1';
           const first = document.createElement('option');
           first.value = '';
-          first.textContent = '+ Add…';
+          first.textContent = translate('+ Add…');
           sel.appendChild(first);
           remaining.forEach(n => {
             const o = document.createElement('option');
@@ -2878,7 +3116,7 @@
         input.value = String(current);
         input.disabled = disabled;
         wrap.appendChild(input);
-        if (ctrl.unit) wrap.appendChild(mkEl('span', 'set-note', ctrl.unit));
+        if (ctrl.unit) wrap.appendChild(mkEl('span', 'set-note', translate(ctrl.unit)));
         return wrap;
       }
 
@@ -2903,35 +3141,35 @@
 
       rail.innerHTML = '';
       SETTINGS_SECTIONS.forEach(s => {
-        const btn = mkEl('button', `settings-rail-btn${s.id === section.id ? ' active' : ''}`, s.label);
+        const btn = mkEl('button', `settings-rail-btn${s.id === section.id ? ' active' : ''}`, translate(s.label));
         btn.type = 'button';
         btn.dataset.section = s.id;
         rail.appendChild(btn);
       });
       const foot = mkEl('div', 'settings-rail-foot');
       ['export', 'import'].forEach(action => {
-        const b = mkEl('button', 'settings-link', action === 'export' ? 'Export settings…' : 'Import settings…');
+        const b = mkEl('button', 'settings-link', translate(action === 'export' ? 'Export settings…' : 'Import settings…'));
         b.type = 'button';
         b.dataset.action = action;
         foot.appendChild(b);
       });
-      const reset = mkEl('button', 'settings-link danger', 'Reset to defaults');
+      const reset = mkEl('button', 'settings-link danger', translate('Reset to defaults'));
       reset.type = 'button';
       reset.dataset.action = 'reset';
       foot.appendChild(reset);
       rail.appendChild(foot);
 
       panel.innerHTML = '';
-      panel.appendChild(mkEl('h3', 'settings-panel-title', section.label));
-      if (section.sub) panel.appendChild(mkEl('p', `settings-panel-sub${section.subWarn ? ' warn' : ''}`, section.sub));
+      panel.appendChild(mkEl('h3', 'settings-panel-title', translate(section.label)));
+      if (section.sub) panel.appendChild(mkEl('p', `settings-panel-sub${section.subWarn ? ' warn' : ''}`, translate(section.sub)));
 
       const rows = mkEl('div');
       rows.style.marginTop = '0.5rem';
       section.rows.forEach(row => {
         const rowEl = mkEl('div', 'set-row');
         const main = mkEl('div', 'set-row-main');
-        main.appendChild(mkEl('div', 'set-label', row.label));
-        if (row.hint) main.appendChild(mkEl('div', `set-hint${row.hintWarn ? ' warn' : ''}`, row.hint));
+        main.appendChild(mkEl('div', 'set-label', translate(row.label)));
+        if (row.hint) main.appendChild(mkEl('div', `set-hint${row.hintWarn ? ' warn' : ''}`, translate(row.hint)));
         rowEl.appendChild(main);
         const ctl = mkEl('div', 'set-ctl');
         row.controls.forEach(c => ctl.appendChild(buildControl(c)));
@@ -2942,15 +3180,15 @@
 
       if (section.danger) {
         const box = mkEl('div', 'set-danger');
-        box.appendChild(mkEl('div', 'set-danger-title', 'Settings file'));
+        box.appendChild(mkEl('div', 'set-danger-title', translate('Settings file')));
         box.appendChild(mkEl('div', 'set-hint',
           `Everything above lives in one localStorage entry (${SETTINGS_KEY}). Resetting also clears the keys this plugin wrote before there was a settings page.`));
         const actions = mkEl('div', 'set-actions');
-        const exp = mkEl('button', 'set-btn', 'Export…');
+        const exp = mkEl('button', 'set-btn', translate('Export…'));
         exp.type = 'button'; exp.dataset.action = 'export';
-        const imp = mkEl('button', 'set-btn', 'Import…');
+        const imp = mkEl('button', 'set-btn', translate('Import…'));
         imp.type = 'button'; imp.dataset.action = 'import';
-        const rst = mkEl('button', 'set-btn danger', 'Reset everything');
+        const rst = mkEl('button', 'set-btn danger', translate('Reset everything'));
         rst.type = 'button'; rst.dataset.action = 'reset';
         rst.style.marginLeft = 'auto';
         actions.appendChild(exp);
@@ -2984,6 +3222,7 @@
     // Re-derive everything a setting could have changed. Cheap enough to run on
     // every edit, which is what lets the modal have no Save button.
     const applySettings = ({ reprocess = true } = {}) => {
+      translateStatic();
       applyAppearance();
       restartLiveUpdate();
       currentSort = { key: getSetting('sortKey'), dir: getSetting('sortDir') };
@@ -2994,6 +3233,12 @@
     const setSetting = (key, value) => {
       SETTINGS[key] = value;
       persistSettings();
+      if (key === 'language') {
+        translateStatic();
+        renderSettingsPanel();
+        if (latestMetrics) updateDashboardUI(latestMetrics);
+        return;
+      }
       applySettings();
     };
 
@@ -3093,7 +3338,7 @@
       else if (action === 'import') settingsImportInput.click();
       else if (action === 'reset') {
         // The only destructive control in here, so it asks first.
-        if (typeof window.confirm !== 'function' || window.confirm('Reset every dashboard setting to its default?')) {
+        if (typeof window.confirm !== 'function' || window.confirm(translate('Reset every dashboard setting to its default?'))) {
           resetSettings();
         }
       }
@@ -3294,6 +3539,9 @@
         pullDataFromSP();
       }
     });
+
+    // Translate initial static labels without changing task or project names.
+    translateStatic();
 
     // Initial Bootstrap & Fallback Data Generation
     setTimeout(() => {

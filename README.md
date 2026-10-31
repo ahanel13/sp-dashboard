@@ -49,6 +49,14 @@ Filtering** changes what the numbers mean, not just how they look.
 
 ---
 
+## Language
+
+Use **Settings → General → Language / 语言** to choose English, 简体中文,
+or Auto. Auto follows the browser's locale; it may differ from the Super
+Productivity display language. Your choice is stored with the existing local
+dashboard settings. Project and task titles are never translated. Shared summaries and CSV headers
+follow the chosen language.
+
 ## Installation
 
 1. Download `sp-dashboard.zip` from the latest [Release](https://github.com/ahanel13/sp-dashboard/releases)

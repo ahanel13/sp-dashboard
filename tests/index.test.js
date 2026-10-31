@@ -28,6 +28,76 @@ describe('Date Range Reporter UI', () => {
     }
   });
 
+  describe('Language selection', () => {
+    const selectLanguage = (value) => {
+      window.openSettings();
+      const select = document.querySelector('#settings-panel select[data-key=language]');
+      select.value = value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    it('switches labels and persists the choice without losing existing settings', () => {
+      expect(document.querySelector('.header select[data-key=language]')).toBeNull();
+      window.openSettings();
+      expect(document.querySelector('#settings-panel select[data-key=language]').getAttribute('aria-label')).toBe('Language / 语言');
+      window.setSetting('weeklyTimeGoalH', 42);
+      selectLanguage('zh-CN');
+      expect(document.querySelector('.title').textContent).toBe('仪表盘');
+      expect(document.getElementById('tab-btn-details').textContent).toBe('详细列表');
+      expect(JSON.parse(localStorage.getItem('sp-dashboard-settings'))).toMatchObject({
+        language: 'zh-CN', weeklyTimeGoalH: 42
+      });
+      selectLanguage('en');
+      expect(document.querySelector('.title').textContent).toBe('Dashboard');
+      expect(document.getElementById('tab-btn-details').textContent).toBe('Detailed List');
+      expect(JSON.parse(localStorage.getItem('sp-dashboard-settings')).weeklyTimeGoalH).toBe(42);
+    });
+
+    it('restores the selected language after reinitialization', () => {
+      selectLanguage('zh-CN');
+      document.documentElement.innerHTML = html;
+      const script = Array.from(document.querySelectorAll('script'))
+        .find(s => !s.src && s.textContent.includes('processData'));
+      new Function(script.textContent).call(window);
+      window.openSettings();
+      expect(document.querySelector('#settings-panel select[data-key=language]').value).toBe('zh-CN');
+      expect(document.querySelector('.title').textContent).toBe('仪表盘');
+    });
+
+    it('localizes text and CSV headings without changing task or project names', () => {
+      const task = { id: 't1', title: 'Overdue', projectId: 'p1', isDone: false,
+        timeSpentOnDay: { [toLocalDate(new Date())]: 3600000 } };
+      window.processData([task], [{ id: 'p1', title: 'Dashboard' }]);
+      selectLanguage('zh-CN');
+      const summary = window.buildTextSummary('details');
+      expect(summary).toContain('详细时间记录');
+      expect(summary).toContain('项目');
+      expect(summary).toContain('Overdue');
+      expect(summary).toContain('Dashboard');
+      window.setSetting('summaryFormat', 'csv');
+      window.processData([task], [{ id: 'p1', title: 'Dashboard' }]);
+      const csv = window.buildTextSummary('details');
+      expect(csv).toContain('日期,项目,任务,时间,状态');
+      expect(csv).toContain('Overdue');
+      expect(csv).toContain('Dashboard');
+    });
+
+    it('translates dynamic statuses but leaves user-provided task titles intact', () => {
+      const task = { id: 't1', title: 'Done', isDone: false,
+        dueDay: toLocalDate(new Date(Date.now() - 86400000)),
+        timeSpentOnDay: { [toLocalDate(new Date())]: 3600000 } };
+      window.processData([task], []);
+      selectLanguage('zh-CN');
+      let row = document.querySelector('#details-table-body tr');
+      expect(row.textContent).toContain('Done');
+      expect(row.querySelector('.badge').textContent).toBe('已逾期');
+      selectLanguage('en');
+      row = document.querySelector('#details-table-body tr');
+      expect(row.textContent).toContain('Done');
+      expect(row.querySelector('.badge').textContent).toBe('Overdue');
+    });
+  });
+
   describe('Utility Functions', () => {
     it('should correctly format time in milliseconds to hours and minutes', () => {
       // Testing the formatTime function defined in the script
