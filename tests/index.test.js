@@ -63,7 +63,7 @@ describe('Date Range Reporter UI', () => {
       expect(document.getElementById('pie-total')).toBeNull();
     });
 
-    it('shows zero for an empty range and respects language and time formatting', () => {
+    it('shows zero for an empty range and respects time formatting', () => {
       selectRange('2026-10-01', '2026-10-01');
       window.processData([], []);
       expect(document.querySelector('.pie-total-value').textContent).toBe('0h 0m');
