@@ -10,7 +10,7 @@
   "iFrame": true,
   "sidePanel": false,
   "i18n": {
-    "languages": ["en"]
+    "languages": ["en", "zh"]
   },
   "permissions": [
     "getTasks",
