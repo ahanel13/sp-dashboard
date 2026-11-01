@@ -13,6 +13,7 @@
     "getTasks",
     "getArchivedTasks",
     "getAllProjects",
+    "updateTask",
     "persistDataSynced",
     "loadSyncedData"
   ]

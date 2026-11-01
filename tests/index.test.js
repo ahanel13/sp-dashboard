@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -38,6 +38,13 @@ describe('Date Range Reporter UI', () => {
 
     it('should format date strings to short readable format', () => {
       expect(window.formatDateShort('2026-02-22')).toBe('Feb 22, 2026');
+    });
+
+    it('roundToNearest rounds a millisecond value to the nearest increment', () => {
+      expect(window.roundToNearest(9 * 60000, 1800000)).toBe(0);          // 9m -> 0m
+      expect(window.roundToNearest(20 * 60000, 1800000)).toBe(1800000);   // 20m -> 30m
+      expect(window.roundToNearest(1800000, 1800000)).toBe(1800000);      // already exact
+      expect(window.roundToNearest(12345, 0)).toBe(12345);                // non-positive increment is a no-op
     });
 
     it('should generate an array of dates within a range', () => {
@@ -331,6 +338,149 @@ describe('Date Range Reporter UI', () => {
       // Process the deduplicated list and verify count is 1, not 2
       window.processData(deduplicatedTasks, []);
       expect(document.getElementById('stat-tasks').innerText).toBe('1');
+    });
+  });
+
+  describe('Round / Round All', () => {
+    let updateTask;
+
+    beforeEach(() => {
+      updateTask = vi.fn().mockResolvedValue(undefined);
+      window.PluginAPI = { updateTask, showSnack: vi.fn() };
+      // Fixed at 30 minutes so the math below doesn't depend on the app default.
+      window.setSetting('roundToHours', 0.5);
+    });
+
+    afterEach(() => {
+      delete window.PluginAPI;
+    });
+
+    it('computeRoundAllPreview sums added and removed time separately, ignoring exact entries', () => {
+      const entries = [
+        { roundable: true, timeSpent: 9 * 60000 },   // 9m -> 0m, -9m
+        { roundable: true, timeSpent: 20 * 60000 },  // 20m -> 30m, +10m
+        { roundable: true, timeSpent: 30 * 60000 },  // exact, no change
+        { roundable: false, timeSpent: 5 * 60000 }   // not roundable, ignored
+      ];
+      const preview = window.computeRoundAllPreview(entries, 1800000);
+      expect(preview.changingCount).toBe(2);
+      expect(preview.addedMs).toBe(10 * 60000);
+      expect(preview.removedMs).toBe(9 * 60000);
+      expect(preview.netMs).toBe(1 * 60000);
+    });
+
+    it('roundOneEntry sends the full timeSpentOnDay map, not just the changed date', async () => {
+      const task = { id: 't1', title: 'A', timeSpent: 9000000,
+        timeSpentOnDay: { '2026-02-19': 3600000, '2026-02-20': 5310000 } };
+      window.getCachedTasks().push(task);
+      await window.roundOneEntry('t1', '2026-02-20', document.createElement('button'));
+
+      expect(updateTask).toHaveBeenCalledTimes(1);
+      const [taskId, updates] = updateTask.mock.calls[0];
+      expect(taskId).toBe('t1');
+      expect(updates.timeSpentOnDay).toEqual({ '2026-02-19': 3600000, '2026-02-20': 5400000 });
+      expect(updates.timeSpent).toBe(9000000 + (5400000 - 5310000));
+    });
+
+    it('roundOneEntry does nothing when the value is already on the increment', async () => {
+      const task = { id: 't2', title: 'B', timeSpent: 1800000, timeSpentOnDay: { '2026-02-20': 1800000 } };
+      window.getCachedTasks().push(task);
+      await window.roundOneEntry('t2', '2026-02-20', document.createElement('button'));
+      expect(updateTask).not.toHaveBeenCalled();
+    });
+
+    it('roundOneEntry refuses to touch an archived-only task', async () => {
+      const task = { id: 't3', title: 'C', timeSpent: 3600000, timeSpentOnDay: { '2026-02-20': 3600000 }, __spArchived: true };
+      window.getCachedTasks().push(task);
+      await window.roundOneEntry('t3', '2026-02-20', document.createElement('button'));
+      expect(updateTask).not.toHaveBeenCalled();
+    });
+
+    it('roundAllApply writes each changed entry sequentially and reports failures without aborting the batch', async () => {
+      const taskA = { id: 'a', title: 'A', timeSpent: 5400000, timeSpentOnDay: { '2026-02-19': 1710000, '2026-02-20': 3690000 } };
+      const taskB = { id: 'b', title: 'B', timeSpent: 590000, timeSpentOnDay: { '2026-02-20': 590000 } };
+      window.getCachedTasks().push(taskA, taskB);
+      updateTask.mockImplementation(async (taskId) => {
+        if (taskId === 'b') throw new Error('boom');
+      });
+
+      await window.roundAllApply([
+        { taskId: 'a', date: '2026-02-19', roundable: true },
+        { taskId: 'a', date: '2026-02-20', roundable: true },
+        { taskId: 'b', date: '2026-02-20', roundable: true }
+      ]);
+
+      expect(updateTask).toHaveBeenCalledTimes(3);
+      // The second call for task 'a' must see the first call's write already
+      // applied locally, since both edit the same timeSpentOnDay map.
+      const secondCallForA = updateTask.mock.calls[1][1];
+      expect(secondCallForA.timeSpentOnDay['2026-02-19']).toBe(1800000);
+      expect(secondCallForA.timeSpentOnDay['2026-02-20']).toBe(3600000);
+    });
+
+    it('undoOneEntry restores the value a row had before it was rounded', async () => {
+      const task = { id: 'u1', title: 'U', timeSpent: 5310000, timeSpentOnDay: { '2026-02-20': 5310000 } };
+      window.getCachedTasks().push(task);
+      await window.roundOneEntry('u1', '2026-02-20', document.createElement('button'));
+      expect(task.timeSpentOnDay['2026-02-20']).toBe(5400000); // rounded to the nearest 30m
+
+      await window.undoOneEntry('u1', '2026-02-20', document.createElement('button'));
+      expect(updateTask).toHaveBeenCalledTimes(2);
+      const [, undoUpdates] = updateTask.mock.calls[1];
+      expect(undoUpdates.timeSpentOnDay['2026-02-20']).toBe(5310000);
+      expect(task.timeSpentOnDay['2026-02-20']).toBe(5310000);
+      expect(task.timeSpent).toBe(5310000);
+    });
+
+    it('undoOneEntry does nothing for a row that has not been rounded', async () => {
+      const task = { id: 'u2', title: 'V', timeSpent: 1800000, timeSpentOnDay: { '2026-02-20': 1800000 } };
+      window.getCachedTasks().push(task);
+      await window.undoOneEntry('u2', '2026-02-20', document.createElement('button'));
+      expect(updateTask).not.toHaveBeenCalled();
+    });
+
+    it('undoOneEntry only undoes the specific row rounded, not others changed in the same batch', async () => {
+      const taskA = { id: 'a', title: 'A', timeSpent: 1710000, timeSpentOnDay: { '2026-02-19': 1710000 } };
+      const taskB = { id: 'b', title: 'B', timeSpent: 3690000, timeSpentOnDay: { '2026-02-20': 3690000 } };
+      window.getCachedTasks().push(taskA, taskB);
+      await window.roundAllApply([
+        { taskId: 'a', date: '2026-02-19', roundable: true },
+        { taskId: 'b', date: '2026-02-20', roundable: true }
+      ]);
+      expect(taskA.timeSpentOnDay['2026-02-19']).toBe(1800000);
+      expect(taskB.timeSpentOnDay['2026-02-20']).toBe(3600000);
+
+      await window.undoOneEntry('a', '2026-02-19', document.createElement('button'));
+      expect(taskA.timeSpentOnDay['2026-02-19']).toBe(1710000);
+      expect(taskB.timeSpentOnDay['2026-02-20']).toBe(3600000); // untouched
+
+      // A second undo for the same row does nothing — its history was cleared.
+      await window.undoOneEntry('a', '2026-02-19', document.createElement('button'));
+      expect(updateTask).toHaveBeenCalledTimes(3); // 2 rounds + 1 undo, not a 2nd undo
+    });
+
+    it('rounding appends the unrounded hours to the task notes, and undo restores them', async () => {
+      const task = { id: 'n1', title: 'N', timeSpent: 5310000, notes: 'Existing note',
+        timeSpentOnDay: { '2026-02-20': 5310000 } }; // 1.475h
+      window.getCachedTasks().push(task);
+      await window.roundOneEntry('n1', '2026-02-20', document.createElement('button'));
+
+      const [, roundUpdates] = updateTask.mock.calls[0];
+      expect(roundUpdates.notes).toBe('Existing note\nUnrounded: 1.48');
+      expect(task.notes).toBe('Existing note\nUnrounded: 1.48');
+
+      await window.undoOneEntry('n1', '2026-02-20', document.createElement('button'));
+      const [, undoUpdates] = updateTask.mock.calls[1];
+      expect(undoUpdates.notes).toBe('Existing note');
+      expect(task.notes).toBe('Existing note');
+    });
+
+    it('rounding a task with no existing notes sets the note without a leading blank line', async () => {
+      const task = { id: 'n2', title: 'N2', timeSpent: 1710000, timeSpentOnDay: { '2026-02-20': 1710000 } }; // 0.475h
+      window.getCachedTasks().push(task);
+      await window.roundOneEntry('n2', '2026-02-20', document.createElement('button'));
+      const [, updates] = updateTask.mock.calls[0];
+      expect(updates.notes).toBe('Unrounded: 0.47');
     });
   });
 
@@ -990,6 +1140,22 @@ describe('Date Range Reporter UI', () => {
         expect(window.getSetting('dailyTimeGoalH')).toBe(24);
         expect(window.getSetting('weeklyTimeGoalH')).toBe(1);
         expect(window.getSetting('dailyTaskGoal')).toBe(1);
+        // These three still coerce to whole numbers — a regression guard for the
+        // step-aware clamping added for roundToHours below.
+        window.importSettings(JSON.stringify({ dailyTimeGoalH: 8.7, weeklyTimeGoalH: 30.2, dailyTaskGoal: 5.4 }));
+        expect(window.getSetting('dailyTimeGoalH')).toBe(9);
+        expect(window.getSetting('weeklyTimeGoalH')).toBe(30);
+        expect(window.getSetting('dailyTaskGoal')).toBe(5);
+      });
+
+      it('roundToHours defaults to 1 and clamps/snaps to its 0.05 step', () => {
+        expect(window.getSetting('roundToHours')).toBe(1);
+        window.importSettings(JSON.stringify({ roundToHours: 0 }));
+        expect(window.getSetting('roundToHours')).toBe(0.05); // clamped to the floor
+        window.importSettings(JSON.stringify({ roundToHours: 100 }));
+        expect(window.getSetting('roundToHours')).toBe(4);    // clamped to the ceiling
+        window.importSettings(JSON.stringify({ roundToHours: 0.27 }));
+        expect(window.getSetting('roundToHours')).toBe(0.25); // snapped to the nearest 0.05 step
       });
 
       it('drops array members that are not legal values', () => {
@@ -1234,6 +1400,39 @@ describe('Date Range Reporter UI', () => {
         expect(document.getElementById('stat-time').innerText).toBe('2h 0m'); // unchanged
         expect(window.latestMetrics.tableEntries.length).toBe(2);
         expect(window.latestMetrics.tableEntries.some(e => e.isSubtask)).toBe(true);
+      });
+
+      it('marks a normal task-day entry as roundable, with its task id', () => {
+        window.processData(tasks, projects, tags);
+        const entry = window.latestMetrics.tableEntries.find(e => e.taskTitle === 'Ship feature');
+        expect(entry.roundable).toBe(true);
+        expect(entry.taskId).toBe('t1');
+        expect(entry.isArchived).toBe(false);
+      });
+
+      it('does not mark a subtask rollup row as roundable', () => {
+        window.setSetting('showSubtaskRows', true);
+        const withChild = [
+          { id: 'p', parentId: null, title: 'Parent', isDone: false, projectId: 'p1', tagIds: [],
+            timeSpentOnDay: { [todayStr]: 7200000 } },
+          { id: 'c', parentId: 'p', title: 'Child', isDone: false, projectId: 'p1', tagIds: [],
+            timeSpentOnDay: { [todayStr]: 3600000 } }
+        ];
+        window.processData(withChild, projects, []);
+        const subtaskEntry = window.latestMetrics.tableEntries.find(e => e.isSubtask);
+        expect(subtaskEntry.roundable).toBeFalsy();
+        window.setSetting('showSubtaskRows', false);
+      });
+
+      it('does not mark an archived-only task as roundable', () => {
+        const archivedOnly = [
+          { id: 'arch1', parentId: null, title: 'Old task', isDone: false, projectId: 'p1', tagIds: [],
+            timeSpentOnDay: { [todayStr]: 3600000 }, __spArchived: true }
+        ];
+        window.processData(archivedOnly, projects, []);
+        const entry = window.latestMetrics.tableEntries.find(e => e.taskId === 'arch1');
+        expect(entry.roundable).toBe(false);
+        expect(entry.isArchived).toBe(true);
       });
 
       it('noDueDateOverdue counts undated open tasks as overdue', () => {
