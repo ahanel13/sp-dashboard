@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
 
 // Load the generated HTML content for the test environment
@@ -2360,6 +2360,87 @@ describe('Date Range Reporter UI', () => {
       const view = window.getActiveViewNode();
       expect(view.label).toBe('[de] Dashboard');
       expect(window.buildExportFilename(view.fileLabel, 'png')).toMatch(/^dashboard-dashboard-/);
+    });
+
+    // Every shipped translation file, checked against en.json. A missing key is
+    // allowed (the host falls back to English) and only warned about; an extra
+    // key, a changed placeholder or an undeclared file is a mistake.
+    const I18N_DIR = resolve(__dirname, '../sp-dashboard/i18n');
+    const manifestTemplate = JSON.parse(readFileSync(resolve(__dirname, '../sp-dashboard/manifest.json.template'), 'utf8'));
+    const languageFiles = readdirSync(I18N_DIR).filter(f => f.endsWith('.json') && f !== 'en.json');
+    const placeholders = (s) => (String(s).match(/\{\{\s*\w+\s*\}\}/g) || []).map(p => p.replace(/\s/g, '')).sort();
+    // The English text a translated key corresponds to: plural categories
+    // English lacks (few, many, …) map onto the group's `other`.
+    const englishFor = (key) => {
+      if (EN[key] !== undefined) return EN[key];
+      const base = key.replace(/\.(zero|one|two|few|many|other)$/, '');
+      return base !== key && PLURAL_BASES.has(base) ? EN[`${base}.other`] : undefined;
+    };
+
+    it('declares exactly the languages that ship a file', () => {
+      const declared = manifestTemplate.i18n.languages.slice().sort();
+      const shipped = ['en', ...languageFiles.map(f => f.replace(/\.json$/, ''))].sort();
+      expect(declared).toEqual(shipped);
+    });
+
+    languageFiles.forEach(file => {
+      it(`${file}: no unknown keys, matching placeholders, and a form for every plural`, () => {
+        const messages = flatten(JSON.parse(readFileSync(resolve(I18N_DIR, file), 'utf8')));
+        Object.entries(messages).forEach(([key, value]) => {
+          const english = englishFor(key);
+          expect(english, `${file} has a key en.json does not: ${key}`).toBeDefined();
+          expect(typeof value, `${file} ${key}`).toBe('string');
+          expect(value.trim(), `${file} ${key} is empty`).not.toBe('');
+          expect(placeholders(value), `${file} ${key} placeholders`).toEqual(placeholders(english));
+        });
+        PLURAL_BASES.forEach(base => {
+          const forms = Object.keys(messages).filter(k => k.startsWith(`${base}.`));
+          if (forms.length) expect(forms, `${file} ${base} needs an "other" form`).toContain(`${base}.other`);
+        });
+        const missing = Object.keys(EN).filter(k => {
+          const base = k.replace(/\.(zero|one|two|few|many|other)$/, '');
+          return messages[k] === undefined && !(base !== k && messages[`${base}.other`] !== undefined);
+        });
+        if (missing.length) console.warn(`[i18n] ${file} falls back to English for ${missing.length} keys:`, missing);
+      });
+    });
+
+    it('zh.json translates every string', () => {
+      const zh = flatten(JSON.parse(readFileSync(resolve(I18N_DIR, 'zh.json'), 'utf8')));
+      const missing = Object.keys(EN).filter(k => {
+        const base = k.replace(/\.(zero|one|two|few|many|other)$/, '');
+        return zh[k] === undefined && !(base !== k && zh[`${base}.other`] !== undefined);
+      });
+      expect(missing).toEqual([]);
+    });
+
+    it('renders every tab and settings panel in Simplified Chinese with no raw keys or placeholders', async () => {
+      const zh = flatten(JSON.parse(readFileSync(resolve(I18N_DIR, 'zh.json'), 'utf8')));
+      window.PluginAPI = {
+        // Like the host: the app language's text, else English, else the key.
+        translate: vi.fn(async (key) => zh[key] !== undefined ? zh[key] : (EN[key] !== undefined ? EN[key] : key)),
+        getCurrentLanguage: vi.fn(async () => 'zh'),
+        registerHook: vi.fn(async () => {}),
+        getTasks: () => new Promise(() => {})
+      };
+      await window.refreshLanguage();
+      expect(document.documentElement.lang).toBe('zh-CN');
+      window.processData(sampleTasks(), sampleProjects, []);
+      expect(document.getElementById('tab-btn-heatmap').textContent).toBe('热力图');
+      expect(document.getElementById('stat-tasks-total').innerText).toBe('/ 共 2 项');
+
+      const leftovers = /\{\{|\b[A-Z][A-Z_]+\.[A-Z][A-Z_.]+\b/;
+      ['dashboard', 'details', 'drilldown', 'heatmap'].forEach(tab => {
+        window.switchTab(tab);
+        expect(document.getElementById(`view-${tab}`).textContent.match(leftovers), tab).toBeNull();
+      });
+      window.openSettings();
+      const rail = document.getElementById('settings-rail');
+      window.SETTINGS_SECTIONS.forEach(section => {
+        rail.querySelector(`[data-section="${section.id}"]`).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(document.getElementById('settings-overlay').textContent.match(leftovers), section.id).toBeNull();
+      });
+      expect(window.buildTextSummary('dashboard')).toContain('效率摘要');
     });
 
     it('translates the heatmap: controls, title, legend, stats and row labels', async () => {
