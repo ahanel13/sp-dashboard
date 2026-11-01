@@ -2272,7 +2272,9 @@
       const goal = getDailyGoal(type);
       const countFn = (v) => t('CHARTS.TASK_COUNT', { count: Math.round(v) });
       if (type === 'time') {
-        renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, timeYFn, HOUR, goal);
+        // Bar values follow Settings › General › Time format; the axis ticks stay
+        // whole hours, since they mark the scale rather than report a value.
+        renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', formatTime, timeYFn, HOUR, goal);
       } else if (type === 'completed') {
         renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', countFn, taskYFn, 1, goal);
       } else if (type === 'overdue') {
@@ -2286,10 +2288,9 @@
       if (!latestMetrics) return;
       const type = document.getElementById('pie-chart-select').value;
       const isTag = pieDimension === 'tag';
-      const timeFmt = (v) => `${(v / 3600000).toFixed(1)}h`;
       const countFmt = (v) => t('CHARTS.TASK_COUNT', { count: Math.round(v) });
       if (type === 'time') {
-        renderNativePieChart(isTag ? latestMetrics.tagData : latestMetrics.projectData, timeFmt);
+        renderNativePieChart(isTag ? latestMetrics.tagData : latestMetrics.projectData, formatTime);
       } else if (type === 'completed') {
         renderNativePieChart(isTag ? latestMetrics.tagCompletedData : latestMetrics.projectCompletedData, countFmt);
       } else if (type === 'overdue') {
@@ -2455,7 +2456,7 @@
       };
 
       document.getElementById('drill-chart-title').textContent = t('CHARTS.DAILY_TIME_FOR', { name: entityLabel(entity) });
-      renderGenericBarChart(dailyChartData, 'drill-bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, (v) => `${Math.round(v / 3600000)}h`, 3600000);
+      renderGenericBarChart(dailyChartData, 'drill-bar-chart-container', 'var(--c-primary, #03a9f4)', formatTime, (v) => `${Math.round(v / 3600000)}h`, 3600000);
 
       const filteredEntries = latestMetrics.tableEntries.filter(e => {
         if (isTag) return e.tagNames && e.tagNames.includes(entity);
