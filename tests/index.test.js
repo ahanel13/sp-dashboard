@@ -335,6 +335,56 @@ describe('Date Range Reporter UI', () => {
   });
 
   describe('Tag Breakdown', () => {
+    // #27: a task counts toward every one of its tags, so the tag slices can add
+    // up to more than the time actually tracked. The legend says so, but only
+    // when it is true.
+    describe('overlap note', () => {
+      const today = () => toLocalDate(new Date());
+      const tags = [{ id: 'x', title: 'Frontend' }, { id: 'y', title: 'Design' }];
+      const note = () => document.querySelector('#pie-legend-container .pie-note');
+      const showPie = (metric, dim) => {
+        const pie = document.getElementById('pie-chart-select');
+        pie.value = metric;
+        pie.dispatchEvent(new Event('change'));
+        document.getElementById(dim === 'tag' ? 'pie-dim-tag' : 'pie-dim-project').click();
+      };
+
+      it('appears in the Tag view when a task carries several tags', () => {
+        window.processData([
+          { id: 'a', parentId: null, title: 'Both', isDone: true, doneOn: Date.now(), projectId: null,
+            tagIds: ['x', 'y'], timeSpentOnDay: { [today()]: 7200000 } },
+          { id: 'b', parentId: null, title: 'Loose', isDone: false, projectId: null,
+            tagIds: [], timeSpentOnDay: { [today()]: 3600000 } }
+        ], [], tags);
+        showPie('time', 'tag');
+        expect(note()).not.toBeNull();
+        expect(note().textContent).toContain('add up to more than the total');
+        // Task counts overlap the same way.
+        showPie('completed', 'tag');
+        expect(note()).not.toBeNull();
+      });
+
+      it('stays away from the Project view, which always adds up', () => {
+        window.processData([
+          { id: 'a', parentId: null, title: 'Both', isDone: false, projectId: null,
+            tagIds: ['x', 'y'], timeSpentOnDay: { [today()]: 7200000 } }
+        ], [], tags);
+        showPie('time', 'project');
+        expect(note()).toBeNull();
+      });
+
+      it('stays away when no task has more than one tag', () => {
+        window.processData([
+          { id: 'a', parentId: null, title: 'One tag', isDone: false, projectId: null,
+            tagIds: ['x'], timeSpentOnDay: { [today()]: 7200000 } },
+          { id: 'b', parentId: null, title: 'No tags', isDone: false, projectId: null,
+            tagIds: [], timeSpentOnDay: { [today()]: 3600000 } }
+        ], [], tags);
+        showPie('time', 'tag');
+        expect(note()).toBeNull();
+      });
+    });
+
     it('should accumulate time into tagData by tag name', () => {
       const todayStr = toLocalDate(new Date());
       const tags = [{ id: 'tag1', title: 'Frontend' }, { id: 'tag2', title: 'Backend' }];
