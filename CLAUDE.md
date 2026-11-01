@@ -9,6 +9,7 @@ npm test                  # Run tests once (Vitest + JSDOM)
 npm run test:watch        # Run tests in watch mode
 npm run test:coverage     # Generate v8 coverage report
 npm run check:syntax      # Validate JS syntax via Acorn (extracts <script> from index.html)
+npm run i18n:sync         # Copy i18n/en.json into the I18N_EN block of index.html (i18n:check to verify)
 npm run build:min         # Minify HTML/CSS/JS into build/sp-dashboard/
 npm run screenshot        # Regenerate assets/ screenshots via Puppeteer
 make build                # Full plugin build → sp-dashboard.zip
@@ -123,6 +124,37 @@ Three things arriving from outside are treated as hostile, and each has regressi
 - **Task, project and tag names** — host data that may contain markup. Anything data-derived reaching
   `innerHTML` goes through `escapeHtml()`; prefer `textContent` where possible.
 
+### Translations
+
+UI text lives in `sp-dashboard/i18n/en.json` (nested `UPPER_SNAKE` keys), served through Super
+Productivity's plugin i18n (`PluginAPI.translate` / `getCurrentLanguage` / the `languageChange` hook).
+
+```
+i18n/en.json              → source of truth; other languages are i18n/<code>.json + manifest "languages"
+I18N_EN (index.html)      → generated copy of en.json, between I18N_EN:BEGIN / I18N_EN:END markers
+loadTranslations()        → fetches every key once from the host into a cache (async in the iframe)
+t(key, params)            → the only read path; sync; {{params}}; plurals via KEY.one / KEY.other + Intl.PluralRules
+tEn(key, params)          → English regardless of language: CSV headings and export filenames only
+applyStaticTranslations() → rewrites [data-i18n] / [data-i18n-title] / [data-i18n-aria-label] markup
+weekdayName / monthName   → Intl, not translation files
+entityLabel(name)         → display name for the internal UNCATEGORIZED / UNTAGGED buckets
+```
+
+- **New UI text = a key in `en.json`, then `npm run i18n:sync`.** Never a bare string. Static markup
+  gets `data-i18n="KEY"` *and* its English text (a test checks the two match); dynamic text uses `t()`.
+  `make build` fails if `index.html` is out of sync.
+- Settings labels are keys too: `labelKey` / `hintKey` / `subKey` / `unitKey` on `SETTINGS_SECTIONS`,
+  and `sOpt(value, key, params)` in `SETTING_OPTIONS`. `sRaw` is for literal labels (format examples,
+  product names), `sDay` for weekdays.
+- Never translate task, project or tag names, and never translate the `Uncategorized` / `Untagged`
+  bucket names inside the metrics: they are map keys and are stored in `excludedProjects` /
+  `excludedTags`. Translate at display time with `entityLabel()`. Heatmap rows work the same way:
+  the series keeps English labels ("All work", "Other (N)") for the CSV and the cache, and
+  `hmRowLabel()` translates them where they are drawn.
+- Translations are host data: anything reaching `innerHTML` goes through `escapeHtml()`.
+- Tests fail on a key used but missing from `en.json`, a key in `en.json` that nothing uses, and any
+  raw `SOME.KEY` visible in the settings modal.
+
 ### Debug logging
 
 Every diagnostic goes through `debugLog()` / `debugWarn()`, gated on the `debugLogging` setting and
@@ -200,4 +232,5 @@ Tests live in `tests/index.test.js` and use Vitest with a JSDOM environment. The
 
 - Keep `index.html` self-contained — no `import` statements, no external CDN links, no `require()`.
 - All user-visible strings in the UI must be sanitized before insertion into the DOM (use `textContent`, not `innerHTML`, for any data-derived content).
+- All user-visible strings come from `i18n/en.json` via `t()` — see Translations above.
 - Plugin permissions are declared in `manifest.json.template`; `persistDataSynced` / `loadSyncedData` are declared but currently unused.

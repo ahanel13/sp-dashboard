@@ -1,6 +1,6 @@
 {
   "name": "sp-dashboard",
-  "version": "1.6.0",
+  "version": "1.7.0-rc.2",
   "description": "A visual dashboard plugin providing metrics, charts, and daily summaries of your tasks and tracked time.",
   "type": "module",
   "scripts": {
@@ -9,6 +9,8 @@
     "test:coverage": "vitest run --coverage",
     "build:min": "./scripts/minify.sh sp-dashboard",
     "check:syntax": "node scripts/check-js.js",
+    "i18n:sync": "node scripts/sync-i18n.js",
+    "i18n:check": "node scripts/sync-i18n.js --check",
     "screenshot": "node scripts/screenshot.js"
   },
   "devDependencies": {
