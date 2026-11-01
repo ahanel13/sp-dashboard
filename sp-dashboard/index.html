@@ -150,7 +150,7 @@
     .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: var(--s3, 1.5rem); margin-bottom: var(--s3, 1.5rem); }
 
     /* Icon presentation, hoisted off the twelve inline <svg>s. stroke-* inherit,
-       so the paths need only their `d`. index.html has a hard 100KB budget. */
+       so the paths need only their `d`. Keeps index.html small. */
     .ico { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 
     .stat-card, .chart-card {
