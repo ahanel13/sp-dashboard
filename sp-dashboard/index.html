@@ -452,46 +452,46 @@
     <!-- Header -->
     <header class="header">
       <div class="title-area">
-        <h1 class="title">Dashboard</h1>
-        <p class="subtitle">Select a time period to view metrics</p>
+        <h1 class="title" data-i18n="APP.TITLE">Dashboard</h1>
+        <p class="subtitle" data-i18n="HEADER.SUBTITLE">Select a time period to view metrics</p>
       </div>
       
       <div class="controls">
         <!-- Custom Date Pickers (Hidden by default) -->
         <div id="custom-date-container" class="control-box hidden" style="flex-direction: row; gap: var(--s2, 1rem);">
           <div style="display: flex; flex-direction: column;">
-            <label for="date-from">From</label>
+            <label for="date-from" data-i18n="HEADER.FROM">From</label>
             <input type="date" id="date-from">
           </div>
           <div style="display: flex; flex-direction: column;">
-            <label for="date-to">To</label>
+            <label for="date-to" data-i18n="HEADER.TO">To</label>
             <input type="date" id="date-to">
           </div>
         </div>
 
         <!-- Preset Dropdown -->
         <div class="control-box">
-          <label for="date-preset">Period</label>
+          <label for="date-preset" data-i18n="HEADER.PERIOD">Period</label>
           <select id="date-preset">
-            <option value="today" selected>Today</option>
-            <option value="this-week">This Week</option>
-            <option value="week">Past Week</option>
-            <option value="month">This Month</option>
-            <option value="year">Past Year</option>
-            <option value="custom">Custom Range...</option>
-            <option value="from-weekday">Starting from weekday</option>
+            <option value="today" selected data-i18n="PERIOD.TODAY">Today</option>
+            <option value="this-week" data-i18n="PERIOD.THIS_WEEK">This Week</option>
+            <option value="week" data-i18n="PERIOD.PAST_WEEK">Past Week</option>
+            <option value="month" data-i18n="PERIOD.THIS_MONTH">This Month</option>
+            <option value="year" data-i18n="PERIOD.PAST_YEAR">Past Year</option>
+            <option value="custom" data-i18n="PERIOD.CUSTOM">Custom Range...</option>
+            <option value="from-weekday" data-i18n="PERIOD.FROM_WEEKDAY">Starting from weekday</option>
           </select>
         </div>
         <div id="weekday-picker-container" class="control-box hidden">
-          <label for="weekday-select">Weekday</label>
+          <label for="weekday-select" data-i18n="HEADER.WEEKDAY">Weekday</label>
           <select id="weekday-select">
-            <option value="1">Monday</option>
-            <option value="2">Tuesday</option>
-            <option value="3">Wednesday</option>
-            <option value="4">Thursday</option>
-            <option value="5">Friday</option>
-            <option value="6">Saturday</option>
-            <option value="0">Sunday</option>
+            <option value="1" data-weekday="1">Monday</option>
+            <option value="2" data-weekday="2">Tuesday</option>
+            <option value="3" data-weekday="3">Wednesday</option>
+            <option value="4" data-weekday="4">Thursday</option>
+            <option value="5" data-weekday="5">Friday</option>
+            <option value="6" data-weekday="6">Saturday</option>
+            <option value="0" data-weekday="0">Sunday</option>
           </select>
         </div>
       </div>
@@ -501,27 +501,27 @@
     <div class="main-card">
       <!-- Tabs -->
       <div class="tabs">
-        <button id="tab-btn-dashboard" class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
-        <button id="tab-btn-details" class="tab-btn" onclick="switchTab('details')">Detailed List</button>
-        <button id="tab-btn-drilldown" class="tab-btn" onclick="switchTab('drilldown')">By Project / Tag</button>
+        <button id="tab-btn-dashboard" class="tab-btn active" onclick="switchTab('dashboard')" data-i18n="TABS.DASHBOARD">Dashboard</button>
+        <button id="tab-btn-details" class="tab-btn" onclick="switchTab('details')" data-i18n="TABS.DETAILS">Detailed List</button>
+        <button id="tab-btn-drilldown" class="tab-btn" onclick="switchTab('drilldown')" data-i18n="TABS.DRILLDOWN">By Project / Tag</button>
 
         <!-- Settings. Deliberately not a 4th tab: the tab bar feeds Share / Print /
              Copy image, and settings must never end up inside an exported report. -->
-        <button id="settings-btn" class="settings-btn" title="Settings" aria-haspopup="dialog" aria-expanded="false">
+        <button id="settings-btn" class="settings-btn" title="Settings" data-i18n-title="TABS.SETTINGS" aria-haspopup="dialog" aria-expanded="false">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
         </button>
 
         <!-- Share / export the currently visible tab -->
         <div class="share-wrap">
-          <button id="share-btn" class="share-btn" aria-haspopup="true" aria-expanded="false" title="Share this tab">
+          <button id="share-btn" class="share-btn" aria-haspopup="true" aria-expanded="false" title="Share this tab" data-i18n-title="TABS.SHARE_TITLE">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-            <span>Share</span>
+            <span data-i18n="TABS.SHARE">Share</span>
           </button>
           <div id="share-menu" class="share-menu hidden" role="menu">
-            <button class="share-menu-item" role="menuitem" data-action="copy-image">Copy image</button>
-            <button class="share-menu-item" role="menuitem" data-action="download-png">Download PNG</button>
-            <button class="share-menu-item" role="menuitem" data-action="print">Print / Save as PDF</button>
-            <button class="share-menu-item" role="menuitem" data-action="copy-text">Copy text summary</button>
+            <button class="share-menu-item" role="menuitem" data-action="copy-image" data-i18n="SHARE_MENU.COPY_IMAGE">Copy image</button>
+            <button class="share-menu-item" role="menuitem" data-action="download-png" data-i18n="SHARE_MENU.DOWNLOAD_PNG">Download PNG</button>
+            <button class="share-menu-item" role="menuitem" data-action="print" data-i18n="SHARE_MENU.PRINT">Print / Save as PDF</button>
+            <button class="share-menu-item" role="menuitem" data-action="copy-text" data-i18n="SHARE_MENU.COPY_TEXT">Copy text summary</button>
           </div>
         </div>
       </div>
@@ -536,7 +536,7 @@
           
           <div class="stat-card" id="stat-card-time">
             <div class="stat-header">
-              <h3 class="stat-title">Total Time Tracked</h3>
+              <h3 class="stat-title" data-i18n="STATS.TOTAL_TIME">Total Time Tracked</h3>
               <div class="stat-icon" style="background: rgba(96, 165, 250, 0.1); color: #60a5fa;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
@@ -553,7 +553,7 @@
 
           <div class="stat-card" id="stat-card-completed">
             <div class="stat-header">
-              <h3 class="stat-title">Tasks Completed</h3>
+              <h3 class="stat-title" data-i18n="STATS.TASKS_COMPLETED">Tasks Completed</h3>
               <div class="stat-icon" style="background: rgba(74, 222, 128, 0.1); color: #4ade80;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
@@ -567,22 +567,22 @@
 
           <div class="stat-card" id="stat-card-overdue">
             <div class="stat-header">
-              <h3 class="stat-title">Overdue Tasks</h3>
+              <h3 class="stat-title" data-i18n="STATS.OVERDUE">Overdue Tasks</h3>
               <div class="stat-icon badge-red"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container" style="align-items: center;">
               <div>
                 <span class="stat-value" id="stat-overdue">0</span>
-                <span class="stat-suffix">tasks</span>
+                <span class="stat-suffix" id="stat-overdue-unit" data-i18n="STATS.TASK_UNIT.other">tasks</span>
               </div>
-              <span class="badge badge-red hidden" id="stat-overdue-label">Needs Attention</span>
+              <span class="badge badge-red hidden" id="stat-overdue-label" data-i18n="STATS.NEEDS_ATTENTION">Needs Attention</span>
               <div id="overdue-note" class="text-red" style="font-size:0.75rem; margin-top:4px; display:none;"></div>
             </div>
           </div>
 
           <div class="stat-card" id="stat-card-late">
             <div class="stat-header">
-              <h3 class="stat-title">Completed Late</h3>
+              <h3 class="stat-title" data-i18n="STATS.COMPLETED_LATE">Completed Late</h3>
               <div class="stat-icon" style="background: rgba(251, 191, 36, 0.1); color: #fbbf24;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
@@ -597,12 +597,12 @@
           
           <div class="chart-card">
             <div class="card-header">
-              <h3 class="card-title">Daily Trends</h3>
+              <h3 class="card-title" data-i18n="CHARTS.DAILY_TRENDS">Daily Trends</h3>
               <select id="bar-chart-select" class="chart-select">
-                <option value="time">Time Tracked</option>
-                <option value="completed" selected>Tasks Completed</option>
-                <option value="overdue">Tasks Overdue</option>
-                <option value="late">Completed Late</option>
+                <option value="time" data-i18n="CHARTS.METRIC_TIME">Time Tracked</option>
+                <option value="completed" selected data-i18n="CHARTS.METRIC_COMPLETED">Tasks Completed</option>
+                <option value="overdue" data-i18n="CHARTS.METRIC_OVERDUE">Tasks Overdue</option>
+                <option value="late" data-i18n="CHARTS.METRIC_LATE">Completed Late</option>
               </select>
             </div>
             <div class="chart-container">
@@ -613,17 +613,17 @@
           <div class="chart-card">
             <div class="card-header" style="flex-direction:column; align-items:flex-start; gap:0.5rem;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 class="card-title">Breakdown</h3>
+                <h3 class="card-title" data-i18n="CHARTS.BREAKDOWN">Breakdown</h3>
                 <select id="pie-chart-select" class="chart-select">
-                  <option value="time">Time Tracked</option>
-                  <option value="completed" selected>Tasks Completed</option>
-                  <option value="overdue">Tasks Overdue</option>
-                  <option value="late">Completed Late</option>
+                  <option value="time" data-i18n="CHARTS.METRIC_TIME">Time Tracked</option>
+                  <option value="completed" selected data-i18n="CHARTS.METRIC_COMPLETED">Tasks Completed</option>
+                  <option value="overdue" data-i18n="CHARTS.METRIC_OVERDUE">Tasks Overdue</option>
+                  <option value="late" data-i18n="CHARTS.METRIC_LATE">Completed Late</option>
                 </select>
               </div>
               <div class="dim-toggle">
-                <button id="pie-dim-project" class="dim-btn active">Project</button>
-                <button id="pie-dim-tag" class="dim-btn">Tag</button>
+                <button id="pie-dim-project" class="dim-btn active" data-i18n="CHARTS.PROJECT">Project</button>
+                <button id="pie-dim-tag" class="dim-btn" data-i18n="CHARTS.TAG">Tag</button>
               </div>
             </div>
             <div class="chart-container">
@@ -644,11 +644,11 @@
         <table class="details-table">
           <thead>
             <tr>
-              <th data-sort="date">Date</th>
-              <th data-sort="projectName">Project</th>
-              <th data-sort="taskTitle">Task</th>
-              <th data-sort="timeSpent">Time Spent</th>
-              <th data-sort="status">Status</th>
+              <th data-sort="date" data-i18n="TABLE.DATE">Date</th>
+              <th data-sort="projectName" data-i18n="TABLE.PROJECT">Project</th>
+              <th data-sort="taskTitle" data-i18n="TABLE.TASK">Task</th>
+              <th data-sort="timeSpent" data-i18n="TABLE.TIME_SPENT">Time Spent</th>
+              <th data-sort="status" data-i18n="TABLE.STATUS">Status</th>
             </tr>
           </thead>
           <tbody id="details-table-body">
@@ -657,17 +657,17 @@
         </table>
         <div id="overdue-section" class="hidden">
           <div class="overdue-section-header">
-            OVERDUE &amp; LATE
+            <span data-i18n="TABLE.OVERDUE_LATE">OVERDUE &amp; LATE</span>
             <span id="overdue-section-count" class="badge badge-red"></span>
           </div>
           <table class="details-table">
             <thead>
               <tr>
-                <th>Due Date</th>
-                <th>Project</th>
-                <th>Task</th>
-                <th>Time Spent</th>
-                <th>Status</th>
+                <th data-i18n="TABLE.DUE_DATE">Due Date</th>
+                <th data-i18n="TABLE.PROJECT">Project</th>
+                <th data-i18n="TABLE.TASK">Task</th>
+                <th data-i18n="TABLE.TIME_SPENT">Time Spent</th>
+                <th data-i18n="TABLE.STATUS">Status</th>
               </tr>
             </thead>
             <tbody id="overdue-table-body"></tbody>
@@ -683,11 +683,11 @@
         <!-- Controls -->
         <div style="display:flex; align-items:center; gap:var(--s2,1rem); flex-wrap:wrap; margin-bottom:var(--s3,1.5rem);">
           <div class="dim-toggle">
-            <button id="drill-dim-project" class="dim-btn active" onclick="setDrillDimension('project')">Project</button>
-            <button id="drill-dim-tag" class="dim-btn" onclick="setDrillDimension('tag')">Tag</button>
+            <button id="drill-dim-project" class="dim-btn active" onclick="setDrillDimension('project')" data-i18n="CHARTS.PROJECT">Project</button>
+            <button id="drill-dim-tag" class="dim-btn" onclick="setDrillDimension('tag')" data-i18n="CHARTS.TAG">Tag</button>
           </div>
           <div class="control-box" style="flex-direction:row; align-items:center; gap:var(--s,0.5rem);">
-            <label for="drill-entity-select" style="white-space:nowrap; font-size:0.875rem; color:var(--text-color-muted,#9e9e9e);">Show:</label>
+            <label for="drill-entity-select" style="white-space:nowrap; font-size:0.875rem; color:var(--text-color-muted,#9e9e9e);" data-i18n="DRILL.SHOW">Show:</label>
             <select id="drill-entity-select" class="chart-select" onchange="setDrillEntity(this.value)"></select>
           </div>
         </div>
@@ -696,7 +696,7 @@
         <div class="grid-3" style="margin-bottom:var(--s3,1.5rem);">
           <div class="stat-card">
             <div class="stat-header">
-              <h3 class="stat-title">Time Spent</h3>
+              <h3 class="stat-title" data-i18n="STATS.TIME_SPENT">Time Spent</h3>
               <div class="stat-icon" style="background:rgba(96,165,250,0.1);color:#60a5fa;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
@@ -705,7 +705,7 @@
           </div>
           <div class="stat-card">
             <div class="stat-header">
-              <h3 class="stat-title">Tasks Completed</h3>
+              <h3 class="stat-title" data-i18n="STATS.TASKS_COMPLETED">Tasks Completed</h3>
               <div class="stat-icon" style="background:rgba(74,222,128,0.1);color:#4ade80;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
@@ -714,7 +714,7 @@
           </div>
           <div class="stat-card">
             <div class="stat-header">
-              <h3 class="stat-title">Overdue Tasks</h3>
+              <h3 class="stat-title" data-i18n="STATS.OVERDUE">Overdue Tasks</h3>
               <div class="stat-icon badge-red"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
@@ -723,7 +723,7 @@
           </div>
           <div class="stat-card">
             <div class="stat-header">
-              <h3 class="stat-title">Completed Late</h3>
+              <h3 class="stat-title" data-i18n="STATS.COMPLETED_LATE">Completed Late</h3>
               <div class="stat-icon" style="background:rgba(251,191,36,0.1);color:#fbbf24;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
             </div>
             <div class="stat-value-container">
@@ -735,7 +735,7 @@
         <!-- Bar chart -->
         <div class="chart-card" style="margin-bottom:var(--s3,1.5rem);">
           <div class="card-header">
-            <h3 class="card-title" id="drill-chart-title">Daily Time</h3>
+            <h3 class="card-title" id="drill-chart-title" data-i18n="CHARTS.DAILY_TIME">Daily Time</h3>
           </div>
           <div class="chart-container" id="drill-chart-container-wrap">
             <div class="bar-chart" id="drill-bar-chart-container"></div>
@@ -747,10 +747,10 @@
           <table class="details-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Task</th>
-                <th>Time Spent</th>
-                <th>Status</th>
+                <th data-i18n="TABLE.DATE">Date</th>
+                <th data-i18n="TABLE.TASK">Task</th>
+                <th data-i18n="TABLE.TIME_SPENT">Time Spent</th>
+                <th data-i18n="TABLE.STATUS">Status</th>
               </tr>
             </thead>
             <tbody id="drill-table-body"></tbody>
@@ -776,8 +776,8 @@
     <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="settings-head">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
-        <h2 class="settings-title" id="settings-title">Settings</h2>
-        <button class="settings-close" id="settings-close" title="Close">
+        <h2 class="settings-title" id="settings-title" data-i18n="SETTINGS.TITLE">Settings</h2>
+        <button class="settings-close" id="settings-close" title="Close" data-i18n-title="SETTINGS.CLOSE">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -786,8 +786,8 @@
         <div class="settings-panel" id="settings-panel"></div>
       </div>
       <div class="settings-foot">
-        <span class="settings-foot-note">Changes apply as you make them — there is no Save</span>
-        <button class="settings-done" id="settings-done">Done</button>
+        <span class="settings-foot-note" data-i18n="SETTINGS.FOOT_NOTE">Changes apply as you make them — there is no Save</span>
+        <button class="settings-done" id="settings-done" data-i18n="SETTINGS.DONE">Done</button>
       </div>
     </div>
   </div>
@@ -873,52 +873,65 @@
       'sp-dashboard-drill-entity': 'drillEntityLast'
     };
 
-    const sOpt = (v, l) => ({ v, l });
+    // An option is a value plus how to label it: a translation key (with
+    // optional params), a weekday number for Intl to name, or literal text for
+    // labels that are examples or product names rather than words.
+    const sOpt = (v, k, p) => ({ v, k, p });
+    const sDay = (v) => ({ v, weekday: v });
+    const sRaw = (v, text) => ({ v, text });
+    const optionLabel = (o, weekdayStyle = 'long') => o.text !== undefined ? o.text
+      : o.weekday !== undefined ? weekdayName(o.weekday, weekdayStyle)
+      : t(o.k, o.p);
 
     // The legal values for every enumerated setting, with the labels the UI
     // shows. This is the ONLY list: SETTINGS_SECTIONS builds its controls from
     // it, and coerceSetting validates against it, so the two cannot drift.
     const METRIC_OPTIONS = [
-      sOpt('time', 'Time tracked'), sOpt('completed', 'Tasks completed'),
-      sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')
+      sOpt('time', 'SETTINGS.OPTIONS.METRIC_TIME'), sOpt('completed', 'SETTINGS.OPTIONS.METRIC_COMPLETED'),
+      sOpt('overdue', 'SETTINGS.OPTIONS.METRIC_OVERDUE'), sOpt('late', 'SETTINGS.OPTIONS.METRIC_LATE')
     ];
-    const MODE_OPTIONS = [sOpt('remember', 'Remember'), sOpt('pin', 'Pin')];
-    const DIM_OPTIONS = [sOpt('project', 'Project'), sOpt('tag', 'Tag')];
+    const MODE_OPTIONS = [sOpt('remember', 'SETTINGS.OPTIONS.REMEMBER'), sOpt('pin', 'SETTINGS.OPTIONS.PIN')];
+    const DIM_OPTIONS = [sOpt('project', 'CHARTS.PROJECT'), sOpt('tag', 'CHARTS.TAG')];
+    const minutesOpt = (n) => sOpt(n * 60000, 'SETTINGS.OPTIONS.MINUTES', { count: n });
 
     const SETTING_OPTIONS = {
-      weekStartsOn: [sOpt(1, 'Monday'), sOpt(0, 'Sunday'), sOpt(6, 'Saturday')],
-      dateFormat: [sOpt('auto', 'Auto (locale)'), sOpt('iso', 'ISO — 2026-02-22'),
-                   sOpt('us', 'Feb 22, 2026'), sOpt('eu', '22 Feb 2026')],
-      timeFormat: [sOpt('hm', '3h 45m'), sOpt('decimal', '3.75h — decimal'), sOpt('minutes', '225m')],
+      weekStartsOn: [sDay(1), sDay(0), sDay(6)],
+      dateFormat: [sOpt('auto', 'SETTINGS.OPTIONS.DATE_AUTO'), sRaw('iso', 'ISO — 2026-02-22'),
+                   sRaw('us', 'Feb 22, 2026'), sRaw('eu', '22 Feb 2026')],
+      timeFormat: [sRaw('hm', '3h 45m'), sOpt('decimal', 'SETTINGS.OPTIONS.TIME_DECIMAL'), sRaw('minutes', '225m')],
       periodMode: MODE_OPTIONS,
-      periodPinned: [sOpt('today', 'Today'), sOpt('this-week', 'This Week'), sOpt('week', 'Past Week'),
-                     sOpt('month', 'This Month'), sOpt('year', 'Past Year'),
-                     sOpt('from-weekday', 'Starting from weekday')],
+      periodPinned: [sOpt('today', 'PERIOD.TODAY'), sOpt('this-week', 'PERIOD.THIS_WEEK'), sOpt('week', 'PERIOD.PAST_WEEK'),
+                     sOpt('month', 'PERIOD.THIS_MONTH'), sOpt('year', 'PERIOD.PAST_YEAR'),
+                     sOpt('from-weekday', 'PERIOD.FROM_WEEKDAY')],
       tabMode: MODE_OPTIONS,
-      tabPinned: [sOpt('dashboard', 'Dashboard'), sOpt('details', 'Detailed List'),
-                  sOpt('drilldown', 'By Project / Tag')],
+      tabPinned: [sOpt('dashboard', 'TABS.DASHBOARD'), sOpt('details', 'TABS.DETAILS'),
+                  sOpt('drilldown', 'TABS.DRILLDOWN')],
       barMetricMode: MODE_OPTIONS,
       barMetricPinned: METRIC_OPTIONS,
       pieMetricMode: MODE_OPTIONS,
       pieMetricPinned: METRIC_OPTIONS,
       pieDimPinned: DIM_OPTIONS,
-      sortKey: [sOpt('date', 'Date'), sOpt('projectName', 'Project'), sOpt('taskTitle', 'Task'),
-                sOpt('timeSpent', 'Time Spent'), sOpt('status', 'Status')],
-      sortDir: [sOpt('asc', 'Ascending'), sOpt('desc', 'Descending')],
+      sortKey: [sOpt('date', 'TABLE.DATE'), sOpt('projectName', 'TABLE.PROJECT'), sOpt('taskTitle', 'TABLE.TASK'),
+                sOpt('timeSpent', 'TABLE.TIME_SPENT'), sOpt('status', 'TABLE.STATUS')],
+      sortDir: [sOpt('asc', 'SETTINGS.OPTIONS.ASCENDING'), sOpt('desc', 'SETTINGS.OPTIONS.DESCENDING')],
       drillDimMode: MODE_OPTIONS,
       drillDimPinned: DIM_OPTIONS,
-      minEntryMs: [sOpt(0, 'Off'), sOpt(60000, '1 minute'), sOpt(300000, '5 minutes'), sOpt(900000, '15 minutes')],
-      theme: [sOpt('auto', 'Follow app'), sOpt('light', 'Light'), sOpt('dark', 'Dark')],
-      palette: [sOpt('default', 'Default'), sOpt('colorblind', 'Colourblind-safe'),
-                sOpt('mono', 'Monochrome'), sOpt('contrast', 'High contrast')],
-      barGrouping: [sOpt('auto', 'Auto'), sOpt('daily', 'Daily'), sOpt('weekly', 'Weekly'), sOpt('monthly', 'Monthly')],
-      pieMaxSlices: [sOpt(0, 'Show all slices'), sOpt(5, 'Top 5, rest as Other'),
-                     sOpt(8, 'Top 8, rest as Other'), sOpt(10, 'Top 10, rest as Other')],
-      density: [sOpt('comfortable', 'Comfortable'), sOpt('compact', 'Compact')],
-      tablePageSize: [sOpt(50, '50'), sOpt(100, '100'), sOpt(250, '250'), sOpt(0, 'All')],
-      refreshMs: [sOpt(0, 'Off'), sOpt(10000, 'Every 10 seconds'), sOpt(30000, 'Every 30 seconds'),
-                  sOpt(60000, 'Every minute'), sOpt(300000, 'Every 5 minutes')],
-      summaryFormat: [sOpt('slack', 'Slack'), sOpt('markdown', 'Markdown'), sOpt('csv', 'CSV')]
+      minEntryMs: [sOpt(0, 'SETTINGS.OFF'), minutesOpt(1), minutesOpt(5), minutesOpt(15)],
+      theme: [sOpt('auto', 'SETTINGS.OPTIONS.FOLLOW_APP'), sOpt('light', 'SETTINGS.OPTIONS.LIGHT'), sOpt('dark', 'SETTINGS.OPTIONS.DARK')],
+      palette: [sOpt('default', 'SETTINGS.OPTIONS.PALETTE_DEFAULT'), sOpt('colorblind', 'SETTINGS.OPTIONS.PALETTE_COLORBLIND'),
+                sOpt('mono', 'SETTINGS.OPTIONS.PALETTE_MONO'), sOpt('contrast', 'SETTINGS.OPTIONS.PALETTE_CONTRAST')],
+      barGrouping: [sOpt('auto', 'SETTINGS.OPTIONS.AUTO'), sOpt('daily', 'SETTINGS.OPTIONS.DAILY'),
+                    sOpt('weekly', 'SETTINGS.OPTIONS.WEEKLY'), sOpt('monthly', 'SETTINGS.OPTIONS.MONTHLY')],
+      pieMaxSlices: [sOpt(0, 'SETTINGS.OPTIONS.ALL_SLICES'), sOpt(5, 'SETTINGS.OPTIONS.TOP_SLICES', { count: 5 }),
+                     sOpt(8, 'SETTINGS.OPTIONS.TOP_SLICES', { count: 8 }), sOpt(10, 'SETTINGS.OPTIONS.TOP_SLICES', { count: 10 })],
+      density: [sOpt('comfortable', 'SETTINGS.OPTIONS.COMFORTABLE'), sOpt('compact', 'SETTINGS.OPTIONS.COMPACT')],
+      tablePageSize: [sRaw(50, '50'), sRaw(100, '100'), sRaw(250, '250'), sOpt(0, 'SETTINGS.OPTIONS.ALL')],
+      refreshMs: [sOpt(0, 'SETTINGS.OFF'),
+                  sOpt(10000, 'SETTINGS.OPTIONS.EVERY_SECONDS', { count: 10 }),
+                  sOpt(30000, 'SETTINGS.OPTIONS.EVERY_SECONDS', { count: 30 }),
+                  sOpt(60000, 'SETTINGS.OPTIONS.EVERY_MINUTES', { count: 1 }),
+                  sOpt(300000, 'SETTINGS.OPTIONS.EVERY_MINUTES', { count: 5 })],
+      summaryFormat: [sRaw('slack', 'Slack'), sRaw('markdown', 'Markdown'), sRaw('csv', 'CSV')]
     };
 
     // The `*Last` keys record what a dashboard control was last set to, so they
@@ -1092,6 +1105,430 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+    // ==========================================================
+    // TRANSLATIONS
+    // Super Productivity's plugin i18n does the heavy lifting: it picks the
+    // app's language, loads i18n/<lang>.json from this plugin's ZIP and falls
+    // back to English. Inside this iframe every PluginAPI.translate() call is a
+    // postMessage round trip that returns a Promise, so loadTranslations()
+    // fetches every key once and t() reads that cache synchronously while
+    // rendering. Plurals use Intl.PluralRules (KEY.one / KEY.other / …), which
+    // the host does not provide.
+    //
+    // The English block below is a copy of i18n/en.json, kept here so the
+    // dashboard still renders when PluginAPI.translate is missing (standalone
+    // development, tests, Super Productivity before plugin i18n).
+    // ==========================================================
+    /* I18N_EN:BEGIN — generated from i18n/en.json by scripts/sync-i18n.js. Edit en.json, not this. */
+    const I18N_EN = {
+      "APP": {
+        "TITLE": "Dashboard"
+      },
+      "HEADER": {
+        "SUBTITLE": "Select a time period to view metrics",
+        "FROM": "From",
+        "TO": "To",
+        "PERIOD": "Period",
+        "WEEKDAY": "Weekday"
+      },
+      "PERIOD": {
+        "TODAY": "Today",
+        "THIS_WEEK": "This Week",
+        "PAST_WEEK": "Past Week",
+        "THIS_MONTH": "This Month",
+        "PAST_YEAR": "Past Year",
+        "CUSTOM": "Custom Range...",
+        "FROM_WEEKDAY": "Starting from weekday"
+      },
+      "TABS": {
+        "DASHBOARD": "Dashboard",
+        "DETAILS": "Detailed List",
+        "DRILLDOWN": "By Project / Tag",
+        "SETTINGS": "Settings",
+        "SHARE": "Share",
+        "SHARE_TITLE": "Share this tab"
+      },
+      "SHARE_MENU": {
+        "COPY_IMAGE": "Copy image",
+        "DOWNLOAD_PNG": "Download PNG",
+        "PRINT": "Print / Save as PDF",
+        "COPY_TEXT": "Copy text summary"
+      },
+      "STATS": {
+        "TOTAL_TIME": "Total Time Tracked",
+        "TASKS_COMPLETED": "Tasks Completed",
+        "TOTAL_SUFFIX": "/ {{count}} total",
+        "OVERDUE": "Overdue Tasks",
+        "TASK_UNIT": {
+          "one": "task",
+          "other": "tasks"
+        },
+        "NEEDS_ATTENTION": "Needs Attention",
+        "NO_DUE_DATE": {
+          "one": "{{count}} task has no due date so overdue is unavailable",
+          "other": "{{count}} tasks have no due date so overdue is unavailable"
+        },
+        "COMPLETED_LATE": "Completed Late",
+        "TIME_SPENT": "Time Spent"
+      },
+      "GOAL": {
+        "PROGRESS_DAILY": "{{percent}}% of a {{hours}}h daily target",
+        "PROGRESS_WEEKLY": "{{percent}}% of a {{hours}}h weekly target",
+        "LINE_TIME": "{{hours}}h target",
+        "LINE_TASKS": "{{count}} task target"
+      },
+      "CHARTS": {
+        "DAILY_TRENDS": "Daily Trends",
+        "BREAKDOWN": "Breakdown",
+        "BREAKDOWN_ARIA": "Breakdown chart",
+        "METRIC_TIME": "Time Tracked",
+        "METRIC_COMPLETED": "Tasks Completed",
+        "METRIC_OVERDUE": "Tasks Overdue",
+        "METRIC_LATE": "Completed Late",
+        "PROJECT": "Project",
+        "TAG": "Tag",
+        "TASK_COUNT": {
+          "one": "{{count}} task",
+          "other": "{{count}} tasks"
+        },
+        "NO_DATA_PERIOD": "No data for selected period",
+        "OTHER": "Other",
+        "DAILY_TIME": "Daily Time",
+        "DAILY_TIME_FOR": "{{name}} — Daily Time"
+      },
+      "TABLE": {
+        "DATE": "Date",
+        "DUE_DATE": "Due Date",
+        "PROJECT": "Project",
+        "TASK": "Task",
+        "TIME": "Time",
+        "TIME_SPENT": "Time Spent",
+        "STATUS": "Status",
+        "OVERDUE_LATE": "OVERDUE & LATE",
+        "NO_TIME": "No tracked time found for this date range.",
+        "SHOWING": "Showing {{shown}} of {{total}} entries — raise the limit in Settings › Appearance."
+      },
+      "STATUS": {
+        "LATE": "Late",
+        "OVERDUE": "Overdue",
+        "DONE": "Done",
+        "IN_PROGRESS": "In Progress"
+      },
+      "DRILL": {
+        "SHOW": "Show:",
+        "NO_DATA": "No data",
+        "NO_ENTRIES": "No entries for this selection."
+      },
+      "ENTITY": {
+        "UNCATEGORIZED": "Uncategorized",
+        "UNTAGGED": "Untagged",
+        "UNTITLED_TASK": "Untitled Task"
+      },
+      "TOAST": {
+        "CAPTURE_FAILED": "Could not capture image",
+        "IMAGE_COPIED": "Image copied to clipboard",
+        "IMAGE_COPY_FALLBACK": "Couldn't copy image — downloaded it instead",
+        "IMAGE_DOWNLOADED": "Image downloaded",
+        "SUMMARY_COPIED": "Summary copied to clipboard",
+        "SUMMARY_COPY_FAILED": "Could not copy summary",
+        "SETTINGS_EXPORTED": "Settings exported",
+        "IMPORT_NOT_JSON": "That file is not valid JSON",
+        "IMPORT_NOT_SETTINGS": "That file is not a settings export",
+        "SETTINGS_IMPORTED": "Settings imported",
+        "SETTINGS_RESET": "Settings reset to defaults",
+        "READ_FAILED": "Could not read that file"
+      },
+      "SUMMARY": {
+        "NO_DATA": "No data available.",
+        "LINE": "{{label}}: {{value}}",
+        "DASHBOARD_TITLE": "Productivity Summary",
+        "DETAILS_TITLE": "Detailed Time Log",
+        "NO_TIME_ROW": "No tracked time found",
+        "OVERDUE_LATE": "Overdue & Late",
+        "PROJECT_TITLE": "Project: {{name}}",
+        "TAG_TITLE": "Tag: {{name}}",
+        "NONE": "(none)",
+        "TASKS": "Tasks:",
+        "TIME_BY_PROJECT": "Time by Project"
+      },
+      "SETTINGS": {
+        "TITLE": "Settings",
+        "CLOSE": "Close",
+        "FOOT_NOTE": "Changes apply as you make them — there is no Save",
+        "DONE": "Done",
+        "EXPORT_LINK": "Export settings…",
+        "IMPORT_LINK": "Import settings…",
+        "RESET_LINK": "Reset to defaults",
+        "FILE_TITLE": "Settings file",
+        "FILE_HINT": "Everything above lives in one localStorage entry ({{key}}). Resetting also clears the keys this plugin wrote before there was a settings page.",
+        "EXPORT_BUTTON": "Export…",
+        "IMPORT_BUTTON": "Import…",
+        "RESET_ALL": "Reset everything",
+        "RESET_CONFIRM": "Reset every dashboard setting to its default?",
+        "ON": "On",
+        "OFF": "Off",
+        "ADD": "+ Add…",
+        "STOP_EXCLUDING": "Stop excluding {{name}}",
+        "NOTHING_LEFT": "Nothing left to exclude",
+        "NOTHING_YET": "Nothing to exclude yet",
+        "SECTIONS": {
+          "GENERAL": "General",
+          "GENERAL_SUB": "Formats and locale, applied to every view",
+          "DEFAULTS": "Defaults",
+          "DEFAULTS_SUB": "What each control shows when the dashboard opens. Remember keeps the last used value; Pin always starts from a fixed one.",
+          "DATA": "Data & Filtering",
+          "DATA_SUB": "Everything here changes what the numbers mean, not just how they look",
+          "APPEARANCE": "Appearance",
+          "APPEARANCE_SUB": "Purely visual — nothing here changes a number",
+          "GOALS": "Goals",
+          "GOALS_SUB": "Targets are drawn onto the Dashboard tab — a dashed line across the bar chart, a bar under the Total Time card",
+          "ADVANCED": "Advanced",
+          "ADVANCED_SUB": "Refresh, export and the settings file itself"
+        },
+        "ROWS": {
+          "WEEK_START": "Start of week",
+          "WEEK_START_HINT": "Drives “This Week” and the day the weekly bar chart starts on",
+          "DATE_FORMAT": "Date format",
+          "DATE_FORMAT_HINT": "Auto follows the host app’s locale",
+          "TIME_FORMAT": "Time format",
+          "TIME_FORMAT_HINT": "Decimal hours is what pastes into a timesheet or invoice",
+          "WORKING_DAYS": "Working days",
+          "WORKING_DAYS_HINT": "Used by the setting below",
+          "HIDE_NON_WORKING": "Hide non-working days in charts",
+          "HIDE_NON_WORKING_HINT": "Removes those days from the range entirely, so weekends stop flattening the chart",
+          "PERIOD": "Period",
+          "OPENING_TAB": "Opening tab",
+          "BAR_METRIC": "Bar chart metric",
+          "PIE_METRIC": "Pie chart metric & split",
+          "SORT": "Detailed List sort",
+          "SORT_HINT": "Where the table starts before you click a column header",
+          "DRILL_SPLIT": "By Project / Tag split",
+          "INCLUDE_ARCHIVED": "Include archived tasks",
+          "INCLUDE_ARCHIVED_HINT": "Turning this off is the single biggest speed-up on a vault with a long archive",
+          "EXCLUDED_PROJECTS": "Excluded projects",
+          "EXCLUDED_PROJECTS_HINT": "Dropped from every stat, chart and table",
+          "EXCLUDED_TAGS": "Excluded tags",
+          "EXCLUDED_TAGS_HINT": "A task carrying any excluded tag is dropped",
+          "RUNNING_TIMER": "Count the running timer",
+          "RUNNING_TIMER_HINT": "Adds the in-progress session to today’s total",
+          "SUBTASK_ROWS": "List subtasks as their own rows",
+          "SUBTASK_ROWS_HINT": "Detailed List only — a parent’s time already rolls up its subtasks, so totals never change",
+          "MIN_ENTRY": "Minimum entry length",
+          "MIN_ENTRY_HINT": "Keeps 30-second scraps out of the totals and the table",
+          "NO_DUE_DATE": "Tasks with no due date",
+          "NO_DUE_DATE_HINT": "Replaces the fixed footnote under the Overdue card",
+          "HIDE_EMPTY": "Hide empty projects & tags",
+          "HIDE_EMPTY_HINT": "Trims the By Project / Tag dropdown to entities with data in range",
+          "THEME": "Theme",
+          "THEME_HINT": "Follow app mirrors the host’s own light/dark class",
+          "PALETTE": "Chart palette",
+          "PALETTE_HINT": "Used by the pie chart and its legend",
+          "BAR_GROUPING": "Bar chart grouping",
+          "BAR_GROUPING_HINT": "Auto keeps the existing rules: daily under a month, weekly for a month, monthly beyond",
+          "PIE_SLICES": "Small pie slices",
+          "PIE_SLICES_HINT": "Rolls everything past the top N into one “Other” slice",
+          "DENSITY": "Density",
+          "STAT_CARDS": "Stat cards",
+          "STAT_CARDS_HINT": "Unchecked cards are hidden and the row re-flows",
+          "PAGE_SIZE": "Detailed List rows per page",
+          "DAILY_TIME_GOAL": "Daily time target",
+          "DAILY_TIME_GOAL_HINT": "Dashed line on the bar chart, and the Total Time card’s bar when a single day is in view",
+          "WEEKLY_TIME_GOAL": "Weekly time target",
+          "WEEKLY_TIME_GOAL_HINT": "Progress bar under the Total Time card when a week-length period is in view",
+          "DAILY_TASK_GOAL": "Daily tasks completed",
+          "DAILY_TASK_GOAL_HINT": "Dashed line on the bar chart when it shows Tasks completed",
+          "AUTO_REFRESH": "Auto-refresh",
+          "AUTO_REFRESH_HINT": "The dashboard also refreshes whenever the host app reports a change, so Off is not the same as stale",
+          "DEBUG_LOGGING": "Debug logging",
+          "DEBUG_LOGGING_HINT": "Off by default: one log line per task, per refresh",
+          "EXPORT_FILENAME": "Export filename",
+          "EXPORT_FILENAME_HINT": "Used by Download PNG. Tokens: {tab} {range} {date}",
+          "SUMMARY_FORMAT": "Copy text summary as"
+        },
+        "OPTIONS": {
+          "METRIC_TIME": "Time tracked",
+          "METRIC_COMPLETED": "Tasks completed",
+          "METRIC_OVERDUE": "Tasks overdue",
+          "METRIC_LATE": "Completed late",
+          "STAT_TIME": "Total time tracked",
+          "REMEMBER": "Remember",
+          "PIN": "Pin",
+          "DATE_AUTO": "Auto (locale)",
+          "TIME_DECIMAL": "3.75h — decimal",
+          "ASCENDING": "Ascending",
+          "DESCENDING": "Descending",
+          "MINUTES": {
+            "one": "{{count}} minute",
+            "other": "{{count}} minutes"
+          },
+          "FOLLOW_APP": "Follow app",
+          "LIGHT": "Light",
+          "DARK": "Dark",
+          "PALETTE_DEFAULT": "Default",
+          "PALETTE_COLORBLIND": "Colourblind-safe",
+          "PALETTE_MONO": "Monochrome",
+          "PALETTE_CONTRAST": "High contrast",
+          "AUTO": "Auto",
+          "DAILY": "Daily",
+          "WEEKLY": "Weekly",
+          "MONTHLY": "Monthly",
+          "ALL_SLICES": "Show all slices",
+          "TOP_SLICES": "Top {{count}}, rest as Other",
+          "COMFORTABLE": "Comfortable",
+          "COMPACT": "Compact",
+          "ALL": "All",
+          "EVERY_SECONDS": {
+            "one": "Every second",
+            "other": "Every {{count}} seconds"
+          },
+          "EVERY_MINUTES": {
+            "one": "Every minute",
+            "other": "Every {{count}} minutes"
+          },
+          "NEVER_OVERDUE": "Never overdue",
+          "COUNT_OVERDUE": "Count as overdue",
+          "HOURS_PER_DAY": "hours per day",
+          "HOURS_PER_WEEK": "hours per week",
+          "TASKS_PER_DAY": "tasks per day"
+        }
+      }
+    };
+    /* I18N_EN:END */
+
+    const flattenMessages = (obj, prefix = '', out = {}) => {
+      Object.keys(obj).forEach(k => {
+        const key = prefix ? `${prefix}.${k}` : k;
+        if (obj[k] && typeof obj[k] === 'object') flattenMessages(obj[k], key, out);
+        else out[key] = String(obj[k]);
+      });
+      return out;
+    };
+    const I18N_EN_FLAT = flattenMessages(I18N_EN);
+    const PLURAL_CATEGORIES = ['zero', 'one', 'two', 'few', 'many', 'other'];
+
+    // Super Productivity's language codes that aren't valid BCP 47 tags as-is.
+    const HOST_LOCALES = { zh: 'zh-CN', 'zh-tw': 'zh-TW', 'pt-br': 'pt-BR', 'ro-md': 'ro-MD' };
+
+    let i18nMessages = { ...I18N_EN_FLAT };
+    let i18nLocale = null;   // BCP 47 tag for the host's language; null until a host answers
+
+    // Locale for translated text: plural rules, weekday and month names.
+    const uiLocale = () => i18nLocale || 'en';
+    // Locale for Settings › General › Date format › Auto: the app's language
+    // when the host reports one, otherwise the browser's.
+    const dateLocale = () => i18nLocale
+      || (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
+
+    // A host language code we can hand to Intl, or null for anything malformed.
+    const toLocaleTag = (code) => {
+      if (typeof code !== 'string' || !/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/i.test(code)) return null;
+      const lower = code.toLowerCase();
+      const tag = HOST_LOCALES[lower] || lower;
+      try { return Intl.getCanonicalLocales(tag)[0] || null; } catch (e) { return null; }
+    };
+
+    const interpolate = (msg, params) => !params ? msg : msg.replace(/\{\{\s*(\w+)\s*\}\}/g,
+      (match, name) => Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match);
+
+    const lookupMessage = (table, locale, key, params) => {
+      if (table[key] !== undefined) return table[key];
+      // A plural group: pick the category for params.count, then fall back to `other`.
+      if (params && typeof params.count === 'number' && table[`${key}.other`] !== undefined) {
+        let category = 'other';
+        try { category = new Intl.PluralRules(locale).select(params.count); } catch (e) { /* other */ }
+        return table[`${key}.${category}`] !== undefined ? table[`${key}.${category}`] : table[`${key}.other`];
+      }
+      return undefined;
+    };
+
+    // Translate a key. Returns the key itself if it is unknown, matching the host.
+    const t = (key, params) => {
+      let msg = lookupMessage(i18nMessages, uiLocale(), key, params);
+      if (msg === undefined) msg = lookupMessage(I18N_EN_FLAT, 'en', key, params);
+      return msg === undefined ? key : interpolate(msg, params);
+    };
+    // English regardless of the UI language: export filenames and CSV headings,
+    // which other tools read and should not change with the user's language.
+    const tEn = (key, params) => {
+      const msg = lookupMessage(I18N_EN_FLAT, 'en', key, params);
+      return msg === undefined ? key : interpolate(msg, params);
+    };
+
+    // Every key worth asking the host for: the English leaves, plus the plural
+    // categories English doesn't use but other languages do (few, many, …).
+    const translationRequestKeys = () => {
+      const keys = new Set(Object.keys(I18N_EN_FLAT));
+      Object.keys(I18N_EN_FLAT).forEach(k => {
+        if (!k.endsWith('.other')) return;
+        const base = k.slice(0, -'.other'.length);
+        PLURAL_CATEGORIES.forEach(c => keys.add(`${base}.${c}`));
+      });
+      return Array.from(keys);
+    };
+
+    // Fetch the app language's strings into the cache. Leaves English in place
+    // (and returns false) when the host has no translation API.
+    let i18nLoadSeq = 0;
+    const loadTranslations = async () => {
+      const api = window.PluginAPI;
+      if (!api || typeof api.translate !== 'function') return false;
+      // A language change can land while an earlier load is still in flight;
+      // only the newest load may write the cache.
+      const seq = ++i18nLoadSeq;
+      let locale = null;
+      try {
+        if (typeof api.getCurrentLanguage === 'function') locale = toLocaleTag(await api.getCurrentLanguage());
+      } catch (e) {
+        debugWarn('[sp-dashboard] getCurrentLanguage failed', e);
+      }
+      const next = { ...I18N_EN_FLAT };
+      await Promise.all(translationRequestKeys().map(async key => {
+        try {
+          const value = await api.translate(key);
+          // The host echoes the key back when it has no text for it.
+          if (typeof value === 'string' && value !== '' && value !== key) next[key] = value;
+        } catch (e) { /* keep English for this key */ }
+      }));
+      if (seq !== i18nLoadSeq) return false;
+      i18nMessages = next;
+      i18nLocale = locale;
+      return true;
+    };
+
+    // Weekday (0 = Sunday) and month (0 = January) names from Intl, so they need
+    // no translation files. 4 Jan 2026 was a Sunday.
+    const weekdayName = (day, style = 'long') => {
+      try { return new Intl.DateTimeFormat(uiLocale(), { weekday: style }).format(new Date(2026, 0, 4 + Number(day))); }
+      catch (e) { return String(day); }
+    };
+    const monthName = (month, style = 'short') => {
+      try { return new Intl.DateTimeFormat(uiLocale(), { month: style }).format(new Date(2026, Number(month), 1)); }
+      catch (e) { return String(month + 1); }
+    };
+
+    // The two buckets processData files unassigned work under. They stay English
+    // inside the metrics — they are map keys, and Settings › Data stores them in
+    // excludedProjects / excludedTags — and are translated only for display.
+    const UNCATEGORIZED = 'Uncategorized';
+    const UNTAGGED = 'Untagged';
+    const entityLabel = (name) => name === UNCATEGORIZED ? t('ENTITY.UNCATEGORIZED')
+      : name === UNTAGGED ? t('ENTITY.UNTAGGED') : name;
+
+    // Static markup carries English text plus data-i18n* keys; this rewrites it
+    // in the current language. textContent only — translations are host data.
+    const applyStaticTranslations = () => {
+      document.documentElement.lang = uiLocale();
+      document.title = t('APP.TITLE');
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+      document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+        el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+      });
+      document.querySelectorAll('option[data-weekday]').forEach(el => {
+        el.textContent = weekdayName(el.dataset.weekday, 'long');
+      });
+    };
+
     debugLog("[sp-dashboard] Dashboard script initialized");
 
     // --- UTILITIES ---
@@ -1116,8 +1553,7 @@
       const d = new Date(iso + "T00:00:00");
       if (isNaN(d.getTime())) return String(dateStr);
       if (fmt === 'eu') return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-      const locale = fmt === 'us' ? 'en-US'
-        : ((typeof navigator !== 'undefined' && navigator.language) || 'en-US');
+      const locale = fmt === 'us' ? 'en-US' : dateLocale();
       return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
@@ -1297,7 +1733,7 @@
 
       document.getElementById('stat-time').innerText = formatTime(metrics.totalTimeSpent);
       document.getElementById('stat-tasks').innerText = String(metrics.totalCompleted);
-      document.getElementById('stat-tasks-total').innerText = `/ ${metrics.totalTasks} total`;
+      document.getElementById('stat-tasks-total').innerText = t('STATS.TOTAL_SUFFIX', { count: metrics.totalTasks });
       
       // Progress: completion rate of active tasks in the date range
       // totalCompleted = unique tasks completed
@@ -1311,6 +1747,7 @@
       const overdueNote = document.getElementById('overdue-note');
       document.getElementById('stat-late').innerText = String(metrics.lateCompleted);
       overdueEl.innerText = String(metrics.overdueTasks);
+      document.getElementById('stat-overdue-unit').textContent = t('STATS.TASK_UNIT', { count: metrics.overdueTasks });
       
       if (metrics.overdueTasks > 0) {
         overdueLabel.classList.remove('hidden');
@@ -1321,7 +1758,7 @@
         overdueEl.classList.remove('text-red');
         if (metrics.unplannedCount > 0) {
           overdueNote.classList.remove('hidden');
-          overdueNote.innerText = `${metrics.unplannedCount} task(s) have no due date so overdue is unavailable`;
+          overdueNote.innerText = t('STATS.NO_DUE_DATE', { count: metrics.unplannedCount });
         } else {
           overdueNote.classList.add('hidden');
         }
@@ -1346,7 +1783,8 @@
           timeGoal.classList.remove('hidden');
           document.getElementById('weekly-goal-fill').style.width = `${pct}%`;
           document.getElementById('weekly-goal-label').textContent =
-            `${Math.round(pct)}% of a ${goal.targetH}h ${goal.kind} target`;
+            t(goal.kind === 'daily' ? 'GOAL.PROGRESS_DAILY' : 'GOAL.PROGRESS_WEEKLY',
+              { percent: Math.round(pct), hours: goal.targetH });
         } else {
           timeGoal.classList.add('hidden');
         }
@@ -1402,11 +1840,11 @@
     const getDailyGoal = (type) => {
       if (type === 'time' && getSetting('dailyTimeGoalOn')) {
         const h = Number(getSetting('dailyTimeGoalH')) || 0;
-        return h > 0 ? { value: h * HOUR_MS, label: `${h}h target` } : null;
+        return h > 0 ? { value: h * HOUR_MS, label: t('GOAL.LINE_TIME', { hours: h }) } : null;
       }
       if (type === 'completed' && getSetting('dailyTaskGoalOn')) {
         const n = Number(getSetting('dailyTaskGoal')) || 0;
-        return n > 0 ? { value: n, label: `${n} task target` } : null;
+        return n > 0 ? { value: n, label: t('GOAL.LINE_TASKS', { count: n }) } : null;
       }
       return null;
     };
@@ -1418,14 +1856,15 @@
       const timeYFn = (v) => `${Math.round(v / 3600000)}h`;
       const HOUR = 3600000;
       const goal = getDailyGoal(type);
+      const countFn = (v) => t('CHARTS.TASK_COUNT', { count: Math.round(v) });
       if (type === 'time') {
         renderGenericBarChart(latestMetrics.weeklyData, 'bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, timeYFn, HOUR, goal);
       } else if (type === 'completed') {
-        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', (v) => `${Math.round(v)} tasks`, taskYFn, 1, goal);
+        renderGenericBarChart(latestMetrics.completedPerDay, 'bar-chart-container', '#4ade80', countFn, taskYFn, 1, goal);
       } else if (type === 'overdue') {
-        renderGenericBarChart(latestMetrics.overduePerDay, 'bar-chart-container', '#f87171', (v) => `${Math.round(v)} tasks`, taskYFn);
+        renderGenericBarChart(latestMetrics.overduePerDay, 'bar-chart-container', '#f87171', countFn, taskYFn);
       } else if (type === 'late') {
-        renderGenericBarChart(latestMetrics.latePerDay, 'bar-chart-container', '#fbbf24', (v) => `${Math.round(v)} tasks`, taskYFn);
+        renderGenericBarChart(latestMetrics.latePerDay, 'bar-chart-container', '#fbbf24', countFn, taskYFn);
       }
     };
 
@@ -1434,7 +1873,7 @@
       const type = document.getElementById('pie-chart-select').value;
       const isTag = pieDimension === 'tag';
       const timeFmt = (v) => `${(v / 3600000).toFixed(1)}h`;
-      const countFmt = (v) => `${Math.round(v)} tasks`;
+      const countFmt = (v) => t('CHARTS.TASK_COUNT', { count: Math.round(v) });
       if (type === 'time') {
         renderNativePieChart(isTag ? latestMetrics.tagData : latestMetrics.projectData, timeFmt);
       } else if (type === 'completed') {
@@ -1474,7 +1913,7 @@
           ...Object.keys(latestMetrics.tagLateData)
         ])).sort((a, b) => a.localeCompare(b));
         names = (!hideEmpty && cachedTags.length > 0)
-          ? [...new Set([...cachedTags.map(t => t.title || t.id), 'Untagged'])].sort((a, b) => a.localeCompare(b))
+          ? [...new Set([...cachedTags.map(tag => tag.title || tag.id), UNTAGGED])].sort((a, b) => a.localeCompare(b))
           : withData;
       } else {
         const withData = Array.from(new Set([
@@ -1484,13 +1923,13 @@
           ...Object.keys(latestMetrics.projectLateData)
         ])).sort((a, b) => a.localeCompare(b));
         names = (!hideEmpty && cachedProjects.length > 0)
-          ? [...new Set([...cachedProjects.map(p => p.title), 'Uncategorized'])].sort((a, b) => a.localeCompare(b))
+          ? [...new Set([...cachedProjects.map(p => p.title), UNCATEGORIZED])].sort((a, b) => a.localeCompare(b))
           : withData;
       }
       select.innerHTML = '';
       if (names.length === 0) {
         const opt = document.createElement('option');
-        opt.textContent = 'No data';
+        opt.textContent = t('DRILL.NO_DATA');
         select.appendChild(opt);
         currentDrillEntity = '';
         return;
@@ -1498,7 +1937,7 @@
       names.forEach(name => {
         const opt = document.createElement('option');
         opt.value = name;
-        opt.textContent = name;
+        opt.textContent = entityLabel(name);
         select.appendChild(opt);
       });
       if (names.includes(currentDrillEntity)) {
@@ -1533,7 +1972,7 @@
         const td = document.createElement('td');
         td.colSpan = 4;
         td.style.cssText = 'text-align:center;color:var(--text-color-muted,#9e9e9e);padding:3rem;';
-        td.textContent = 'No entries for this selection.';
+        td.textContent = t('DRILL.NO_ENTRIES');
         tr.appendChild(td);
         tbody.appendChild(tr);
         return;
@@ -1560,16 +1999,16 @@
         const badge = document.createElement('span');
         if (entry.late) {
           badge.className = 'badge badge-yellow';
-          badge.textContent = 'Late';
+          badge.textContent = t('STATUS.LATE');
         } else if (entry.overdue) {
           badge.className = 'badge badge-red';
-          badge.textContent = 'Overdue';
+          badge.textContent = t('STATUS.OVERDUE');
         } else if (entry.isDone) {
           badge.className = 'badge badge-done';
-          badge.textContent = 'Done';
+          badge.textContent = t('STATUS.DONE');
         } else {
           badge.className = 'badge badge-progress';
-          badge.textContent = 'In Progress';
+          badge.textContent = t('STATUS.IN_PROGRESS');
         }
         tdStatus.appendChild(badge);
         tr.appendChild(tdStatus);
@@ -1601,7 +2040,7 @@
         data: dateRange.map(d => entityDailyMap[d] || 0)
       };
 
-      document.getElementById('drill-chart-title').textContent = entity + ' — Daily Time';
+      document.getElementById('drill-chart-title').textContent = t('CHARTS.DAILY_TIME_FOR', { name: entityLabel(entity) });
       renderGenericBarChart(dailyChartData, 'drill-bar-chart-container', 'var(--c-primary, #03a9f4)', (v) => `${(v / 3600000).toFixed(1)}h`, (v) => `${Math.round(v / 3600000)}h`, 3600000);
 
       const filteredEntries = latestMetrics.tableEntries.filter(e => {
@@ -1640,8 +2079,6 @@
         lbl.textContent = yTickFn(i * yStep * unitSize);
         parentEl.appendChild(lbl);
       });
-      const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-      const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const preset = document.getElementById('date-preset').value;
 
       // Settings › Appearance › Bar chart grouping. "auto" keeps the rules this
@@ -1674,8 +2111,8 @@
         const col = document.createElement('div');
         col.className = 'bar-col';
         col.innerHTML = `
-          <div class="bar" style="height: ${heightPx}px; background: ${color};" data-val="${displayVal}"></div>
-          <div class="bar-label" title="${titleDate}">${label}</div>
+          <div class="bar" style="height: ${heightPx}px; background: ${color};" data-val="${escapeHtml(displayVal)}"></div>
+          <div class="bar-label" title="${escapeHtml(titleDate)}">${escapeHtml(label)}</div>
         `;
         container.appendChild(col);
       };
@@ -1689,7 +2126,7 @@
         }
         for (const [key, sum] of monthBuckets) {
           const monthIdx = parseInt(key.substring(5), 10) - 1;
-          appendBar(sum, MONTH_NAMES[monthIdx], key + '-01');
+          appendBar(sum, monthName(monthIdx, 'short'), key + '-01');
         }
       } else {
         // Daily buckets stay one-per-day until the range gets long enough that
@@ -1707,11 +2144,11 @@
           const d = new Date(dateStr + 'T00:00:00');
           let label;
           if (step === 1 && span <= 8) {
-            label = DAY_NAMES[d.getDay()];
+            label = weekdayName(d.getDay(), 'short');
           } else if (step === 1) {
             label = dateStr.substring(5); // MM-DD
           } else {
-            label = MONTH_NAMES[d.getMonth()] + ' ' + d.getDate();
+            label = new Intl.DateTimeFormat(uiLocale(), { month: 'short', day: 'numeric' }).format(d);
           }
           appendBar(chunkSum, label, dateStr);
         }
@@ -1756,7 +2193,7 @@
       if (maxSlices > 0 && entries.length > maxSlices) {
         const rest = entries.slice(maxSlices).reduce((sum, [, v]) => sum + v, 0);
         entries = entries.slice(0, maxSlices);
-        if (rest > 0) entries.push(['Other', rest]);
+        if (rest > 0) entries.push([t('CHARTS.OTHER'), rest]);
       }
 
       const totalVal = entries.reduce((acc, curr) => acc + curr[1], 0);
@@ -1766,13 +2203,13 @@
       // slice's arc length be set directly as a percentage via stroke-dasharray.
       const R = 15.915494; // 100 / (2π)
       const SW = 8.5;      // stroke width → ~58% inner-hole ratio, matching the old look
-      const svgOpen = '<svg viewBox="0 0 42 42" width="100%" height="100%" role="img" aria-label="Breakdown chart">';
+      const svgOpen = `<svg viewBox="0 0 42 42" width="100%" height="100%" role="img" aria-label="${escapeHtml(t('CHARTS.BREAKDOWN_ARIA'))}">`;
 
       if (totalVal === 0 || entries.length === 0) {
         // Rendered as an SVG stroke (foreground) so it prints reliably — unlike a CSS
         // conic-gradient background, which many print/PDF engines drop.
         pieEl.innerHTML = `${svgOpen}<circle cx="21" cy="21" r="${R}" fill="none" style="stroke: var(--divider-color, #333)" stroke-width="${SW}"></circle></svg>`;
-        legendEl.innerHTML = '<div class="text-muted text-sm">No data for selected period</div>';
+        legendEl.innerHTML = `<div class="text-muted text-sm">${escapeHtml(t('CHARTS.NO_DATA_PERIOD'))}</div>`;
         return;
       }
 
@@ -1791,13 +2228,14 @@
           ` stroke-dashoffset="${(25 - currentPercent).toFixed(4)}"></circle>`;
         currentPercent += percent;
 
+        const shownName = entityLabel(name);
         legendEl.innerHTML += `
           <div class="legend-item">
             <div class="legend-label">
               <span class="legend-dot" style="background: ${color}"></span>
-              <span title="${escapeHtml(name)}">${escapeHtml(name.length > 20 ? name.substring(0,20)+'...' : name)}</span>
+              <span title="${escapeHtml(shownName)}">${escapeHtml(shownName.length > 20 ? shownName.substring(0,20)+'...' : shownName)}</span>
             </div>
-            <div class="legend-val">${formatFn(val)}</div>
+            <div class="legend-val">${escapeHtml(formatFn(val))}</div>
           </div>
         `;
       });
@@ -1808,7 +2246,7 @@
       const tbody = document.getElementById('details-table-body');
       
       if (entries.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 3rem;">No tracked time found for this date range.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 3rem;">${escapeHtml(t('TABLE.NO_TIME'))}</td></tr>`;
         return;
       }
 
@@ -1816,28 +2254,29 @@
       const pageSize = Number(getSetting('tablePageSize')) || 0;
       const shown = pageSize > 0 ? entries.slice(0, pageSize) : entries;
 
+      const badgeHtml = (cls, key) => `<span class="badge ${cls}">${escapeHtml(t(key))}</span>`;
       tbody.innerHTML = shown.map(entry => `
         <tr>
           <td style="white-space: nowrap;">${escapeHtml(formatDateShort(entry.date))}</td>
-          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${escapeHtml(entry.projectName)}</td>
+          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${escapeHtml(entityLabel(entry.projectName))}</td>
           <td style="font-weight: 500;">${entry.isSubtask ? '<span style="color: var(--text-color-muted, #9e9e9e);">&#8627; </span>' : ''}${escapeHtml(entry.taskTitle)}</td>
           <td class="time-cell">${escapeHtml(formatTime(entry.timeSpent))}</td>
           <td>
             ${
               entry.late
-                ? `<span class="badge badge-yellow">Late</span>`
+                ? badgeHtml('badge-yellow', 'STATUS.LATE')
                 : entry.overdue
-                ? `<span class="badge badge-red">Overdue</span>`
+                ? badgeHtml('badge-red', 'STATUS.OVERDUE')
                 : entry.isDone
-                ? `<span class="badge badge-done">Done</span>`
-                : `<span class="badge badge-progress">In Progress</span>`
+                ? badgeHtml('badge-done', 'STATUS.DONE')
+                : badgeHtml('badge-progress', 'STATUS.IN_PROGRESS')
             }
           </td>
         </tr>
       `).join('');
 
       if (shown.length < entries.length) {
-        tbody.innerHTML += `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 1rem; font-size: 0.8rem;">Showing ${shown.length} of ${entries.length} entries — raise the limit in Settings &rsaquo; Appearance.</td></tr>`;
+        tbody.innerHTML += `<tr><td colspan="5" style="text-align: center; color: var(--text-color-muted, #9e9e9e); padding: 1rem; font-size: 0.8rem;">${escapeHtml(t('TABLE.SHOWING', { shown: shown.length, total: entries.length }))}</td></tr>`;
       }
     };
 
@@ -1854,14 +2293,11 @@
       tbody.innerHTML = entries.map(entry => `
         <tr>
           <td style="white-space: nowrap;">${entry.date ? escapeHtml(formatDateShort(entry.date)) : '—'}</td>
-          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${escapeHtml(entry.projectName)}</td>
+          <td style="color: var(--text-color-muted, #9e9e9e); font-size: 0.875rem;">${escapeHtml(entityLabel(entry.projectName))}</td>
           <td style="font-weight: 500;">${escapeHtml(entry.taskTitle)}</td>
           <td class="time-cell">${escapeHtml(formatTime(entry.timeSpent))}</td>
           <td>
-            ${entry.late
-              ? `<span class="badge badge-yellow">Late</span>`
-              : `<span class="badge badge-red">Overdue</span>`
-            }
+            <span class="badge ${entry.late ? 'badge-yellow' : 'badge-red'}">${escapeHtml(t(entry.late ? 'STATUS.LATE' : 'STATUS.OVERDUE'))}</span>
           </td>
         </tr>
       `).join('');
@@ -1886,8 +2322,13 @@
       return { dueStart, dueEnd };
     };
 
+    // The inputs of the last render, so a language change can redraw exactly
+    // what is on screen.
+    let lastProcessInputs = null;
+
     // process tasks/projects into metrics and update UI
     const processData = (tasksArr, projectsArr, tagsArr = []) => {
+      lastProcessInputs = [tasksArr, projectsArr, tagsArr];
       // determine date range from preset/selectors
       const preset = document.getElementById('date-preset').value;
       let dateFromStr, dateToStr;
@@ -1934,10 +2375,10 @@
 
       const projectNameOf = (task) => (task.projectId && projectMap[task.projectId])
         ? projectMap[task.projectId]
-        : 'Uncategorized';
+        : UNCATEGORIZED;
       const tagNamesOf = (task) => {
         const names = (task.tagIds || []).map(id => tagMap[id] || id);
-        return names.length ? names : ['Untagged'];
+        return names.length ? names : [UNTAGGED];
       };
 
       // --- Settings › Data & Filtering ---
@@ -2064,7 +2505,7 @@
             metrics.tableEntries.push({
               date: dateStr,
               projectName: pName,
-              taskTitle: task.title || 'Untitled Task',
+              taskTitle: task.title || t('ENTITY.UNTITLED_TASK'),
               timeSpent: spentOnDate,
               isDone: task.isDone,
               overdue: isOverdue,
@@ -2077,7 +2518,7 @@
             metrics.tableEntries.push({
               date: dateStr,
               projectName: pName,
-              taskTitle: task.title || 'Untitled Task',
+              taskTitle: task.title || t('ENTITY.UNTITLED_TASK'),
               timeSpent: spentOnDate,
               isDone: task.isDone,
               overdue: isOverdue,
@@ -2113,7 +2554,7 @@
             metrics.tableEntries.push({
               date: doneDate,
               projectName: pName,
-              taskTitle: task.title || 'Untitled Task',
+              taskTitle: task.title || t('ENTITY.UNTITLED_TASK'),
               timeSpent: 0,
               isDone: task.isDone,
               overdue: isOverdue,
@@ -2125,12 +2566,12 @@
         
         // add a row for overdue or late tasks that had no time entries — goes to separate section
         if (taskTimeInRange === 0 && (isOverdue || isLate)) {
-          const badge = isLate ? 'Late' : 'Overdue';
+          const badge = t(isLate ? 'STATUS.LATE' : 'STATUS.OVERDUE');
           const dateStr = dueStart ? toLocalDate(new Date(dueStart)) : '';
           metrics.overdueEntries.push({
             date: dateStr,
             projectName: pName,
-            taskTitle: `${task.title || 'Untitled Task'} (${badge})`,
+            taskTitle: `${task.title || t('ENTITY.UNTITLED_TASK')} (${badge})`,
             timeSpent: 0,
             isDone: task.isDone,
             overdue: isOverdue,
@@ -2226,13 +2667,20 @@
 
     // Which tab is currently visible? Returns its key, display label and root node.
     const getActiveViewNode = () => {
+      // `label` is shown to the user (print header); `fileLabel` stays English so
+      // export filenames don't change, or lose every character, with the language.
       const tabs = [
-        { key: 'dashboard', label: 'Dashboard' },
-        { key: 'details', label: 'Detailed List' },
-        { key: 'drilldown', label: 'By Project / Tag' }
+        { key: 'dashboard', labelKey: 'TABS.DASHBOARD' },
+        { key: 'details', labelKey: 'TABS.DETAILS' },
+        { key: 'drilldown', labelKey: 'TABS.DRILLDOWN' }
       ];
-      const active = tabs.find(t => !document.getElementById(`view-${t.key}`).classList.contains('hidden')) || tabs[0];
-      return { ...active, node: document.getElementById(`view-${active.key}`) };
+      const active = tabs.find(tab => !document.getElementById(`view-${tab.key}`).classList.contains('hidden')) || tabs[0];
+      return {
+        key: active.key,
+        label: t(active.labelKey),
+        fileLabel: tEn(active.labelKey),
+        node: document.getElementById(`view-${active.key}`)
+      };
     };
 
     // Feedback toast — prefer the host snackbar when available, else a small inline toast.
@@ -2367,35 +2815,35 @@
     };
 
     const copyImage = async () => {
-      const { node, label } = getActiveViewNode();
+      const { node, fileLabel } = getActiveViewNode();
       let blob;
       try {
         blob = await captureNodeToPngBlob(node);
       } catch (err) {
         console.error('[sp-dashboard] image capture failed', err);
-        showToast('Could not capture image', true);
+        showToast(t('TOAST.CAPTURE_FAILED'), true);
         return;
       }
       try {
         if (!navigator.clipboard || typeof window.ClipboardItem === 'undefined') throw new Error('clipboard image unsupported');
         await navigator.clipboard.write([new window.ClipboardItem({ 'image/png': blob })]);
-        showToast('Image copied to clipboard');
+        showToast(t('TOAST.IMAGE_COPIED'));
       } catch (err) {
         console.warn('[sp-dashboard] clipboard image write failed, downloading instead', err);
-        triggerDownload(blob, label);
-        showToast("Couldn't copy image — downloaded it instead");
+        triggerDownload(blob, fileLabel);
+        showToast(t('TOAST.IMAGE_COPY_FALLBACK'));
       }
     };
 
     const downloadImage = async () => {
-      const { node, label } = getActiveViewNode();
+      const { node, fileLabel } = getActiveViewNode();
       try {
         const blob = await captureNodeToPngBlob(node);
-        triggerDownload(blob, label);
-        showToast('Image downloaded');
+        triggerDownload(blob, fileLabel);
+        showToast(t('TOAST.IMAGE_DOWNLOADED'));
       } catch (err) {
         console.error('[sp-dashboard] image capture failed', err);
-        showToast('Could not capture image', true);
+        showToast(t('TOAST.CAPTURE_FAILED'), true);
       }
     };
 
@@ -2441,7 +2889,9 @@
       };
       const row = (cells) => cells.map(cell).join(',');
       const rows = [];
-      const statusOf = (e) => e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress';
+      // Headings and status words stay English whatever the UI language, so a
+      // spreadsheet or script reading this export sees stable column names.
+      const statusOf = (e) => tEn(e.late ? 'STATUS.LATE' : e.overdue ? 'STATUS.OVERDUE' : e.isDone ? 'STATUS.DONE' : 'STATUS.IN_PROGRESS');
 
       if (tabKey === 'details' || tabKey === 'drilldown') {
         let entries = m.tableEntries;
@@ -2452,18 +2902,19 @@
           entries = entries.filter(e =>
             isTag ? (e.tagNames && e.tagNames.includes(currentDrillEntity)) : e.projectName === currentDrillEntity);
         }
-        rows.push(row(['Date', 'Project', 'Task', 'Time', 'Status']));
+        rows.push(row(['TABLE.DATE', 'TABLE.PROJECT', 'TABLE.TASK', 'TABLE.TIME', 'TABLE.STATUS'].map(k => tEn(k))));
         entries.forEach(e => rows.push(row([
           formatDateShort(e.date), e.projectName, e.taskTitle, formatTime(e.timeSpent), statusOf(e)
         ])));
       } else {
+        // These row labels are CSV-only and English by design, so they have no keys.
         rows.push(row(['Metric', 'Value']));
         rows.push(row(['Range', getRangeLabel()]));
-        rows.push(row(['Total Time Tracked', formatTime(m.totalTimeSpent)]));
-        rows.push(row(['Tasks Completed', m.totalCompleted]));
+        rows.push(row([tEn('STATS.TOTAL_TIME'), formatTime(m.totalTimeSpent)]));
+        rows.push(row([tEn('STATS.TASKS_COMPLETED'), m.totalCompleted]));
         rows.push(row(['Tasks Total', m.totalTasks]));
-        rows.push(row(['Overdue Tasks', m.overdueTasks]));
-        rows.push(row(['Completed Late', m.lateCompleted]));
+        rows.push(row([tEn('STATS.OVERDUE'), m.overdueTasks]));
+        rows.push(row([tEn('STATS.COMPLETED_LATE'), m.lateCompleted]));
         Object.entries(m.projectData || {})
           .filter(([, v]) => v > 0)
           .sort((a, b) => b[1] - a[1])
@@ -2477,63 +2928,65 @@
     // Advanced can switch to real Markdown or CSV.
     const buildTextSummary = (tabKey) => {
       const m = window.latestMetrics || latestMetrics;
-      if (!m) return 'No data available.';
+      if (!m) return t('SUMMARY.NO_DATA');
       const format = getSetting('summaryFormat');
       if (format === 'csv') return buildCsvSummary(tabKey);
       const b = format === 'markdown' ? '**' : '*';
       const range = getRangeLabel();
       const suffix = range ? ` (${range})` : '';
       const lines = [];
+      const bullet = (labelKey, value) => `• ${t('SUMMARY.LINE', { label: t(labelKey), value })}`;
+      const statusOf = (e) => t(e.late ? 'STATUS.LATE' : e.overdue ? 'STATUS.OVERDUE' : e.isDone ? 'STATUS.DONE' : 'STATUS.IN_PROGRESS');
 
       if (tabKey === 'details') {
-        lines.push(`${b}Detailed Time Log${b}${suffix}`);
+        lines.push(`${b}${t('SUMMARY.DETAILS_TITLE')}${b}${suffix}`);
         lines.push('');
-        lines.push('| Date | Project | Task | Time | Status |');
+        lines.push(`| ${['TABLE.DATE', 'TABLE.PROJECT', 'TABLE.TASK', 'TABLE.TIME', 'TABLE.STATUS'].map(k => t(k)).join(' | ')} |`);
         lines.push('| --- | --- | --- | --- | --- |');
         const sorted = sortEntries(m.tableEntries, currentSort.key, currentSort.dir);
         if (sorted.length) {
           sorted.forEach(e => {
-            const status = e.late ? 'Late' : e.overdue ? 'Overdue' : e.isDone ? 'Done' : 'In Progress';
-            lines.push(`| ${formatDateShort(e.date)} | ${e.projectName} | ${e.taskTitle} | ${formatTime(e.timeSpent)} | ${status} |`);
+            lines.push(`| ${formatDateShort(e.date)} | ${entityLabel(e.projectName)} | ${e.taskTitle} | ${formatTime(e.timeSpent)} | ${statusOf(e)} |`);
           });
         } else {
-          lines.push('| — | — | No tracked time found | — | — |');
+          lines.push(`| — | — | ${t('SUMMARY.NO_TIME_ROW')} | — | — |`);
         }
         if (m.overdueEntries && m.overdueEntries.length) {
           lines.push('');
-          lines.push(`${b}Overdue & Late${b}`);
-          m.overdueEntries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.projectName}: ${e.taskTitle}`));
+          lines.push(`${b}${t('SUMMARY.OVERDUE_LATE')}${b}`);
+          m.overdueEntries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${entityLabel(e.projectName)}: ${e.taskTitle}`));
         }
       } else if (tabKey === 'drilldown') {
         const isTag = currentDrillDimension === 'tag';
-        const entity = currentDrillEntity || '(none)';
+        const entity = currentDrillEntity || '';
+        const entityName = entity ? entityLabel(entity) : t('SUMMARY.NONE');
         const timeMs = (isTag ? m.tagData : m.projectData)[entity] || 0;
         const completed = (isTag ? m.tagCompletedData : m.projectCompletedData)[entity] || 0;
         const overdue = (isTag ? m.tagOverdueData : m.projectOverdueData)[entity] || 0;
         const late = (isTag ? m.tagLateData : m.projectLateData)[entity] || 0;
-        lines.push(`${b}${isTag ? 'Tag' : 'Project'}: ${entity}${b}${suffix}`);
-        lines.push(`• Time Spent: ${formatTime(timeMs)}`);
-        lines.push(`• Tasks Completed: ${completed}`);
-        lines.push(`• Overdue Tasks: ${overdue}`);
-        lines.push(`• Completed Late: ${late}`);
+        lines.push(`${b}${t(isTag ? 'SUMMARY.TAG_TITLE' : 'SUMMARY.PROJECT_TITLE', { name: entityName })}${b}${suffix}`);
+        lines.push(bullet('STATS.TIME_SPENT', formatTime(timeMs)));
+        lines.push(bullet('STATS.TASKS_COMPLETED', completed));
+        lines.push(bullet('STATS.OVERDUE', overdue));
+        lines.push(bullet('STATS.COMPLETED_LATE', late));
         const entries = m.tableEntries.filter(e =>
           isTag ? (e.tagNames && e.tagNames.includes(entity)) : e.projectName === entity);
         if (entries.length) {
           lines.push('');
-          lines.push('Tasks:');
+          lines.push(t('SUMMARY.TASKS'));
           entries.forEach(e => lines.push(`- ${formatDateShort(e.date)} — ${e.taskTitle} (${formatTime(e.timeSpent)})`));
         }
       } else {
-        lines.push(`${b}Productivity Summary${b}${suffix}`);
-        lines.push(`• Total Time Tracked: ${formatTime(m.totalTimeSpent)}`);
-        lines.push(`• Tasks Completed: ${m.totalCompleted} / ${m.totalTasks}`);
-        lines.push(`• Overdue Tasks: ${m.overdueTasks}`);
-        lines.push(`• Completed Late: ${m.lateCompleted}`);
+        lines.push(`${b}${t('SUMMARY.DASHBOARD_TITLE')}${b}${suffix}`);
+        lines.push(bullet('STATS.TOTAL_TIME', formatTime(m.totalTimeSpent)));
+        lines.push(bullet('STATS.TASKS_COMPLETED', `${m.totalCompleted} / ${m.totalTasks}`));
+        lines.push(bullet('STATS.OVERDUE', m.overdueTasks));
+        lines.push(bullet('STATS.COMPLETED_LATE', m.lateCompleted));
         const projects = Object.entries(m.projectData || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
         if (projects.length) {
           lines.push('');
-          lines.push(`${b}Time by Project${b}`);
-          projects.forEach(([name, ms]) => lines.push(`• ${name}: ${formatTime(ms)}`));
+          lines.push(`${b}${t('SUMMARY.TIME_BY_PROJECT')}${b}`);
+          projects.forEach(([name, ms]) => lines.push(`• ${t('SUMMARY.LINE', { label: entityLabel(name), value: formatTime(ms) })}`));
         }
       }
       return lines.join('\n');
@@ -2548,15 +3001,15 @@
         } else {
           legacyCopyText(text);
         }
-        showToast('Summary copied to clipboard');
+        showToast(t('TOAST.SUMMARY_COPIED'));
       } catch (err) {
         console.warn('[sp-dashboard] clipboard writeText failed, trying fallback', err);
         try {
           legacyCopyText(text);
-          showToast('Summary copied to clipboard');
+          showToast(t('TOAST.SUMMARY_COPIED'));
         } catch (err2) {
           console.error('[sp-dashboard] copy text failed', err2);
-          showToast('Could not copy summary', true);
+          showToast(t('TOAST.SUMMARY_COPY_FAILED'), true);
         }
       }
     };
@@ -2592,131 +3045,131 @@
     // ==========================================================
     // Option lists come from SETTING_OPTIONS above, so the controls a user can
     // reach and the values coerceSetting will accept are the same list.
-    const DAY_LETTERS = [sOpt(0, 'S'), sOpt(1, 'M'), sOpt(2, 'T'), sOpt(3, 'W'), sOpt(4, 'T'), sOpt(5, 'F'), sOpt(6, 'S')];
+    const DAY_LETTERS = [0, 1, 2, 3, 4, 5, 6].map(sDay);
 
     const SETTINGS_SECTIONS = [
       {
-        id: 'general', label: 'General',
-        sub: 'Formats and locale, applied to every view',
+        id: 'general', labelKey: 'SETTINGS.SECTIONS.GENERAL',
+        subKey: 'SETTINGS.SECTIONS.GENERAL_SUB',
         rows: [
-          { label: 'Start of week', hint: 'Drives “This Week” and the day the weekly bar chart starts on',
+          { labelKey: 'SETTINGS.ROWS.WEEK_START', hintKey: 'SETTINGS.ROWS.WEEK_START_HINT',
             controls: [{ type: 'select', key: 'weekStartsOn', numeric: true, options: SETTING_OPTIONS.weekStartsOn }] },
-          { label: 'Date format', hint: 'Auto follows the host app’s locale',
+          { labelKey: 'SETTINGS.ROWS.DATE_FORMAT', hintKey: 'SETTINGS.ROWS.DATE_FORMAT_HINT',
             controls: [{ type: 'select', key: 'dateFormat', options: SETTING_OPTIONS.dateFormat }] },
-          { label: 'Time format', hint: 'Decimal hours is what pastes into a timesheet or invoice',
+          { labelKey: 'SETTINGS.ROWS.TIME_FORMAT', hintKey: 'SETTINGS.ROWS.TIME_FORMAT_HINT',
             controls: [{ type: 'radio', key: 'timeFormat', options: SETTING_OPTIONS.timeFormat }] },
-          { label: 'Working days', hint: 'Used by the setting below',
+          { labelKey: 'SETTINGS.ROWS.WORKING_DAYS', hintKey: 'SETTINGS.ROWS.WORKING_DAYS_HINT',
             controls: [{ type: 'days', key: 'workingDays', options: DAY_LETTERS }] },
-          { label: 'Hide non-working days in charts', hint: 'Removes those days from the range entirely, so weekends stop flattening the chart',
+          { labelKey: 'SETTINGS.ROWS.HIDE_NON_WORKING', hintKey: 'SETTINGS.ROWS.HIDE_NON_WORKING_HINT',
             controls: [{ type: 'toggle', key: 'hideNonWorkingDays' }] }
         ]
       },
       {
-        id: 'defaults', label: 'Defaults',
-        sub: 'What each control shows when the dashboard opens. Remember keeps the last used value; Pin always starts from a fixed one.',
+        id: 'defaults', labelKey: 'SETTINGS.SECTIONS.DEFAULTS',
+        subKey: 'SETTINGS.SECTIONS.DEFAULTS_SUB',
         rows: [
-          { label: 'Period', controls: [
+          { labelKey: 'SETTINGS.ROWS.PERIOD', controls: [
             { type: 'seg', key: 'periodMode', options: SETTING_OPTIONS.periodMode },
             { type: 'select', key: 'periodPinned', disabledWhen: { key: 'periodMode', is: 'remember' }, options: SETTING_OPTIONS.periodPinned }] },
-          { label: 'Opening tab', controls: [
+          { labelKey: 'SETTINGS.ROWS.OPENING_TAB', controls: [
             { type: 'seg', key: 'tabMode', options: SETTING_OPTIONS.tabMode },
             { type: 'select', key: 'tabPinned', disabledWhen: { key: 'tabMode', is: 'remember' }, options: SETTING_OPTIONS.tabPinned }] },
-          { label: 'Bar chart metric', controls: [
+          { labelKey: 'SETTINGS.ROWS.BAR_METRIC', controls: [
             { type: 'seg', key: 'barMetricMode', options: SETTING_OPTIONS.barMetricMode },
             { type: 'select', key: 'barMetricPinned', disabledWhen: { key: 'barMetricMode', is: 'remember' }, options: SETTING_OPTIONS.barMetricPinned }] },
-          { label: 'Pie chart metric & split', controls: [
+          { labelKey: 'SETTINGS.ROWS.PIE_METRIC', controls: [
             { type: 'seg', key: 'pieMetricMode', options: SETTING_OPTIONS.pieMetricMode },
             { type: 'select', key: 'pieMetricPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' }, options: SETTING_OPTIONS.pieMetricPinned },
             { type: 'seg', key: 'pieDimPinned', disabledWhen: { key: 'pieMetricMode', is: 'remember' }, options: SETTING_OPTIONS.pieDimPinned }] },
-          { label: 'Detailed List sort', hint: 'Where the table starts before you click a column header',
+          { labelKey: 'SETTINGS.ROWS.SORT', hintKey: 'SETTINGS.ROWS.SORT_HINT',
             controls: [
               { type: 'select', key: 'sortKey', options: SETTING_OPTIONS.sortKey },
               { type: 'seg', key: 'sortDir', options: SETTING_OPTIONS.sortDir }] },
-          { label: 'By Project / Tag split', controls: [
+          { labelKey: 'SETTINGS.ROWS.DRILL_SPLIT', controls: [
             { type: 'seg', key: 'drillDimMode', options: SETTING_OPTIONS.drillDimMode },
             { type: 'seg', key: 'drillDimPinned', disabledWhen: { key: 'drillDimMode', is: 'remember' }, options: SETTING_OPTIONS.drillDimPinned }] }
         ]
       },
       {
-        id: 'data', label: 'Data & Filtering',
-        sub: 'Everything here changes what the numbers mean, not just how they look',
+        id: 'data', labelKey: 'SETTINGS.SECTIONS.DATA',
+        subKey: 'SETTINGS.SECTIONS.DATA_SUB',
         subWarn: true,
         rows: [
-          { label: 'Include archived tasks', hint: 'Turning this off is the single biggest speed-up on a vault with a long archive',
+          { labelKey: 'SETTINGS.ROWS.INCLUDE_ARCHIVED', hintKey: 'SETTINGS.ROWS.INCLUDE_ARCHIVED_HINT',
             controls: [{ type: 'toggle', key: 'includeArchived' }] },
-          { label: 'Excluded projects', hint: 'Dropped from every stat, chart and table',
+          { labelKey: 'SETTINGS.ROWS.EXCLUDED_PROJECTS', hintKey: 'SETTINGS.ROWS.EXCLUDED_PROJECTS_HINT',
             controls: [{ type: 'chips', key: 'excludedProjects', source: 'projects' }] },
-          { label: 'Excluded tags', hint: 'A task carrying any excluded tag is dropped',
+          { labelKey: 'SETTINGS.ROWS.EXCLUDED_TAGS', hintKey: 'SETTINGS.ROWS.EXCLUDED_TAGS_HINT',
             controls: [{ type: 'chips', key: 'excludedTags', source: 'tags' }] },
-          { label: 'Count the running timer', hint: 'Adds the in-progress session to today’s total',
+          { labelKey: 'SETTINGS.ROWS.RUNNING_TIMER', hintKey: 'SETTINGS.ROWS.RUNNING_TIMER_HINT',
             controls: [{ type: 'toggle', key: 'includeRunningTimer' }] },
-          { label: 'List subtasks as their own rows', hint: 'Detailed List only — a parent’s time already rolls up its subtasks, so totals never change',
+          { labelKey: 'SETTINGS.ROWS.SUBTASK_ROWS', hintKey: 'SETTINGS.ROWS.SUBTASK_ROWS_HINT',
             controls: [{ type: 'toggle', key: 'showSubtaskRows' }] },
-          { label: 'Minimum entry length', hint: 'Keeps 30-second scraps out of the totals and the table',
+          { labelKey: 'SETTINGS.ROWS.MIN_ENTRY', hintKey: 'SETTINGS.ROWS.MIN_ENTRY_HINT',
             controls: [{ type: 'select', key: 'minEntryMs', numeric: true, options: SETTING_OPTIONS.minEntryMs }] },
-          { label: 'Tasks with no due date', hint: 'Replaces the fixed footnote under the Overdue card',
+          { labelKey: 'SETTINGS.ROWS.NO_DUE_DATE', hintKey: 'SETTINGS.ROWS.NO_DUE_DATE_HINT',
             controls: [{ type: 'radio', key: 'noDueDateOverdue', options: [
-              sOpt(false, 'Never overdue'), sOpt(true, 'Count as overdue')] }] },
-          { label: 'Hide empty projects & tags', hint: 'Trims the By Project / Tag dropdown to entities with data in range',
+              sOpt(false, 'SETTINGS.OPTIONS.NEVER_OVERDUE'), sOpt(true, 'SETTINGS.OPTIONS.COUNT_OVERDUE')] }] },
+          { labelKey: 'SETTINGS.ROWS.HIDE_EMPTY', hintKey: 'SETTINGS.ROWS.HIDE_EMPTY_HINT',
             controls: [{ type: 'toggle', key: 'hideEmptyEntities' }] }
         ]
       },
       {
-        id: 'appearance', label: 'Appearance',
-        sub: 'Purely visual — nothing here changes a number',
+        id: 'appearance', labelKey: 'SETTINGS.SECTIONS.APPEARANCE',
+        subKey: 'SETTINGS.SECTIONS.APPEARANCE_SUB',
         rows: [
-          { label: 'Theme', hint: 'Follow app mirrors the host’s own light/dark class',
+          { labelKey: 'SETTINGS.ROWS.THEME', hintKey: 'SETTINGS.ROWS.THEME_HINT',
             controls: [{ type: 'seg', key: 'theme', options: SETTING_OPTIONS.theme }] },
-          { label: 'Chart palette', hint: 'Used by the pie chart and its legend',
+          { labelKey: 'SETTINGS.ROWS.PALETTE', hintKey: 'SETTINGS.ROWS.PALETTE_HINT',
             controls: [
               { type: 'select', key: 'palette', options: SETTING_OPTIONS.palette },
               { type: 'swatches' }] },
-          { label: 'Bar chart grouping', hint: 'Auto keeps the existing rules: daily under a month, weekly for a month, monthly beyond',
+          { labelKey: 'SETTINGS.ROWS.BAR_GROUPING', hintKey: 'SETTINGS.ROWS.BAR_GROUPING_HINT',
             controls: [{ type: 'select', key: 'barGrouping', options: SETTING_OPTIONS.barGrouping }] },
-          { label: 'Small pie slices', hint: 'Rolls everything past the top N into one “Other” slice',
+          { labelKey: 'SETTINGS.ROWS.PIE_SLICES', hintKey: 'SETTINGS.ROWS.PIE_SLICES_HINT',
             controls: [{ type: 'select', key: 'pieMaxSlices', numeric: true, options: SETTING_OPTIONS.pieMaxSlices }] },
-          { label: 'Density',
+          { labelKey: 'SETTINGS.ROWS.DENSITY',
             controls: [{ type: 'seg', key: 'density', options: SETTING_OPTIONS.density }] },
-          { label: 'Stat cards', hint: 'Unchecked cards are hidden and the row re-flows',
+          { labelKey: 'SETTINGS.ROWS.STAT_CARDS', hintKey: 'SETTINGS.ROWS.STAT_CARDS_HINT',
             controls: [{ type: 'checks', key: 'statCards', options: [
-              sOpt('time', 'Total time tracked'), sOpt('completed', 'Tasks completed'),
-              sOpt('overdue', 'Tasks overdue'), sOpt('late', 'Completed late')] }] },
-          { label: 'Detailed List rows per page',
+              sOpt('time', 'SETTINGS.OPTIONS.STAT_TIME'), sOpt('completed', 'SETTINGS.OPTIONS.METRIC_COMPLETED'),
+              sOpt('overdue', 'SETTINGS.OPTIONS.METRIC_OVERDUE'), sOpt('late', 'SETTINGS.OPTIONS.METRIC_LATE')] }] },
+          { labelKey: 'SETTINGS.ROWS.PAGE_SIZE',
             controls: [{ type: 'seg', key: 'tablePageSize', numeric: true, options: SETTING_OPTIONS.tablePageSize }] }
         ]
       },
       {
-        id: 'goals', label: 'Goals',
-        sub: 'Targets are drawn onto the Dashboard tab — a dashed line across the bar chart, a bar under the Total Time card',
+        id: 'goals', labelKey: 'SETTINGS.SECTIONS.GOALS',
+        subKey: 'SETTINGS.SECTIONS.GOALS_SUB',
         rows: [
-          { label: 'Daily time target', hint: 'Dashed line on the bar chart, and the Total Time card’s bar when a single day is in view',
+          { labelKey: 'SETTINGS.ROWS.DAILY_TIME_GOAL', hintKey: 'SETTINGS.ROWS.DAILY_TIME_GOAL_HINT',
             controls: [
               { type: 'toggle', key: 'dailyTimeGoalOn' },
-              { type: 'number', key: 'dailyTimeGoalH', min: 1, max: 24, unit: 'hours per day',
+              { type: 'number', key: 'dailyTimeGoalH', min: 1, max: 24, unitKey: 'SETTINGS.OPTIONS.HOURS_PER_DAY',
                 disabledWhen: { key: 'dailyTimeGoalOn', is: false } }] },
-          { label: 'Weekly time target', hint: 'Progress bar under the Total Time card when a week-length period is in view',
+          { labelKey: 'SETTINGS.ROWS.WEEKLY_TIME_GOAL', hintKey: 'SETTINGS.ROWS.WEEKLY_TIME_GOAL_HINT',
             controls: [
               { type: 'toggle', key: 'weeklyTimeGoalOn' },
-              { type: 'number', key: 'weeklyTimeGoalH', min: 1, max: 168, unit: 'hours per week',
+              { type: 'number', key: 'weeklyTimeGoalH', min: 1, max: 168, unitKey: 'SETTINGS.OPTIONS.HOURS_PER_WEEK',
                 disabledWhen: { key: 'weeklyTimeGoalOn', is: false } }] },
-          { label: 'Daily tasks completed', hint: 'Dashed line on the bar chart when it shows Tasks completed',
+          { labelKey: 'SETTINGS.ROWS.DAILY_TASK_GOAL', hintKey: 'SETTINGS.ROWS.DAILY_TASK_GOAL_HINT',
             controls: [
               { type: 'toggle', key: 'dailyTaskGoalOn' },
-              { type: 'number', key: 'dailyTaskGoal', min: 1, max: 99, unit: 'tasks per day',
+              { type: 'number', key: 'dailyTaskGoal', min: 1, max: 99, unitKey: 'SETTINGS.OPTIONS.TASKS_PER_DAY',
                 disabledWhen: { key: 'dailyTaskGoalOn', is: false } }] }
         ]
       },
       {
-        id: 'advanced', label: 'Advanced',
-        sub: 'Refresh, export and the settings file itself',
+        id: 'advanced', labelKey: 'SETTINGS.SECTIONS.ADVANCED',
+        subKey: 'SETTINGS.SECTIONS.ADVANCED_SUB',
         rows: [
-          { label: 'Auto-refresh', hint: 'The dashboard also refreshes whenever the host app reports a change, so Off is not the same as stale',
+          { labelKey: 'SETTINGS.ROWS.AUTO_REFRESH', hintKey: 'SETTINGS.ROWS.AUTO_REFRESH_HINT',
             controls: [{ type: 'select', key: 'refreshMs', numeric: true, options: SETTING_OPTIONS.refreshMs }] },
-          { label: 'Debug logging', hint: 'Off by default: one log line per task, per refresh', hintWarn: true,
+          { labelKey: 'SETTINGS.ROWS.DEBUG_LOGGING', hintKey: 'SETTINGS.ROWS.DEBUG_LOGGING_HINT', hintWarn: true,
             controls: [{ type: 'toggle', key: 'debugLogging' }] },
-          { label: 'Export filename', hint: 'Used by Download PNG. Tokens: {tab} {range} {date}',
+          { labelKey: 'SETTINGS.ROWS.EXPORT_FILENAME', hintKey: 'SETTINGS.ROWS.EXPORT_FILENAME_HINT',
             controls: [{ type: 'text', key: 'exportFilename', placeholder: DEFAULT_SETTINGS.exportFilename }] },
-          { label: 'Copy text summary as',
+          { labelKey: 'SETTINGS.ROWS.SUMMARY_FORMAT',
             controls: [{ type: 'seg', key: 'summaryFormat', options: SETTING_OPTIONS.summaryFormat }] }
         ],
         danger: true
@@ -2736,9 +3189,9 @@
     // synthetic buckets processData assigns to unfiled work.
     const chipSourceNames = (source) => {
       if (source === 'tags') {
-        return [...new Set([...cachedTags.map(t => t.title || t.id), 'Untagged'])].sort((a, b) => a.localeCompare(b));
+        return [...new Set([...cachedTags.map(tag => tag.title || tag.id), UNTAGGED])].sort((a, b) => a.localeCompare(b));
       }
-      return [...new Set([...cachedProjects.map(p => p.title), 'Uncategorized'])].sort((a, b) => a.localeCompare(b));
+      return [...new Set([...cachedProjects.map(p => p.title), UNCATEGORIZED])].sort((a, b) => a.localeCompare(b));
     };
 
     const isControlDisabled = (ctrl) =>
@@ -2756,7 +3209,7 @@
         ctrl.options.forEach(o => {
           const option = document.createElement('option');
           option.value = String(o.v);
-          option.textContent = o.l;
+          option.textContent = optionLabel(o);
           sel.appendChild(option);
         });
         sel.value = String(current);
@@ -2766,7 +3219,7 @@
       if (ctrl.type === 'seg') {
         const wrap = mkEl('div', 'set-seg');
         ctrl.options.forEach(o => {
-          const btn = mkEl('button', String(current) === String(o.v) ? 'active' : '', o.l);
+          const btn = mkEl('button', String(current) === String(o.v) ? 'active' : '', optionLabel(o));
           btn.type = 'button';
           btn.disabled = disabled;
           btn.dataset.key = ctrl.key;
@@ -2792,7 +3245,7 @@
           btn.dataset.kind = isCheck ? 'check' : 'radio';
           if (typeof o.v === 'boolean') btn.dataset.bool = '1';
           btn.appendChild(mkEl('span', `set-mark ${isCheck ? 'check' : 'radio'}`));
-          btn.appendChild(mkEl('span', '', o.l));
+          btn.appendChild(mkEl('span', '', optionLabel(o)));
           wrap.appendChild(btn);
         });
         return wrap;
@@ -2800,8 +3253,8 @@
 
       if (ctrl.type === 'toggle') {
         const wrap = mkEl('div', 'set-seg');
-        [sOpt(true, 'On'), sOpt(false, 'Off')].forEach(o => {
-          const btn = mkEl('button', current === o.v ? 'active' : '', o.l);
+        [sOpt(true, 'SETTINGS.ON'), sOpt(false, 'SETTINGS.OFF')].forEach(o => {
+          const btn = mkEl('button', current === o.v ? 'active' : '', optionLabel(o));
           btn.type = 'button';
           btn.dataset.key = ctrl.key;
           btn.dataset.value = String(o.v);
@@ -2815,7 +3268,8 @@
         const wrap = mkEl('div', 'set-days');
         ctrl.options.forEach(o => {
           const on = (current || []).indexOf(o.v) !== -1;
-          const btn = mkEl('button', `set-day${on ? ' active' : ''}`, o.l);
+          const btn = mkEl('button', `set-day${on ? ' active' : ''}`, optionLabel(o, 'narrow'));
+          btn.title = optionLabel(o, 'long');
           btn.type = 'button';
           btn.dataset.key = ctrl.key;
           btn.dataset.value = String(o.v);
@@ -2831,10 +3285,10 @@
         const chosen = current || [];
         chosen.forEach(name => {
           const chip = mkEl('span', 'set-chip');
-          chip.appendChild(mkEl('span', '', name));
+          chip.appendChild(mkEl('span', '', entityLabel(name)));
           const rm = mkEl('button', '', '×');
           rm.type = 'button';
-          rm.title = `Stop excluding ${name}`;
+          rm.title = t('SETTINGS.STOP_EXCLUDING', { name: entityLabel(name) });
           rm.dataset.key = ctrl.key;
           rm.dataset.remove = name;
           chip.appendChild(rm);
@@ -2843,19 +3297,19 @@
         const remaining = chipSourceNames(ctrl.source).filter(n => chosen.indexOf(n) === -1);
         if (remaining.length === 0) {
           wrap.appendChild(mkEl('span', 'set-chips-empty',
-            chosen.length ? 'Nothing left to exclude' : 'Nothing to exclude yet'));
+            t(chosen.length ? 'SETTINGS.NOTHING_LEFT' : 'SETTINGS.NOTHING_YET')));
         } else {
           const sel = document.createElement('select');
           sel.dataset.key = ctrl.key;
           sel.dataset.add = '1';
           const first = document.createElement('option');
           first.value = '';
-          first.textContent = '+ Add…';
+          first.textContent = t('SETTINGS.ADD');
           sel.appendChild(first);
           remaining.forEach(n => {
             const o = document.createElement('option');
             o.value = n;
-            o.textContent = n;
+            o.textContent = entityLabel(n);
             sel.appendChild(o);
           });
           wrap.appendChild(sel);
@@ -2878,7 +3332,7 @@
         input.value = String(current);
         input.disabled = disabled;
         wrap.appendChild(input);
-        if (ctrl.unit) wrap.appendChild(mkEl('span', 'set-note', ctrl.unit));
+        if (ctrl.unitKey) wrap.appendChild(mkEl('span', 'set-note', t(ctrl.unitKey)));
         return wrap;
       }
 
@@ -2903,35 +3357,35 @@
 
       rail.innerHTML = '';
       SETTINGS_SECTIONS.forEach(s => {
-        const btn = mkEl('button', `settings-rail-btn${s.id === section.id ? ' active' : ''}`, s.label);
+        const btn = mkEl('button', `settings-rail-btn${s.id === section.id ? ' active' : ''}`, t(s.labelKey));
         btn.type = 'button';
         btn.dataset.section = s.id;
         rail.appendChild(btn);
       });
       const foot = mkEl('div', 'settings-rail-foot');
       ['export', 'import'].forEach(action => {
-        const b = mkEl('button', 'settings-link', action === 'export' ? 'Export settings…' : 'Import settings…');
+        const b = mkEl('button', 'settings-link', t(action === 'export' ? 'SETTINGS.EXPORT_LINK' : 'SETTINGS.IMPORT_LINK'));
         b.type = 'button';
         b.dataset.action = action;
         foot.appendChild(b);
       });
-      const reset = mkEl('button', 'settings-link danger', 'Reset to defaults');
+      const reset = mkEl('button', 'settings-link danger', t('SETTINGS.RESET_LINK'));
       reset.type = 'button';
       reset.dataset.action = 'reset';
       foot.appendChild(reset);
       rail.appendChild(foot);
 
       panel.innerHTML = '';
-      panel.appendChild(mkEl('h3', 'settings-panel-title', section.label));
-      if (section.sub) panel.appendChild(mkEl('p', `settings-panel-sub${section.subWarn ? ' warn' : ''}`, section.sub));
+      panel.appendChild(mkEl('h3', 'settings-panel-title', t(section.labelKey)));
+      if (section.subKey) panel.appendChild(mkEl('p', `settings-panel-sub${section.subWarn ? ' warn' : ''}`, t(section.subKey)));
 
       const rows = mkEl('div');
       rows.style.marginTop = '0.5rem';
       section.rows.forEach(row => {
         const rowEl = mkEl('div', 'set-row');
         const main = mkEl('div', 'set-row-main');
-        main.appendChild(mkEl('div', 'set-label', row.label));
-        if (row.hint) main.appendChild(mkEl('div', `set-hint${row.hintWarn ? ' warn' : ''}`, row.hint));
+        main.appendChild(mkEl('div', 'set-label', t(row.labelKey)));
+        if (row.hintKey) main.appendChild(mkEl('div', `set-hint${row.hintWarn ? ' warn' : ''}`, t(row.hintKey)));
         rowEl.appendChild(main);
         const ctl = mkEl('div', 'set-ctl');
         row.controls.forEach(c => ctl.appendChild(buildControl(c)));
@@ -2942,15 +3396,14 @@
 
       if (section.danger) {
         const box = mkEl('div', 'set-danger');
-        box.appendChild(mkEl('div', 'set-danger-title', 'Settings file'));
-        box.appendChild(mkEl('div', 'set-hint',
-          `Everything above lives in one localStorage entry (${SETTINGS_KEY}). Resetting also clears the keys this plugin wrote before there was a settings page.`));
+        box.appendChild(mkEl('div', 'set-danger-title', t('SETTINGS.FILE_TITLE')));
+        box.appendChild(mkEl('div', 'set-hint', t('SETTINGS.FILE_HINT', { key: SETTINGS_KEY })));
         const actions = mkEl('div', 'set-actions');
-        const exp = mkEl('button', 'set-btn', 'Export…');
+        const exp = mkEl('button', 'set-btn', t('SETTINGS.EXPORT_BUTTON'));
         exp.type = 'button'; exp.dataset.action = 'export';
-        const imp = mkEl('button', 'set-btn', 'Import…');
+        const imp = mkEl('button', 'set-btn', t('SETTINGS.IMPORT_BUTTON'));
         imp.type = 'button'; imp.dataset.action = 'import';
-        const rst = mkEl('button', 'set-btn danger', 'Reset everything');
+        const rst = mkEl('button', 'set-btn danger', t('SETTINGS.RESET_ALL'));
         rst.type = 'button'; rst.dataset.action = 'reset';
         rst.style.marginLeft = 'auto';
         actions.appendChild(exp);
@@ -3016,7 +3469,7 @@
     const exportSettings = () => {
       const blob = new Blob([JSON.stringify(SETTINGS, null, 2)], { type: 'application/json' });
       triggerDownload(blob, 'settings', `sp-dashboard-settings-${toLocalDate(new Date())}.json`);
-      showToast('Settings exported');
+      showToast(t('TOAST.SETTINGS_EXPORTED'));
     };
 
     const importSettings = (text) => {
@@ -3024,11 +3477,11 @@
       try {
         parsed = JSON.parse(text);
       } catch (e) {
-        showToast('That file is not valid JSON', true);
+        showToast(t('TOAST.IMPORT_NOT_JSON'), true);
         return;
       }
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        showToast('That file is not a settings export', true);
+        showToast(t('TOAST.IMPORT_NOT_SETTINGS'), true);
         return;
       }
       Object.keys(DEFAULT_SETTINGS).forEach(key => {
@@ -3038,7 +3491,7 @@
       persistSettings();
       applyDefaultSelections();
       applySettings();
-      showToast('Settings imported');
+      showToast(t('TOAST.SETTINGS_IMPORTED'));
     };
 
     const resetSettings = () => {
@@ -3053,7 +3506,7 @@
       applyDefaultSelections();
       setPieDimension(resolveDefault('pieMetricMode', 'pieDimPinned', 'pieDimLast'));
       applySettings();
-      showToast('Settings reset to defaults');
+      showToast(t('TOAST.SETTINGS_RESET'));
     };
 
     const openSettings = () => {
@@ -3093,7 +3546,7 @@
       else if (action === 'import') settingsImportInput.click();
       else if (action === 'reset') {
         // The only destructive control in here, so it asks first.
-        if (typeof window.confirm !== 'function' || window.confirm('Reset every dashboard setting to its default?')) {
+        if (typeof window.confirm !== 'function' || window.confirm(t('SETTINGS.RESET_CONFIRM'))) {
           resetSettings();
         }
       }
@@ -3154,7 +3607,7 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => importSettings(String(reader.result || ''));
-      reader.onerror = () => showToast('Could not read that file', true);
+      reader.onerror = () => showToast(t('TOAST.READ_FAILED'), true);
       reader.readAsText(file);
       settingsImportInput.value = '';
     });
@@ -3162,6 +3615,44 @@
     // Opening tab (Settings › Defaults)
     switchTab(resolveDefault('tabMode', 'tabPinned', 'tabLast'));
     applyAppearance();
+    applyStaticTranslations();
+
+    // Re-render everything that carries text in the current language.
+    const applyLanguage = () => {
+      applyStaticTranslations();
+      if (lastProcessInputs) processData(...lastProcessInputs);
+      if (!settingsOverlay.classList.contains('hidden')) renderSettingsPanel();
+    };
+
+    // Fetch the app language's strings, then redraw. Runs alongside the first
+    // data load rather than before it, so a slow or silent host can never hold
+    // the dashboard back — it renders in English and switches when they land.
+    const refreshLanguage = async () => {
+      let loaded = false;
+      try {
+        loaded = await loadTranslations();
+      } catch (e) {
+        console.warn('[sp-dashboard] could not load translations; staying in English', e);
+      }
+      if (loaded) applyLanguage();
+      return loaded;
+    };
+
+    // Super Productivity fires languageChange when the user switches the app's
+    // language. Iframe plugins can register for it directly.
+    const listenForLanguageChange = () => {
+      const api = window.PluginAPI;
+      if (!api || typeof api.registerHook !== 'function') return;
+      const hook = (api.Hooks && api.Hooks.LANGUAGE_CHANGE) || 'languageChange';
+      try {
+        const registered = api.registerHook(hook, () => { refreshLanguage(); });
+        if (registered && typeof registered.catch === 'function') {
+          registered.catch(e => debugWarn('[sp-dashboard] languageChange hook unavailable', e));
+        }
+      } catch (e) {
+        debugWarn('[sp-dashboard] languageChange hook unavailable', e);
+      }
+    };
 
     // expose key utilities for testing (JSDOM environment won't execute script tags normally)
     window.DEFAULT_SETTINGS = DEFAULT_SETTINGS;
@@ -3201,6 +3692,12 @@
     window.captureNodeToPngBlob = captureNodeToPngBlob;
     window.triggerDownload = triggerDownload;
     window.renderNativePieChart = renderNativePieChart;
+    window.I18N_EN = I18N_EN;
+    window.t = t;
+    window.loadTranslations = loadTranslations;
+    window.refreshLanguage = refreshLanguage;
+    window.applyStaticTranslations = applyStaticTranslations;
+    window.listenForLanguageChange = listenForLanguageChange;
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
     const pullDataFromSP = async () => {
@@ -3299,6 +3796,8 @@
     setTimeout(() => {
       debugLog("[sp-dashboard] bootstrap timeout fired; PluginAPI exists?", !!window.PluginAPI);
       if (window.PluginAPI) {
+        refreshLanguage();
+        listenForLanguageChange();
         pullDataFromSP();
         restartLiveUpdate();
       } else {

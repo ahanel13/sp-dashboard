@@ -18,6 +18,7 @@ PRERELEASE := $(if $(findstring -,$(VERSION)),--prerelease,)
 # Default target
 build: clean
 	@echo "Building plugin zip file..."
+	@node scripts/sync-i18n.js --check
 	@echo "Preparing build directory..."
 	@mkdir -p build/$(PLUGIN_DIR)
 	@cp -R $(PLUGIN_DIR)/* build/$(PLUGIN_DIR)/

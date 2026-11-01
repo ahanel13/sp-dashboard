@@ -9,6 +9,9 @@
   "icon": "icon.svg",
   "iFrame": true,
   "sidePanel": false,
+  "i18n": {
+    "languages": ["en"]
+  },
   "permissions": [
     "getTasks",
     "getArchivedTasks",

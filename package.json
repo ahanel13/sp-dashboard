@@ -9,6 +9,8 @@
     "test:coverage": "vitest run --coverage",
     "build:min": "./scripts/minify.sh sp-dashboard",
     "check:syntax": "node scripts/check-js.js",
+    "i18n:sync": "node scripts/sync-i18n.js",
+    "i18n:check": "node scripts/sync-i18n.js --check",
     "screenshot": "node scripts/screenshot.js"
   },
   "devDependencies": {
