@@ -13,6 +13,7 @@ A lightweight dashboard plugin for [Super Productivity](https://super-productivi
 - **Heatmap** — a year of work at a glance: a calendar grid of tracked time, completions, overdue or late work, the same broken out per project, tag, task or habit, plus a weekday × hour punchcard of when things actually get finished
 - Live updates whenever task data changes in Super Productivity
 - Adapts to light and dark themes automatically
+- Follows Super Productivity's language setting (see [Translations](#translations))
 - **Settings** — a gear in the tab bar opens seven panels of configuration (below)
 
 ---
@@ -51,6 +52,29 @@ Filtering** changes what the numbers mean, not just how they look.
 
 ![Heatmap View](assets/heatmap.png)
 *Twelve months of tracked time, with coverage and streaks, above a punchcard of when tasks get completed.*
+
+---
+
+## Translations
+
+The dashboard uses Super Productivity's built-in plugin translations, so it follows the language
+you've chosen in Super Productivity. Task, project and tag names are never translated, and CSV
+exports keep English column names so spreadsheets and scripts that read them don't break.
+
+**Adding a language** needs no code changes:
+
+1. Copy `sp-dashboard/i18n/en.json` to `sp-dashboard/i18n/<code>.json`, where `<code>` is one of
+   [Super Productivity's language codes](https://github.com/super-productivity/super-productivity/blob/master/packages/plugin-dev/PLUGIN_I18N.md#supported-languages)
+   in lowercase (`zh` for Simplified Chinese, `pt-br`, `zh-tw`, …).
+2. Translate the values, not the keys. Keep every `{{placeholder}}` exactly as it is.
+3. Entries with `one` / `other` are plural forms. Add whichever forms your language uses
+   (`zero`, `one`, `two`, `few`, `many`, `other`) — see
+   [CLDR plural rules](https://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html).
+4. Add the code to `"languages"` under `"i18n"` in `sp-dashboard/manifest.json.template`.
+5. Run `npm test`.
+
+Anything left untranslated shows in English. Weekday and month names come from your system's
+locale data, so they need no translation.
 
 ---
 

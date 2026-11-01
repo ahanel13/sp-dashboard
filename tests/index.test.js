@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -2102,6 +2102,315 @@ describe('Date Range Reporter UI', () => {
         window.importSettings(JSON.stringify({ heatmapDimPinned: 'everything' }));
         expect(window.getSetting('heatmapDimPinned')).toBe('total');
       });
+    });
+  });
+
+  // ==========================================================
+  // Translations (issue #23): Super Productivity's plugin i18n behind a
+  // cached, synchronous t(). The host is faked below the way the real one
+  // behaves: translate() returns a Promise inside the iframe and echoes the
+  // key back when it has no text for it.
+  // ==========================================================
+  describe('Translations', () => {
+    const enJson = JSON.parse(readFileSync(resolve(__dirname, '../sp-dashboard/i18n/en.json'), 'utf8'));
+    const flatten = (obj, prefix = '', out = {}) => {
+      Object.keys(obj).forEach(k => {
+        const key = prefix ? `${prefix}.${k}` : k;
+        if (obj[k] && typeof obj[k] === 'object') flatten(obj[k], key, out);
+        else out[key] = obj[k];
+      });
+      return out;
+    };
+    const EN = flatten(enJson);
+    const PLURAL_BASES = new Set(Object.keys(EN).filter(k => k.endsWith('.other')).map(k => k.slice(0, -6)));
+    const isKnownKey = (k) => EN[k] !== undefined || PLURAL_BASES.has(k);
+    // The whole page except the English dictionary itself.
+    const pageWithoutDictionary = html.slice(0, html.indexOf('I18N_EN:BEGIN')) + html.slice(html.indexOf('I18N_EN:END'));
+
+    // A fake host: prefixes every English string with the language code.
+    const fakeHost = (initialLang, overrides = {}) => {
+      const state = { lang: initialLang, hooks: {} };
+      const host = {
+        state,
+        translate: vi.fn(async (key) => {
+          if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key];
+          return EN[key] !== undefined ? `[${state.lang}] ${EN[key]}` : key;
+        }),
+        getCurrentLanguage: vi.fn(async () => state.lang),
+        registerHook: vi.fn(async (hook, fn) => { state.hooks[hook] = fn; }),
+        // Earlier tests leave their 500 ms bootstrap timers behind; with a host
+        // present those call getTasks(). Never settling keeps them from
+        // re-rendering mid-test or logging a fetch error.
+        getTasks: () => new Promise(() => {})
+      };
+      window.PluginAPI = host;
+      return host;
+    };
+
+    const todayStr = () => toLocalDate(new Date());
+    const sampleTasks = () => [
+      { id: 'a', parentId: null, title: 'Build homepage', isDone: true, doneOn: Date.now(),
+        projectId: 'p1', tagIds: [], timeSpentOnDay: { [todayStr()]: 3600000 } },
+      { id: 'b', parentId: null, title: 'Loose end', isDone: false,
+        projectId: null, tagIds: [], timeSpentOnDay: { [todayStr()]: 1800000 } }
+    ];
+    const sampleProjects = [{ id: 'p1', title: 'Website' }];
+
+    afterEach(() => { delete window.PluginAPI; });
+
+    it('ships the same English in en.json and in index.html', () => {
+      expect(window.I18N_EN).toEqual(enJson);
+    });
+
+    it('gives every tagged element a known key whose English matches the markup', () => {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const tagged = doc.querySelectorAll('[data-i18n]');
+      expect(tagged.length).toBeGreaterThan(50);
+      tagged.forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        expect(EN[key], `unknown key ${key}`).toBeDefined();
+        expect(el.textContent.trim(), key).toBe(EN[key]);
+      });
+      doc.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        expect(EN[key], `unknown key ${key}`).toBeDefined();
+        expect(el.getAttribute('title'), key).toBe(EN[key]);
+      });
+    });
+
+    it('uses only keys that exist, and every key in en.json is used', () => {
+      const used = new Set();
+      const keyPattern = /['"`]((?:[A-Z][A-Z0-9_]*\.)+[A-Za-z][A-Za-z0-9_]*)['"`]/g;
+      let m;
+      while ((m = keyPattern.exec(pageWithoutDictionary)) !== null) used.add(m[1]);
+      const unknown = [...used].filter(k => !isKnownKey(k));
+      expect(unknown).toEqual([]);
+
+      const unused = Object.keys(EN).filter(k => {
+        const base = k.replace(/\.(zero|one|two|few|many|other)$/, '');
+        return !used.has(k) && !used.has(base);
+      });
+      expect(unused).toEqual([]);
+    });
+
+    it('labels every settings option with a known key', () => {
+      window.SETTINGS_SECTIONS.forEach(section => {
+        expect(isKnownKey(section.labelKey), section.labelKey).toBe(true);
+        if (section.subKey) expect(isKnownKey(section.subKey), section.subKey).toBe(true);
+        section.rows.forEach(row => {
+          expect(isKnownKey(row.labelKey), row.labelKey).toBe(true);
+          if (row.hintKey) expect(isKnownKey(row.hintKey), row.hintKey).toBe(true);
+          row.controls.forEach(ctrl => {
+            if (ctrl.unitKey) expect(isKnownKey(ctrl.unitKey), ctrl.unitKey).toBe(true);
+            (ctrl.options || []).forEach(o => {
+              if (o.k !== undefined) expect(isKnownKey(o.k), `${ctrl.key}: ${o.k}`).toBe(true);
+              else expect(o.text !== undefined || o.weekday !== undefined, `${ctrl.key} option ${o.v} has no label`).toBe(true);
+            });
+          });
+        });
+      });
+    });
+
+    it('never shows a raw key anywhere in the settings modal', () => {
+      window.openSettings();
+      const rail = document.getElementById('settings-rail');
+      window.SETTINGS_SECTIONS.forEach(section => {
+        rail.querySelector(`[data-section="${section.id}"]`).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        const text = document.getElementById('settings-overlay').textContent;
+        expect(text.match(/\b[A-Z][A-Z_]+\.[A-Z][A-Z_.]+\b/), section.id).toBeNull();
+      });
+    });
+
+    it('t() fills placeholders, picks plural forms and returns unknown keys as-is', () => {
+      expect(window.t('STATS.TOTAL_SUFFIX', { count: 3 })).toBe('/ 3 total');
+      expect(window.t('CHARTS.TASK_COUNT', { count: 1 })).toBe('1 task');
+      expect(window.t('CHARTS.TASK_COUNT', { count: 4 })).toBe('4 tasks');
+      expect(window.t('STATS.NO_DUE_DATE', { count: 1 })).toBe('1 task has no due date so overdue is unavailable');
+      expect(window.t('GOAL.LINE_TIME')).toBe('{{hours}}h target');
+      expect(window.t('NOT.A_KEY')).toBe('NOT.A_KEY');
+    });
+
+    it('stays in English when the host has no translation API', async () => {
+      window.PluginAPI = {};
+      expect(await window.loadTranslations()).toBe(false);
+      expect(await window.refreshLanguage()).toBe(false);
+      expect(document.getElementById('tab-btn-dashboard').textContent).toBe('Dashboard');
+      expect(document.documentElement.lang).toBe('en');
+    });
+
+    it('renders static text, data and settings in the host language', async () => {
+      fakeHost('de');
+      expect(await window.refreshLanguage()).toBe(true);
+      expect(document.documentElement.lang).toBe('de');
+      expect(document.getElementById('tab-btn-dashboard').textContent).toBe('[de] Dashboard');
+      expect(document.getElementById('settings-btn').title).toBe('[de] Settings');
+      // Weekday names come from Intl, not from translation files.
+      expect(document.querySelector('#weekday-select option[value="1"]').textContent).toBe('Montag');
+
+      window.processData(sampleTasks(), sampleProjects, []);
+      expect(document.getElementById('stat-tasks-total').innerText).toBe('[de] / 2 total');
+      expect(document.getElementById('details-table-body').textContent).toContain('[de] Done');
+
+      window.openSettings();
+      expect(document.querySelector('.settings-panel-title').textContent).toBe('[de] General');
+    });
+
+    it('translates text that was already on screen when the strings arrive', async () => {
+      window.processData(sampleTasks(), sampleProjects, []);
+      expect(document.getElementById('stat-tasks-total').innerText).toBe('/ 2 total');
+      fakeHost('de');
+      await window.refreshLanguage();
+      expect(document.getElementById('stat-tasks-total').innerText).toBe('[de] / 2 total');
+    });
+
+    it('never translates task, project or tag names, even ones that look like keys', async () => {
+      fakeHost('de');
+      await window.refreshLanguage();
+      const tasks = [{ id: 'k', parentId: null, title: 'TABS.DASHBOARD', isDone: false,
+        projectId: 'pk', tagIds: ['tk'], timeSpentOnDay: { [todayStr()]: 3600000 } }];
+      window.processData(tasks, [{ id: 'pk', title: 'STATS.TOTAL_TIME' }], [{ id: 'tk', title: 'CHARTS.OTHER' }]);
+      const table = document.getElementById('details-table-body').textContent;
+      expect(table).toContain('TABS.DASHBOARD');
+      expect(table).toContain('STATS.TOTAL_TIME');
+      expect(table).not.toContain('[de] Dashboard');
+      expect(table).not.toContain('[de] Total Time Tracked');
+      expect(window.latestMetrics.tagData['CHARTS.OTHER']).toBe(3600000);
+    });
+
+    it('keeps English for keys the host echoes back untranslated', async () => {
+      window.PluginAPI = { translate: vi.fn(async (key) => key), getCurrentLanguage: vi.fn(async () => 'fr') };
+      expect(await window.refreshLanguage()).toBe(true);
+      expect(document.getElementById('tab-btn-dashboard').textContent).toBe('Dashboard');
+      expect(window.t('CHARTS.TASK_COUNT', { count: 2 })).toBe('2 tasks');
+    });
+
+    it('escapes translated text that contains markup', async () => {
+      fakeHost('de', { 'STATUS.DONE': '<img src="x" onerror="window.__i18nPwned = 1">' });
+      await window.refreshLanguage();
+      window.processData(sampleTasks(), sampleProjects, []);
+      const tbody = document.getElementById('details-table-body');
+      expect(tbody.querySelector('img')).toBeNull();
+      expect(tbody.textContent).toContain('<img src="x"');
+      expect(window.__i18nPwned).toBeUndefined();
+    });
+
+    it('shows the unassigned buckets translated but keeps them English inside the metrics', async () => {
+      fakeHost('de');
+      await window.refreshLanguage();
+      window.processData(sampleTasks(), sampleProjects, []);
+      expect(window.latestMetrics.projectData['Uncategorized']).toBe(1800000);
+      expect(document.getElementById('details-table-body').textContent).toContain('[de] Uncategorized');
+      expect(document.getElementById('pie-legend-container').textContent).not.toMatch(/(^|[^\]] )Uncategorized/);
+    });
+
+    it('uses the plural forms a language needs even when English has fewer', async () => {
+      const host = fakeHost('ru', {
+        'CHARTS.TASK_COUNT.one': '{{count}} задача',
+        'CHARTS.TASK_COUNT.few': '{{count}} задачи',
+        'CHARTS.TASK_COUNT.many': '{{count}} задач',
+        'CHARTS.TASK_COUNT.other': '{{count}} задачи'
+      });
+      await window.refreshLanguage();
+      expect(host.translate.mock.calls.map(c => c[0])).toContain('CHARTS.TASK_COUNT.few');
+      expect(window.t('CHARTS.TASK_COUNT', { count: 21 })).toBe('21 задача');
+      expect(window.t('CHARTS.TASK_COUNT', { count: 3 })).toBe('3 задачи');
+      expect(window.t('CHARTS.TASK_COUNT', { count: 5 })).toBe('5 задач');
+    });
+
+    it("maps Super Productivity's language codes to locales and rejects malformed ones", async () => {
+      fakeHost('zh');
+      await window.refreshLanguage();
+      expect(document.documentElement.lang).toBe('zh-CN');
+
+      window.PluginAPI.state.lang = 'pt-br';
+      await window.refreshLanguage();
+      expect(document.documentElement.lang).toBe('pt-BR');
+
+      window.PluginAPI.state.lang = '"><script>';
+      await window.refreshLanguage();
+      expect(document.documentElement.lang).toBe('en');
+    });
+
+    it('switches language when Super Productivity fires languageChange', async () => {
+      const host = fakeHost('de');
+      window.listenForLanguageChange();
+      // Take the handler this page registered rather than whatever is stored
+      // last: bootstrap timers left over from earlier tests can register their
+      // own. Awaiting it directly keeps the test free of timers.
+      const [hookName, onLanguageChange] = host.registerHook.mock.calls[host.registerHook.mock.calls.length - 1];
+      expect(hookName).toBe('languageChange');
+      await window.refreshLanguage();
+      expect(document.getElementById('tab-btn-details').textContent).toBe('[de] Detailed List');
+
+      host.state.lang = 'fr';
+      await onLanguageChange({ newLanguage: 'fr' });
+      expect(document.getElementById('tab-btn-details').textContent).toBe('[fr] Detailed List');
+    });
+
+    it('keeps CSV headings and export filenames in English but translates the text summary', async () => {
+      fakeHost('de');
+      await window.refreshLanguage();
+      window.processData(sampleTasks(), sampleProjects, []);
+
+      expect(window.buildTextSummary('dashboard')).toContain('[de] Productivity Summary');
+
+      window.setSetting('summaryFormat', 'csv');
+      expect(window.buildTextSummary('details').split('\n')[0]).toBe('Date,Project,Task,Time,Status');
+
+      const view = window.getActiveViewNode();
+      expect(view.label).toBe('[de] Dashboard');
+      expect(window.buildExportFilename(view.fileLabel, 'png')).toMatch(/^dashboard-dashboard-/);
+    });
+
+    it('translates the heatmap: controls, title, legend, stats and row labels', async () => {
+      fakeHost('de');
+      await window.refreshLanguage();
+      window.processData(sampleTasks(), sampleProjects, []);
+      window.switchTab('heatmap');
+      window.setHeatmapDim('project');
+
+      const view = document.getElementById('view-heatmap');
+      expect(document.querySelector('#hm-dim-toggle [data-dim="total"]').textContent).toBe('[de] Overall');
+      expect(document.querySelector('#hm-metric-select option[value="time"]').textContent).toBe('[de] Time tracked');
+      expect(document.getElementById('hm-title').textContent).toBe('[de] [de] Time tracked — [de] by project');
+      expect(document.getElementById('hm-stats').textContent).toContain('[de] Active days');
+      expect(document.getElementById('hm-legend').textContent).toContain('[de] Less');
+      // The internal bucket is translated where it is drawn, the real project is not.
+      expect(document.getElementById('hm-a11y').textContent).toContain('[de] Uncategorized');
+      expect(document.getElementById('hm-a11y').textContent).toContain('Website');
+      expect(view.textContent.match(/\b[A-Z][A-Z_]+\.[A-Z][A-Z_.]+\b/)).toBeNull();
+      window.setHeatmapDim('total');
+    });
+
+    it('names heatmap weekdays and months in the app language', async () => {
+      fakeHost('de');
+      await window.refreshLanguage();
+      window.processData(sampleTasks(), sampleProjects, []);
+      window.switchTab('heatmap');
+      window.setHeatmapDim('total');
+      const axis = [...document.querySelectorAll('#hm-grid svg > text')].map(n => n.textContent);
+      expect(axis.some(l => /^(So|Mo|Di|Mi|Do|Fr|Sa)\.?$/.test(l))).toBe(true);
+      expect(axis).not.toContain('Mon');
+    });
+
+    it('keeps the heatmap CSV header in English and keeps the selected measure on a language change', async () => {
+      const host = fakeHost('de');
+      await window.refreshLanguage();
+      window.setSetting('summaryFormat', 'csv');
+      window.processData(sampleTasks(), sampleProjects, []);
+      window.switchTab('heatmap');
+      window.setHeatmapDim('project');
+      expect(window.buildTextSummary('heatmap').split('\n')[0].startsWith('Project,')).toBe(true);
+
+      const metric = document.getElementById('hm-metric-select');
+      metric.value = 'completed';
+      metric.dispatchEvent(new Event('change'));
+      host.state.lang = 'fr';
+      await window.refreshLanguage();
+      expect(metric.value).toBe('completed');
+      expect(metric.selectedOptions[0].textContent).toBe('[fr] Tasks completed');
+      window.setSetting('summaryFormat', 'slack');
+      window.setHeatmapDim('total');
     });
   });
 });
