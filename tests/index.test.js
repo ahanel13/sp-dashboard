@@ -1153,6 +1153,33 @@ describe('Date Range Reporter UI', () => {
         expect(window.formatTime(9000000)).toBe('150m');
       });
 
+      // #26: the pie legend and the bar tooltips used their own decimal-hours
+      // formatter, so they ignored this setting while the rest of the page obeyed it.
+      it('timeFormat applies to the pie legend and the bar chart tooltips', () => {
+        const today = toLocalDate(new Date());
+        const tasks = [{ id: 'tf', parentId: null, title: 'Long task', isDone: false,
+          projectId: 'p1', tagIds: [], timeSpentOnDay: { [today]: 9000000 } }]; // 2h 30m
+        const legendFor = () => document.getElementById('pie-legend-container').textContent;
+        const barValues = (id) => [...document.querySelectorAll(`#${id} .bar`)].map(b => b.getAttribute('data-val'));
+        const pie = document.getElementById('pie-chart-select');
+        const bar = document.getElementById('bar-chart-select');
+        pie.value = 'time';
+        bar.value = 'time';
+
+        // setSetting re-processes from the cached tasks, which a test drives directly,
+        // so each format is set first and the data processed after.
+        [['hm', '2h 30m'], ['decimal', '2.50h'], ['minutes', '150m']].forEach(([fmt, shown]) => {
+          window.setSetting('timeFormat', fmt);
+          window.processData(tasks, [{ id: 'p1', title: 'Alpha' }], []);
+          expect(legendFor(), fmt).toContain(shown);
+          expect(barValues('bar-chart-container'), fmt).toContain(shown);
+          window.setDrillDimension('project');
+          window.setDrillEntity('Alpha');
+          expect(barValues('drill-bar-chart-container'), fmt).toContain(shown);
+        });
+        expect(legendFor()).not.toContain('2.5h');
+      });
+
       it('dateFormat iso leaves the date as a plain ISO day', () => {
         window.setSetting('dateFormat', 'iso');
         expect(window.formatDateShort('2026-02-22')).toBe('2026-02-22');
