@@ -72,6 +72,7 @@
     },
     "NO_DATA_PERIOD": "No data for selected period",
     "OTHER": "Other",
+    "TAG_OVERLAP": "Tasks with several tags count toward each of them, so these add up to more than the total.",
     "DAILY_TIME": "Daily Time",
     "DAILY_TIME_FOR": "{{name}} — Daily Time"
   },
