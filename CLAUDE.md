@@ -216,6 +216,24 @@ buildPunchcard(ctx, from, to) → renderPunchcard()  — weekday × hour
 Tracked time is **day-granular** (`timeSpentOnDay: {'2026-02-22': ms}`). There is no hour-of-day
 signal for it anywhere in the payload — the punchcard is completions only, from the `doneOn` epoch.
 
+### Layout
+
+There is no page header: the title is a screen-reader-only `<h1>` (on screen it would repeat the
+first tab's label), and the Period controls sit in the tab bar's `.tab-tools`. The bar uses
+`flex-wrap: wrap-reverse`, so on a narrow window the tools wrap onto a row *above* the tabs and the
+active tab's underline stays on the bar's bottom border.
+
+- **Width and height are separate axes.** `max-width` breakpoints (900 / 560) decide what
+  reflows; `max-height` breakpoints (820 / 640) trim vertical padding and chart height. All of them
+  are `@media screen and (…)` so print keeps its own layout. Don't drop the `screen`: a printed
+  page is ~750 CSS px wide and would pick up the narrow-window rules.
+- **Size by the box, not the window, where the box varies.** `.view-content` is a size container
+  (the four-card stat rows go 4 → 2 → 1 off it), and each `.chart-card` is one for the pie.
+- **The bar chart has no pixel constants.** Its height comes from CSS (`.chart-container`), and
+  `renderGenericBarChart` places bars, grid lines and the goal line as fractions of it
+  (`yAt()`), so a breakpoint that changes the height needs no JS.
+- Phone-sized layouts are out of scope (issue #25).
+
 ### Theming
 
 All colors are CSS custom properties (`--bg`, `--text-color`, `--c-primary`, etc.). Dark mode is toggled by `.dark-theme` on `<body>` — mirroring the host app's class injection.
