@@ -484,12 +484,16 @@
       .container { gap: var(--s2, 1rem); }
       .view-content { padding: var(--s2, 1rem); }
       .tabs { padding: 0 var(--s, 0.5rem); }
-      .tab-btn { padding: 0.75rem 0.7rem; font-size: 0.9rem; }
+      .tab-btn { padding: 0.75rem 0.55rem; font-size: 0.9rem; }
+      .tabs { column-gap: 0.25rem; }
+      .tab-tools { gap: 0.25rem; }
+      .tab-tools .control-box { padding: 0.25rem 0.4rem; }
+      .settings-btn { padding: 0.4rem; }
       .grid-3, .grid-2 { gap: var(--s2, 1rem); margin-bottom: var(--s2, 1rem); }
       .stat-value { font-size: 1.85rem; }
       /* The select's own value says what it is ("Today", "This Week"). */
       .period-label, .share-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
-      .share-btn { padding: var(--s, 0.5rem); }
+      .share-btn { padding: 0.4rem; }
     }
     @media screen and (max-width: 560px) {
       body { padding: var(--s, 0.5rem); }
