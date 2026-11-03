@@ -28,6 +28,63 @@ describe('Date Range Reporter UI', () => {
     }
   });
 
+  describe('Breakdown period total', () => {
+    const selectRange = (from, to) => {
+      document.getElementById('date-preset').value = 'custom';
+      document.getElementById('date-from').value = from;
+      document.getElementById('date-to').value = to;
+      document.getElementById('pie-chart-select').value = 'time';
+    };
+    const totalValue = () => document.querySelector('.pie-total-value').textContent;
+
+    it('updates the total with the selected range and does not double count tags or subtasks', () => {
+      const tasks = [
+        { id: 'parent', projectId: 'p', tagIds: ['a', 'b'], timeSpentOnDay: {
+          '2026-10-01': 5400000, '2026-10-02': 3600000, '2026-09-30': 7200000
+        } },
+        { id: 'child', parentId: 'parent', projectId: 'p', timeSpentOnDay: { '2026-10-01': 1800000 } }
+      ];
+      const projects = [{ id: 'p', title: 'Study' }];
+      selectRange('2026-10-01', '2026-10-02');
+      window.processData(tasks, projects);
+      expect(totalValue()).toBe('2h 30m');
+
+      // Tag view still shows the deduplicated period total, and the overlap note
+      // that main added is kept alongside it.
+      document.getElementById('pie-dim-tag').click();
+      expect(totalValue()).toBe('2h 30m');
+      expect(document.getElementById('pie-legend-container').textContent).toContain('several tags');
+
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData(tasks, projects);
+      expect(totalValue()).toBe('1h 30m');
+
+      document.getElementById('pie-chart-select').value = 'completed';
+      window.updatePieChart();
+      expect(document.getElementById('pie-total')).toBeNull();
+    });
+
+    it('shows zero for an empty range and respects time formatting', () => {
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData([], []);
+      expect(totalValue()).toBe('0h 0m');
+      expect(document.querySelector('.pie-total-label').textContent).toBe('Period total');
+      window.setSetting('timeFormat', 'minutes');
+      expect(totalValue()).toBe('0m');
+    });
+
+    it('replaces a non-zero total with zero when the range becomes empty', () => {
+      const tasks = [{ id: 'one', projectId: 'p', timeSpentOnDay: { '2026-10-01': 9000000 } }];
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData(tasks, [{ id: 'p', title: 'Study' }]);
+      expect(totalValue()).toBe('2h 30m');
+
+      window.processData([], []);
+      expect(document.querySelectorAll('#pie-total').length).toBe(1);
+      expect(totalValue()).toBe('0h 0m');
+    });
+  });
+
   describe('Utility Functions', () => {
     it('should correctly format time in milliseconds to hours and minutes', () => {
       // Testing the formatTime function defined in the script
@@ -335,6 +392,56 @@ describe('Date Range Reporter UI', () => {
   });
 
   describe('Tag Breakdown', () => {
+    // #27: a task counts toward every one of its tags, so the tag slices can add
+    // up to more than the time actually tracked. The legend says so, but only
+    // when it is true.
+    describe('overlap note', () => {
+      const today = () => toLocalDate(new Date());
+      const tags = [{ id: 'x', title: 'Frontend' }, { id: 'y', title: 'Design' }];
+      const note = () => document.querySelector('#pie-legend-container .pie-note');
+      const showPie = (metric, dim) => {
+        const pie = document.getElementById('pie-chart-select');
+        pie.value = metric;
+        pie.dispatchEvent(new Event('change'));
+        document.getElementById(dim === 'tag' ? 'pie-dim-tag' : 'pie-dim-project').click();
+      };
+
+      it('appears in the Tag view when a task carries several tags', () => {
+        window.processData([
+          { id: 'a', parentId: null, title: 'Both', isDone: true, doneOn: Date.now(), projectId: null,
+            tagIds: ['x', 'y'], timeSpentOnDay: { [today()]: 7200000 } },
+          { id: 'b', parentId: null, title: 'Loose', isDone: false, projectId: null,
+            tagIds: [], timeSpentOnDay: { [today()]: 3600000 } }
+        ], [], tags);
+        showPie('time', 'tag');
+        expect(note()).not.toBeNull();
+        expect(note().textContent).toContain('add up to more than the total');
+        // Task counts overlap the same way.
+        showPie('completed', 'tag');
+        expect(note()).not.toBeNull();
+      });
+
+      it('stays away from the Project view, which always adds up', () => {
+        window.processData([
+          { id: 'a', parentId: null, title: 'Both', isDone: false, projectId: null,
+            tagIds: ['x', 'y'], timeSpentOnDay: { [today()]: 7200000 } }
+        ], [], tags);
+        showPie('time', 'project');
+        expect(note()).toBeNull();
+      });
+
+      it('stays away when no task has more than one tag', () => {
+        window.processData([
+          { id: 'a', parentId: null, title: 'One tag', isDone: false, projectId: null,
+            tagIds: ['x'], timeSpentOnDay: { [today()]: 7200000 } },
+          { id: 'b', parentId: null, title: 'No tags', isDone: false, projectId: null,
+            tagIds: [], timeSpentOnDay: { [today()]: 3600000 } }
+        ], [], tags);
+        showPie('time', 'tag');
+        expect(note()).toBeNull();
+      });
+    });
+
     it('should accumulate time into tagData by tag name', () => {
       const todayStr = toLocalDate(new Date());
       const tags = [{ id: 'tag1', title: 'Frontend' }, { id: 'tag2', title: 'Backend' }];
@@ -1151,6 +1258,33 @@ describe('Date Range Reporter UI', () => {
         expect(window.formatTime(9000000)).toBe('2.50h');
         window.setSetting('timeFormat', 'minutes');
         expect(window.formatTime(9000000)).toBe('150m');
+      });
+
+      // #26: the pie legend and the bar tooltips used their own decimal-hours
+      // formatter, so they ignored this setting while the rest of the page obeyed it.
+      it('timeFormat applies to the pie legend and the bar chart tooltips', () => {
+        const today = toLocalDate(new Date());
+        const tasks = [{ id: 'tf', parentId: null, title: 'Long task', isDone: false,
+          projectId: 'p1', tagIds: [], timeSpentOnDay: { [today]: 9000000 } }]; // 2h 30m
+        const legendFor = () => document.getElementById('pie-legend-container').textContent;
+        const barValues = (id) => [...document.querySelectorAll(`#${id} .bar`)].map(b => b.getAttribute('data-val'));
+        const pie = document.getElementById('pie-chart-select');
+        const bar = document.getElementById('bar-chart-select');
+        pie.value = 'time';
+        bar.value = 'time';
+
+        // setSetting re-processes from the cached tasks, which a test drives directly,
+        // so each format is set first and the data processed after.
+        [['hm', '2h 30m'], ['decimal', '2.50h'], ['minutes', '150m']].forEach(([fmt, shown]) => {
+          window.setSetting('timeFormat', fmt);
+          window.processData(tasks, [{ id: 'p1', title: 'Alpha' }], []);
+          expect(legendFor(), fmt).toContain(shown);
+          expect(barValues('bar-chart-container'), fmt).toContain(shown);
+          window.setDrillDimension('project');
+          window.setDrillEntity('Alpha');
+          expect(barValues('drill-bar-chart-container'), fmt).toContain(shown);
+        });
+        expect(legendFor()).not.toContain('2.5h');
       });
 
       it('dateFormat iso leaves the date as a plain ISO day', () => {
