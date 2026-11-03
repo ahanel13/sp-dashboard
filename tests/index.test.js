@@ -28,6 +28,63 @@ describe('Date Range Reporter UI', () => {
     }
   });
 
+  describe('Breakdown period total', () => {
+    const selectRange = (from, to) => {
+      document.getElementById('date-preset').value = 'custom';
+      document.getElementById('date-from').value = from;
+      document.getElementById('date-to').value = to;
+      document.getElementById('pie-chart-select').value = 'time';
+    };
+    const totalValue = () => document.querySelector('.pie-total-value').textContent;
+
+    it('updates the total with the selected range and does not double count tags or subtasks', () => {
+      const tasks = [
+        { id: 'parent', projectId: 'p', tagIds: ['a', 'b'], timeSpentOnDay: {
+          '2026-10-01': 5400000, '2026-10-02': 3600000, '2026-09-30': 7200000
+        } },
+        { id: 'child', parentId: 'parent', projectId: 'p', timeSpentOnDay: { '2026-10-01': 1800000 } }
+      ];
+      const projects = [{ id: 'p', title: 'Study' }];
+      selectRange('2026-10-01', '2026-10-02');
+      window.processData(tasks, projects);
+      expect(totalValue()).toBe('2h 30m');
+
+      // Tag view still shows the deduplicated period total, and the overlap note
+      // that main added is kept alongside it.
+      document.getElementById('pie-dim-tag').click();
+      expect(totalValue()).toBe('2h 30m');
+      expect(document.getElementById('pie-legend-container').textContent).toContain('several tags');
+
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData(tasks, projects);
+      expect(totalValue()).toBe('1h 30m');
+
+      document.getElementById('pie-chart-select').value = 'completed';
+      window.updatePieChart();
+      expect(document.getElementById('pie-total')).toBeNull();
+    });
+
+    it('shows zero for an empty range and respects time formatting', () => {
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData([], []);
+      expect(totalValue()).toBe('0h 0m');
+      expect(document.querySelector('.pie-total-label').textContent).toBe('Period total');
+      window.setSetting('timeFormat', 'minutes');
+      expect(totalValue()).toBe('0m');
+    });
+
+    it('replaces a non-zero total with zero when the range becomes empty', () => {
+      const tasks = [{ id: 'one', projectId: 'p', timeSpentOnDay: { '2026-10-01': 9000000 } }];
+      selectRange('2026-10-01', '2026-10-01');
+      window.processData(tasks, [{ id: 'p', title: 'Study' }]);
+      expect(totalValue()).toBe('2h 30m');
+
+      window.processData([], []);
+      expect(document.querySelectorAll('#pie-total').length).toBe(1);
+      expect(totalValue()).toBe('0h 0m');
+    });
+  });
+
   describe('Utility Functions', () => {
     it('should correctly format time in milliseconds to hours and minutes', () => {
       // Testing the formatTime function defined in the script
