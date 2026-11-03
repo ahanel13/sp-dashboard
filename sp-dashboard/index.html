@@ -221,9 +221,12 @@
 
     .pie-wrapper { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; gap: 2rem; }
     .pie-chart {
-      width: 180px; height: 180px; flex-shrink: 0;
+      position: relative; width: 180px; height: 180px; flex-shrink: 0;
     }
     .pie-chart svg { display: block; width: 100%; height: 100%; }
+    .pie-total { position: absolute; inset: 28%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; pointer-events: none; }
+    .pie-total-label { font-size: 0.65rem; color: var(--text-color-muted, #9e9e9e); }
+    .pie-total-value { font-size: 0.875rem; font-weight: 600; overflow-wrap: anywhere; }
     .pie-note { margin-top: 0.25rem; font-size: 0.75rem; line-height: 1.35; color: var(--text-color-muted, #9e9e9e); }
     .pie-legend { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 0.5rem; }
     .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; }
@@ -1439,6 +1442,7 @@
           "other": "{{count}} tasks"
         },
         "NO_DATA_PERIOD": "No data for selected period",
+        "PERIOD_TOTAL": "Period total",
         "OTHER": "Other",
         "TAG_OVERLAP": "Tasks with several tags count toward each of them, so these add up to more than the total.",
         "DAILY_TIME": "Daily Time",
@@ -2306,7 +2310,11 @@
       // and the legend says so (#27). With no overlap the note stays away.
       const sum = (data) => Object.values(data).reduce((acc, v) => acc + (v > 0 ? v : 0), 0);
       const overlaps = isTag && sum(tagData) > sum(projectData);
-      renderNativePieChart(isTag ? tagData : projectData, fmt, overlaps ? t('CHARTS.TAG_OVERLAP') : null);
+      renderNativePieChart(isTag ? tagData : projectData, fmt, {
+        note: overlaps ? t('CHARTS.TAG_OVERLAP') : null,
+        // Tags may overlap: use the range's unique tracked time, not the sum of slices.
+        totalMs: type === 'time' ? latestMetrics.totalTimeSpent : null
+      });
     };
 
     const setPieDimension = (dim) => {
@@ -2604,8 +2612,9 @@
       });
     };
 
-    // `note`, when given, is a line of explanation drawn under the legend.
-    const renderNativePieChart = (projectData, formatFn, note) => {
+    // `note`, when given, is a line of explanation drawn under the legend; `totalMs`,
+    // when given, is the period total drawn in the middle of the donut.
+    const renderNativePieChart = (projectData, formatFn, { note = null, totalMs = null } = {}) => {
       const pieEl = document.getElementById('pie-chart-element');
       const legendEl = document.getElementById('pie-legend-container');
       legendEl.innerHTML = '';
@@ -2630,6 +2639,17 @@
       const SW = 8.5;      // stroke width → ~58% inner-hole ratio, matching the old look
       const svgOpen = `<svg viewBox="0 0 42 42" width="100%" height="100%" role="img" aria-label="${escapeHtml(t('CHARTS.BREAKDOWN_ARIA'))}">`;
 
+      const appendTotal = () => {
+        if (totalMs === null || totalMs === undefined) return;
+        const totalEl = document.createElement('div');
+        totalEl.id = 'pie-total';
+        totalEl.className = 'pie-total';
+        totalEl.innerHTML = '<span class="pie-total-label"></span><span class="pie-total-value"></span>';
+        totalEl.firstChild.textContent = t('CHARTS.PERIOD_TOTAL');
+        totalEl.lastChild.textContent = formatFn(totalMs);
+        pieEl.append(totalEl);
+      };
+
       if (totalVal === 0 || entries.length === 0) {
         // Rendered as an SVG stroke (foreground) so it prints reliably — unlike a CSS
         // conic-gradient background, which many print/PDF engines drop. The colour is
@@ -2637,6 +2657,7 @@
         // serialises this SVG away from the page stylesheet, where a var() has
         // nothing left to resolve against.
         pieEl.innerHTML = `${svgOpen}<circle cx="21" cy="21" r="${R}" fill="none" stroke="${cssVar('--divider-color', '#333')}" stroke-width="${SW}"></circle></svg>`;
+        appendTotal();
         legendEl.innerHTML = `<div class="text-muted text-sm">${escapeHtml(t('CHARTS.NO_DATA_PERIOD'))}</div>`;
         return;
       }
@@ -2669,6 +2690,7 @@
       });
       if (note) legendEl.innerHTML += `<div class="pie-note">${escapeHtml(note)}</div>`;
       pieEl.innerHTML = `${svgOpen}${segments}</svg>`;
+      appendTotal();
     };
 
     const renderTable = (entries) => {
