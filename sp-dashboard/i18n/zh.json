@@ -3,7 +3,6 @@
     "TITLE": "仪表盘"
   },
   "HEADER": {
-    "SUBTITLE": "选择时间范围查看统计",
     "FROM": "开始",
     "TO": "结束",
     "PERIOD": "时间范围",

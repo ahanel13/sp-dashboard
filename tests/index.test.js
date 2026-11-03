@@ -28,6 +28,30 @@ describe('Date Range Reporter UI', () => {
     }
   });
 
+  describe('Responsive layout (issue #25)', () => {
+    it('has no visible page header and keeps the Period controls in the tab bar', () => {
+      expect(document.querySelector('header')).toBeNull();
+      // The title stays for assistive tech, but must not repeat the first tab on screen.
+      expect(document.querySelector('h1').classList.contains('sr-only')).toBe(true);
+      const tools = document.querySelector('.tabs .tab-tools');
+      for (const id of ['date-preset', 'custom-date-container', 'weekday-picker-container', 'settings-btn', 'share-btn']) {
+        expect(tools.querySelector('#' + id)).not.toBeNull();
+      }
+    });
+
+    it('sizes bars as a fraction of the chart, so the chart height can come from CSS', () => {
+      const today = toLocalDate(new Date());
+      document.getElementById('date-preset').value = 'today';
+      document.getElementById('bar-chart-select').value = 'time';
+      window.processData([{ id: 't', projectId: 'p', timeSpentOnDay: { [today]: 3600000 } }], [{ id: 'p', title: 'P' }]);
+      const bar = document.querySelector('#bar-chart-container .bar');
+      expect(bar.style.height).toMatch(/%$/);
+      document.querySelectorAll('.y-grid-line, .y-axis-label').forEach(el => {
+        expect(el.style.bottom).toContain('100%');
+      });
+    });
+  });
+
   describe('Breakdown period total', () => {
     const selectRange = (from, to) => {
       document.getElementById('date-preset').value = 'custom';

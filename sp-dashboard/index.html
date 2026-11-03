@@ -36,37 +36,12 @@
       gap: var(--s3, 1.5rem);
     }
     
-    .header {
-      display: flex;
-      flex-direction: column;
-      gap: var(--s, 0.5rem);
+    /* Visually hidden, still read by assistive tech. */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
     }
-    @media (min-width: 768px) { 
-      .header { 
-        flex-direction: row; 
-        justify-content: space-between; 
-        align-items: center; 
-      } 
-    }
-    
-    .title {
-      font-size: 2rem;
-      font-weight: 700;
-      margin: 0 0 var(--s-quarter, 0.25rem) 0;
-    }
-    
-    .subtitle {
-      color: var(--text-color-muted, #9e9e9e);
-      margin: 0;
-      font-size: 1rem;
-    }
-    
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: var(--s, 0.5rem);
-    }
-    
+
     .control-box {
       background: var(--card-bg, #1e1e1e);
       border: 1px solid var(--divider-color, #333);
@@ -110,16 +85,37 @@
     /* --- TABS --- */
     .tabs {
       display: flex;
+      flex-wrap: wrap-reverse;
+      align-items: center;
+      column-gap: var(--s, 0.5rem);
       border-bottom: 1px solid var(--divider-color, #333);
       padding: 0 var(--s2, 1rem);
       background: var(--card-bg, #1e1e1e);
       flex-shrink: 0;
     }
+    /* The tabs keep one row. When even they don't fit, they scroll sideways
+       rather than wrapping under one another. */
+    .tab-list {
+      display: flex; flex: 0 1 auto; min-width: 0;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .tab-list::-webkit-scrollbar { display: none; }
+    .tab-tools {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+      gap: var(--s, 0.5rem); margin-left: auto; padding: 0.25rem 0;
+    }
+    /* display: contents — the period boxes and the two icon buttons wrap as one
+       sequence, so a narrow bar never leaves the icons alone on their own row. */
+    .period-controls { display: contents; }
+    .tab-tools .control-box { flex-direction: row; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem; }
+    .tab-tools .control-box label { white-space: nowrap; }
+    .tab-tools select, .tab-tools input[type="date"] { font-size: 0.875rem; }
     
     .tab-btn {
       background: none;
       border: none;
       padding: var(--s2, 1rem) var(--s2, 1rem);
+      white-space: nowrap;
       cursor: pointer;
       color: var(--text-color-muted, #9e9e9e);
       font-size: 1rem;
@@ -146,13 +142,24 @@
     .text-red { color: #f87171 !important; }
 
     /* --- DASHBOARD GRID --- */
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--s3, 1.5rem); margin-bottom: var(--s3, 1.5rem); }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: var(--s3, 1.5rem); margin-bottom: var(--s3, 1.5rem); }
+    /* min(…, 100%): in a panel narrower than one track, the track shrinks to fit
+       instead of forcing the whole page to scroll sideways. */
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--s3, 1.5rem); margin-bottom: var(--s3, 1.5rem); }
+    /* The two four-card stat rows go 4 → 2 → 1 rather than auto-fit's 3 + 1,
+       measured against the view's own width (it is a size container). */
+    .view-content { container: view / inline-size; }
+    .stat-grid { grid-template-columns: 1fr; }
+    @container view (min-width: 400px) { .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @container view (min-width: 940px) { .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr)); gap: var(--s3, 1.5rem); margin-bottom: var(--s3, 1.5rem); }
 
     /* Icon presentation, hoisted off the twelve inline <svg>s. stroke-* inherit,
        so the paths need only their `d`. Keeps index.html small. */
     .ico { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
 
+    /* A chart card sizes its pie by its own width, not the window's: the same
+       card is full-width in a side panel and half-width on a desktop. */
+    .chart-card { container-type: inline-size; min-width: 0; }
     .stat-card, .chart-card {
       background: var(--bg, #121212);
       border: 1px solid var(--divider-color, #333);
@@ -193,8 +200,8 @@
     /* --- NATIVE CHARTS --- */
     .chart-container { position: relative; height: 250px; width: 100%; display: flex; justify-content: center; padding-left: 40px; }
     
-    .bar-chart { display: flex; align-items: flex-end; justify-content: flex-start; width: 100%; height: 100%; padding-top: 1rem; gap: 4px; overflow-x: auto; }
-    .bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; position: relative; height: 214px; margin-bottom: 20px; }
+    .bar-chart { display: flex; align-items: flex-end; justify-content: flex-start; width: 100%; height: 100%; padding-top: 16px; gap: 4px; overflow-x: auto; }
+    .bar-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; position: relative; height: calc(100% - 20px); margin-bottom: 20px; }
     .bar { width: 100%; max-width: 32px; background: var(--c-primary, #03a9f4); border-radius: 4px 4px 0 0; min-height: 2px; transition: height 0.3s; position: relative; }
     .bar-label { position: absolute; bottom: -20px; left: 0; right: 0; margin: 0; height: 20px; line-height: 20px; font-size: 0.7rem; color: var(--text-color-muted, #9e9e9e); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -230,9 +237,10 @@
     .pie-note { margin-top: 0.25rem; font-size: 0.75rem; line-height: 1.35; color: var(--text-color-muted, #9e9e9e); }
     .pie-legend { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; max-height: 200px; overflow-y: auto; padding-right: 0.5rem; }
     .legend-item { display: flex; align-items: center; justify-content: space-between; font-size: 0.875rem; }
-    .legend-label { display: flex; align-items: center; gap: 0.5rem; color: var(--text-color-muted, #9e9e9e); }
+    .legend-item { gap: 0.75rem; }
+    .legend-label { display: flex; align-items: center; gap: 0.5rem; color: var(--text-color-muted, #9e9e9e); min-width: 0; }
     .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;}
-    .legend-val { font-weight: 500; }
+    .legend-val { font-weight: 500; white-space: nowrap; }
 
     /* --- TABLE (DETAILED LIST) --- */
     .details-table { width: 100%; border-collapse: collapse; text-align: left; }
@@ -265,7 +273,7 @@
     }
     .details-table tr:last-child td { border-bottom: none; }
     .details-table tr:hover { background: rgba(255, 255, 255, 0.03); }
-    .time-cell { font-family: monospace; font-size: 0.9rem; }
+    .time-cell { font-family: monospace; font-size: 0.9rem; white-space: nowrap; }
 
     /* --- SHARE / EXPORT --- */
     .share-wrap { position: relative; display: flex; align-items: center; }
@@ -309,7 +317,7 @@
 
     /* --- SETTINGS --- */
     .settings-btn {
-      margin-left: auto; background: none; border: none; cursor: pointer;
+      background: none; border: none; cursor: pointer;
       color: var(--text-color-muted, #9e9e9e); padding: var(--s, 0.5rem);
       display: inline-flex; align-items: center;
     }
@@ -465,6 +473,98 @@
       clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
     }
 
+    /* --- RESPONSIVE ---
+       Two independent axes. Width decides what reflows; height decides how much
+       vertical padding and chart height we can afford before content falls below
+       the fold (a 1366×768 laptop leaves the iframe roughly 600px). Phone layouts
+       are out of scope (issue #25). Print and PNG export are unaffected: print
+       overrides these in its own block, and exports capture computed styles. */
+    @media screen and (max-width: 900px) {
+      body { padding: var(--s2, 1rem); }
+      .container { gap: var(--s2, 1rem); }
+      .view-content { padding: var(--s2, 1rem); }
+      .tabs { padding: 0 var(--s, 0.5rem); }
+      .tab-btn { padding: 0.75rem 0.7rem; font-size: 0.9rem; }
+      .grid-3, .grid-2 { gap: var(--s2, 1rem); margin-bottom: var(--s2, 1rem); }
+      .stat-value { font-size: 1.85rem; }
+      /* The select's own value says what it is ("Today", "This Week"). */
+      .period-label, .share-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+      .share-btn { padding: var(--s, 0.5rem); }
+    }
+    @media screen and (max-width: 560px) {
+      body { padding: var(--s, 0.5rem); }
+      .container { gap: var(--s, 0.5rem); }
+      .view-content { padding: var(--s, 0.5rem); }
+      .tab-btn { padding: 0.65rem 0.55rem; font-size: 0.85rem; }
+      .stat-card, .chart-card { padding: 0.75rem; }
+      .details-table th, .details-table td { padding: 0.35rem 0.5rem; }
+      .details-table td { font-size: 0.85rem; }
+      .overdue-section-header { padding: 0.5rem; }
+      .details-table .badge { padding: 3px 8px; }
+    }
+    @media screen and (max-height: 820px) {
+      body { padding-top: var(--s2, 1rem); padding-bottom: var(--s2, 1rem); }
+      .container { gap: var(--s2, 1rem); }
+      .view-content { padding-top: var(--s2, 1rem); padding-bottom: var(--s2, 1rem); }
+      .tab-btn { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+      .grid-3, .grid-2 { gap: var(--s2, 1rem); margin-bottom: var(--s2, 1rem); }
+      .stat-header { margin-bottom: 0.5rem; }
+      .stat-value { font-size: 1.85rem; }
+      .progress-track { margin-top: 0.6rem; }
+      .card-header { margin-bottom: 0.6rem; }
+      .chart-container { height: 210px; }
+      .pie-legend { max-height: 180px; }
+    }
+    @media screen and (max-height: 640px) {
+      body { padding-top: var(--s, 0.5rem); padding-bottom: var(--s, 0.5rem); }
+      .container { gap: var(--s, 0.5rem); }
+      .tab-btn { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+      .stat-card, .chart-card { padding: 0.75rem; }
+      .stat-value { font-size: 1.6rem; }
+      .chart-container { height: 180px; }
+      .pie-legend { max-height: 160px; }
+    }
+
+    /* Pie: shrink with its card, then drop the y-axis gutter it never uses. */
+    @container (max-width: 460px) {
+      .pie-wrapper { gap: 1rem; }
+      .pie-chart { width: 150px; height: 150px; }
+    }
+    @container (max-width: 380px) {
+      .pie-container { padding-left: 0; }
+      .pie-chart { width: 120px; height: 120px; }
+      .legend-item { font-size: 0.8rem; }
+    }
+
+    /* Settings modal: narrower rail and controls first, then stack. */
+    @media screen and (max-width: 760px) {
+      .settings-rail { width: 150px; }
+      .settings-panel { padding: var(--s2, 1rem); }
+    }
+    @media screen and (max-width: 600px) {
+      .settings-overlay { padding: var(--s, 0.5rem); }
+      .settings-body { flex-direction: column; }
+      /* The rail becomes a wrapping row of sections, with Export / Import / Reset
+         on a line of their own rather than scrolled out of sight. */
+      .settings-rail {
+        width: auto; flex-direction: row; flex-wrap: wrap; flex-shrink: 0; overflow: visible;
+        border-right: none; border-bottom: 1px solid var(--divider-color, #333); padding: 0;
+      }
+      .settings-rail-btn { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; padding: 0.55rem 0.75rem; }
+      .settings-rail-btn.active { border-bottom-color: var(--c-primary, #03a9f4); }
+      .settings-rail-foot {
+        flex-basis: 100%; margin-top: 0; flex-direction: row; flex-wrap: wrap; align-items: center;
+        padding: 0.45rem 0.75rem; gap: 0.4rem 1rem;
+      }
+      .settings-link { white-space: nowrap; }
+      .set-row { flex-direction: column; gap: 0.5rem; }
+      .set-ctl { width: 100%; }
+    }
+    @media screen and (max-height: 560px) {
+      .settings-overlay { padding: var(--s, 0.5rem); }
+      .settings-head { padding: 0.6rem var(--s2, 1rem); }
+    }
+
     /* --- PRINT --- */
     .print-only { display: none; }
     @media print {
@@ -483,7 +583,7 @@
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       .container { height: auto; max-width: none; gap: 0.75rem; }
-      .header, .tabs, .bar-tooltip, .share-wrap, .toast, .settings-overlay { display: none !important; }
+      .tabs, .bar-tooltip, .share-wrap, .toast, .settings-overlay { display: none !important; }
       .main-card { box-shadow: none; border: none; }
       .view-content { overflow: visible !important; height: auto !important; flex: none !important; }
       .view-content.hidden { display: none !important; }
@@ -506,80 +606,79 @@
     <!-- Print-only report title (filled in before window.print()) -->
     <div id="print-header" class="print-only"></div>
 
-    <!-- Header -->
-    <header class="header">
-      <div class="title-area">
-        <h1 class="title" data-i18n="APP.TITLE">Dashboard</h1>
-        <p class="subtitle" data-i18n="HEADER.SUBTITLE">Select a time period to view metrics</p>
-      </div>
-      
-      <div class="controls">
-        <!-- Custom Date Pickers (Hidden by default) -->
-        <div id="custom-date-container" class="control-box hidden" style="flex-direction: row; gap: var(--s2, 1rem);">
-          <div style="display: flex; flex-direction: column;">
-            <label for="date-from" data-i18n="HEADER.FROM">From</label>
-            <input type="date" id="date-from">
-          </div>
-          <div style="display: flex; flex-direction: column;">
-            <label for="date-to" data-i18n="HEADER.TO">To</label>
-            <input type="date" id="date-to">
-          </div>
-        </div>
-
-        <!-- Preset Dropdown -->
-        <div class="control-box">
-          <label for="date-preset" data-i18n="HEADER.PERIOD">Period</label>
-          <select id="date-preset">
-            <option value="today" selected data-i18n="PERIOD.TODAY">Today</option>
-            <option value="this-week" data-i18n="PERIOD.THIS_WEEK">This Week</option>
-            <option value="week" data-i18n="PERIOD.PAST_WEEK">Past Week</option>
-            <option value="month" data-i18n="PERIOD.THIS_MONTH">This Month</option>
-            <option value="year" data-i18n="PERIOD.PAST_YEAR">Past Year</option>
-            <option value="custom" data-i18n="PERIOD.CUSTOM">Custom Range...</option>
-            <option value="from-weekday" data-i18n="PERIOD.FROM_WEEKDAY">Starting from weekday</option>
-          </select>
-        </div>
-        <div id="weekday-picker-container" class="control-box hidden">
-          <label for="weekday-select" data-i18n="HEADER.WEEKDAY">Weekday</label>
-          <select id="weekday-select">
-            <option value="1" data-weekday="1">Monday</option>
-            <option value="2" data-weekday="2">Tuesday</option>
-            <option value="3" data-weekday="3">Wednesday</option>
-            <option value="4" data-weekday="4">Thursday</option>
-            <option value="5" data-weekday="5">Friday</option>
-            <option value="6" data-weekday="6">Saturday</option>
-            <option value="0" data-weekday="0">Sunday</option>
-          </select>
-        </div>
-      </div>
-    </header>
+    <!-- The page title is for assistive tech only: on screen it would repeat the
+         first tab's label. The Period controls live in the tab bar (issue #25). -->
+    <h1 class="sr-only" data-i18n="APP.TITLE">Dashboard</h1>
 
     <!-- Main Card Container -->
     <div class="main-card">
       <!-- Tabs -->
       <div class="tabs">
-        <button id="tab-btn-dashboard" class="tab-btn active" data-i18n="TABS.DASHBOARD">Dashboard</button>
-        <button id="tab-btn-details" class="tab-btn" data-i18n="TABS.DETAILS">Detailed List</button>
-        <button id="tab-btn-drilldown" class="tab-btn" data-i18n="TABS.DRILLDOWN">By Project / Tag</button>
-        <button id="tab-btn-heatmap" class="tab-btn" data-i18n="TABS.HEATMAP">Heatmap</button>
+        <!-- wrap-reverse: when the bar is too narrow for one row, the tools move
+             onto a row *above* the tabs, so the active tab's underline still sits
+             on the bar's bottom border. -->
+        <div class="tab-list">
+          <button id="tab-btn-dashboard" class="tab-btn active" data-i18n="TABS.DASHBOARD">Dashboard</button>
+          <button id="tab-btn-details" class="tab-btn" data-i18n="TABS.DETAILS">Detailed List</button>
+          <button id="tab-btn-drilldown" class="tab-btn" data-i18n="TABS.DRILLDOWN">By Project / Tag</button>
+          <button id="tab-btn-heatmap" class="tab-btn" data-i18n="TABS.HEATMAP">Heatmap</button>
+        </div>
 
-        <!-- Settings. Deliberately not a 4th tab: the tab bar feeds Share / Print /
-             Copy image, and settings must never end up inside an exported report. -->
-        <button id="settings-btn" class="settings-btn" title="Settings" data-i18n-title="TABS.SETTINGS" aria-haspopup="dialog" aria-expanded="false">
-          <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
-        </button>
+        <div class="tab-tools">
+          <div class="period-controls">
+            <!-- Custom Date Pickers (Hidden by default) -->
+            <div id="custom-date-container" class="control-box hidden">
+              <label for="date-from" data-i18n="HEADER.FROM">From</label>
+              <input type="date" id="date-from">
+              <label for="date-to" data-i18n="HEADER.TO">To</label>
+              <input type="date" id="date-to">
+            </div>
 
-        <!-- Share / export the currently visible tab -->
-        <div class="share-wrap">
-          <button id="share-btn" class="share-btn" aria-haspopup="true" aria-expanded="false" title="Share this tab" data-i18n-title="TABS.SHARE_TITLE">
-            <svg class="ico" viewBox="0 0 24 24"><path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
-            <span data-i18n="TABS.SHARE">Share</span>
+            <!-- Preset Dropdown -->
+            <div class="control-box">
+              <label for="date-preset" class="period-label" data-i18n="HEADER.PERIOD">Period</label>
+              <select id="date-preset">
+                <option value="today" selected data-i18n="PERIOD.TODAY">Today</option>
+                <option value="this-week" data-i18n="PERIOD.THIS_WEEK">This Week</option>
+                <option value="week" data-i18n="PERIOD.PAST_WEEK">Past Week</option>
+                <option value="month" data-i18n="PERIOD.THIS_MONTH">This Month</option>
+                <option value="year" data-i18n="PERIOD.PAST_YEAR">Past Year</option>
+                <option value="custom" data-i18n="PERIOD.CUSTOM">Custom Range...</option>
+                <option value="from-weekday" data-i18n="PERIOD.FROM_WEEKDAY">Starting from weekday</option>
+              </select>
+            </div>
+            <div id="weekday-picker-container" class="control-box hidden">
+              <label for="weekday-select" class="period-label" data-i18n="HEADER.WEEKDAY">Weekday</label>
+              <select id="weekday-select">
+                <option value="1" data-weekday="1">Monday</option>
+                <option value="2" data-weekday="2">Tuesday</option>
+                <option value="3" data-weekday="3">Wednesday</option>
+                <option value="4" data-weekday="4">Thursday</option>
+                <option value="5" data-weekday="5">Friday</option>
+                <option value="6" data-weekday="6">Saturday</option>
+                <option value="0" data-weekday="0">Sunday</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Settings. Deliberately not a 4th tab: the tab bar feeds Share / Print /
+               Copy image, and settings must never end up inside an exported report. -->
+          <button id="settings-btn" class="settings-btn" title="Settings" data-i18n-title="TABS.SETTINGS" aria-haspopup="dialog" aria-expanded="false">
+            <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" stroke-width="2"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
           </button>
-          <div id="share-menu" class="share-menu hidden" role="menu">
-            <button class="share-menu-item" role="menuitem" data-action="copy-image" data-i18n="SHARE_MENU.COPY_IMAGE">Copy image</button>
-            <button class="share-menu-item" role="menuitem" data-action="download-png" data-i18n="SHARE_MENU.DOWNLOAD_PNG">Download PNG</button>
-            <button class="share-menu-item" role="menuitem" data-action="print" data-i18n="SHARE_MENU.PRINT">Print / Save as PDF</button>
-            <button class="share-menu-item" role="menuitem" data-action="copy-text" data-i18n="SHARE_MENU.COPY_TEXT">Copy text summary</button>
+
+          <!-- Share / export the currently visible tab -->
+          <div class="share-wrap">
+            <button id="share-btn" class="share-btn" aria-haspopup="true" aria-expanded="false" title="Share this tab" data-i18n-title="TABS.SHARE_TITLE">
+              <svg class="ico" viewBox="0 0 24 24"><path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+              <span class="share-label" data-i18n="TABS.SHARE">Share</span>
+            </button>
+            <div id="share-menu" class="share-menu hidden" role="menu">
+              <button class="share-menu-item" role="menuitem" data-action="copy-image" data-i18n="SHARE_MENU.COPY_IMAGE">Copy image</button>
+              <button class="share-menu-item" role="menuitem" data-action="download-png" data-i18n="SHARE_MENU.DOWNLOAD_PNG">Download PNG</button>
+              <button class="share-menu-item" role="menuitem" data-action="print" data-i18n="SHARE_MENU.PRINT">Print / Save as PDF</button>
+              <button class="share-menu-item" role="menuitem" data-action="copy-text" data-i18n="SHARE_MENU.COPY_TEXT">Copy text summary</button>
+            </div>
           </div>
         </div>
       </div>
@@ -590,7 +689,7 @@
       <div id="view-dashboard" class="view-content">
         
         <!-- Top Stats Row -->
-        <div class="grid-3">
+        <div class="grid-3 stat-grid">
           
           <div class="stat-card" id="stat-card-time">
             <div class="stat-header">
@@ -670,7 +769,7 @@
 
           <div class="chart-card">
             <div class="card-header" style="flex-direction:column; align-items:flex-start; gap:0.5rem;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem;">
                 <h3 class="card-title" data-i18n="CHARTS.BREAKDOWN">Breakdown</h3>
                 <select id="pie-chart-select" class="chart-select">
                   <option value="time" data-i18n="CHARTS.METRIC_TIME">Time Tracked</option>
@@ -684,7 +783,7 @@
                 <button id="pie-dim-tag" class="dim-btn" data-i18n="CHARTS.TAG">Tag</button>
               </div>
             </div>
-            <div class="chart-container">
+            <div class="chart-container pie-container">
               <div class="pie-wrapper">
                 <div class="pie-chart" id="pie-chart-element"></div>
                 <div class="pie-legend" id="pie-legend-container"></div>
@@ -751,7 +850,7 @@
         </div>
 
         <!-- Stat cards -->
-        <div class="grid-3" style="margin-bottom:var(--s3,1.5rem);">
+        <div class="grid-3 stat-grid" style="margin-bottom:var(--s3,1.5rem);">
           <div class="stat-card">
             <div class="stat-header">
               <h3 class="stat-title" data-i18n="STATS.TIME_SPENT">Time Spent</h3>
@@ -1374,7 +1473,6 @@
         "TITLE": "Dashboard"
       },
       "HEADER": {
-        "SUBTITLE": "Select a time period to view metrics",
         "FROM": "From",
         "TO": "To",
         "PERIOD": "Period",
@@ -1587,7 +1685,7 @@
           "APPEARANCE": "Appearance",
           "APPEARANCE_SUB": "Purely visual — nothing here changes a number",
           "HEATMAP": "Heatmap",
-          "HEATMAP_SUB": "The Heatmap tab keeps its own period, because the one in the header defaults to a single day",
+          "HEATMAP_SUB": "The Heatmap tab keeps its own period, because the main Period control defaults to a single day",
           "GOALS": "Goals",
           "GOALS_SUB": "Targets are drawn onto the Dashboard tab — a dashed line across the bar chart, a bar under the Total Time card",
           "ADVANCED": "Advanced",
@@ -2494,20 +2592,25 @@
       const scaleMaxUnits = Math.max(yStep * 4, 4);
       const scaleMax = scaleMaxUnits * unitSize;
 
-      const CHART_HEIGHT = 250, BOTTOM_OFFSET = 20, TOP_OFFSET = 16;
-      const BAR_AREA = CHART_HEIGHT - TOP_OFFSET - BOTTOM_OFFSET;
+      // The chart's height is set in CSS and changes with the window (see the
+      // max-height breakpoints), so nothing here is in pixels of bar area: a
+      // value is placed as a fraction of the bar column, which is the container
+      // less the label strip (BOTTOM_OFFSET) and the .bar-chart top padding.
+      const BOTTOM_OFFSET = 20, TOP_OFFSET = 16;
+      const yAt = (frac, extraPx = 0) =>
+        `calc(${BOTTOM_OFFSET + extraPx}px + (100% - ${BOTTOM_OFFSET + TOP_OFFSET}px) * ${frac})`;
 
       [1, 2, 3, 4].forEach(i => {
-        const bottomPx = BOTTOM_OFFSET + (i / 4) * BAR_AREA;
+        const bottomPx = yAt(i / 4);
 
         const line = document.createElement('div');
         line.className = 'y-grid-line';
-        line.style.bottom = bottomPx + 'px';
+        line.style.bottom = bottomPx;
         parentEl.appendChild(line);
 
         const lbl = document.createElement('div');
         lbl.className = 'y-axis-label';
-        lbl.style.bottom = bottomPx + 'px';
+        lbl.style.bottom = bottomPx;
         lbl.textContent = yTickFn(i * yStep * unitSize);
         parentEl.appendChild(lbl);
       });
@@ -2525,25 +2628,25 @@
 
       // A per-day target means nothing against a weekly or monthly bucket.
       if (goal && goal.value > 0 && grouping === 'daily' && goal.value <= scaleMax) {
-        const bottomPx = BOTTOM_OFFSET + (goal.value / scaleMax) * BAR_AREA;
+        const bottomPx = yAt(goal.value / scaleMax);
         const gLine = document.createElement('div');
         gLine.className = 'goal-line';
-        gLine.style.bottom = bottomPx + 'px';
+        gLine.style.bottom = bottomPx;
         parentEl.appendChild(gLine);
         const gLabel = document.createElement('div');
         gLabel.className = 'goal-line-label';
-        gLabel.style.bottom = (bottomPx + 2) + 'px';
+        gLabel.style.bottom = yAt(goal.value / scaleMax, 2);
         gLabel.textContent = goal.label;
         parentEl.appendChild(gLabel);
       }
 
       const appendBar = (val, label, titleDate) => {
-        const heightPx = (val / scaleMax) * BAR_AREA;
+        const heightPct = (val / scaleMax) * 100;
         const displayVal = formatFn(val);
         const col = document.createElement('div');
         col.className = 'bar-col';
         col.innerHTML = `
-          <div class="bar" style="height: ${heightPx}px; background: ${color};" data-val="${escapeHtml(displayVal)}"></div>
+          <div class="bar" style="height: ${heightPct}%; background: ${color};" data-val="${escapeHtml(displayVal)}"></div>
           <div class="bar-label" title="${escapeHtml(titleDate)}">${escapeHtml(label)}</div>
         `;
         container.appendChild(col);
