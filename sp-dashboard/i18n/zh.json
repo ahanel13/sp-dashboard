@@ -68,7 +68,9 @@
       "other": "{{count}} 项任务"
     },
     "NO_DATA_PERIOD": "所选时段暂无数据",
+    "PERIOD_TOTAL": "所选时段总计",
     "OTHER": "其他",
+    "TAG_OVERLAP": "带有多个标签的任务会分别计入每个标签，因此各标签的合计可能超过实际总量。",
     "DAILY_TIME": "每日时长",
     "DAILY_TIME_FOR": "{{name}} — 每日时长"
   },
