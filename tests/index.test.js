@@ -2563,42 +2563,50 @@ describe('Date Range Reporter UI', () => {
       });
     });
 
-    it('zh.json translates every string', () => {
-      const zh = flatten(JSON.parse(readFileSync(resolve(I18N_DIR, 'zh.json'), 'utf8')));
-      const missing = Object.keys(EN).filter(k => {
-        const base = k.replace(/\.(zero|one|two|few|many|other)$/, '');
-        return zh[k] === undefined && !(base !== k && zh[`${base}.other`] !== undefined);
-      });
-      expect(missing).toEqual([]);
-    });
+    // Languages that must be complete, and a few strings to spot-check them with.
+    const FULL_TRANSLATIONS = [
+      { code: 'zh', name: 'Simplified Chinese', lang: 'zh-CN', heatmapTab: '热力图', totalSuffix: '/ 共 2 项', summary: '效率摘要' },
+      { code: 'es', name: 'Spanish', lang: 'es', heatmapTab: 'Mapa de calor', totalSuffix: '/ 2 en total', summary: 'Resumen de productividad' }
+    ];
 
-    it('renders every tab and settings panel in Simplified Chinese with no raw keys or placeholders', async () => {
-      const zh = flatten(JSON.parse(readFileSync(resolve(I18N_DIR, 'zh.json'), 'utf8')));
-      window.PluginAPI = {
-        // Like the host: the app language's text, else English, else the key.
-        translate: vi.fn(async (key) => zh[key] !== undefined ? zh[key] : (EN[key] !== undefined ? EN[key] : key)),
-        getCurrentLanguage: vi.fn(async () => 'zh'),
-        registerHook: vi.fn(async () => {}),
-        getTasks: () => new Promise(() => {})
-      };
-      await window.refreshLanguage();
-      expect(document.documentElement.lang).toBe('zh-CN');
-      window.processData(sampleTasks(), sampleProjects, []);
-      expect(document.getElementById('tab-btn-heatmap').textContent).toBe('热力图');
-      expect(document.getElementById('stat-tasks-total').innerText).toBe('/ 共 2 项');
+    FULL_TRANSLATIONS.forEach(({ code, name, lang, heatmapTab, totalSuffix, summary }) => {
+      it(`${code}.json translates every string`, () => {
+        const messages = flatten(JSON.parse(readFileSync(resolve(I18N_DIR, `${code}.json`), 'utf8')));
+        const missing = Object.keys(EN).filter(k => {
+          const base = k.replace(/\.(zero|one|two|few|many|other)$/, '');
+          return messages[k] === undefined && !(base !== k && messages[`${base}.other`] !== undefined);
+        });
+        expect(missing).toEqual([]);
+      });
 
-      const leftovers = /\{\{|\b[A-Z][A-Z_]+\.[A-Z][A-Z_.]+\b/;
-      ['dashboard', 'details', 'drilldown', 'heatmap'].forEach(tab => {
-        window.switchTab(tab);
-        expect(document.getElementById(`view-${tab}`).textContent.match(leftovers), tab).toBeNull();
+      it(`renders every tab and settings panel in ${name} with no raw keys or placeholders`, async () => {
+        const messages = flatten(JSON.parse(readFileSync(resolve(I18N_DIR, `${code}.json`), 'utf8')));
+        window.PluginAPI = {
+          // Like the host: the app language's text, else English, else the key.
+          translate: vi.fn(async (key) => messages[key] !== undefined ? messages[key] : (EN[key] !== undefined ? EN[key] : key)),
+          getCurrentLanguage: vi.fn(async () => code),
+          registerHook: vi.fn(async () => {}),
+          getTasks: () => new Promise(() => {})
+        };
+        await window.refreshLanguage();
+        expect(document.documentElement.lang).toBe(lang);
+        window.processData(sampleTasks(), sampleProjects, []);
+        expect(document.getElementById('tab-btn-heatmap').textContent).toBe(heatmapTab);
+        expect(document.getElementById('stat-tasks-total').innerText).toBe(totalSuffix);
+
+        const leftovers = /\{\{|\b[A-Z][A-Z_]+\.[A-Z][A-Z_.]+\b/;
+        ['dashboard', 'details', 'drilldown', 'heatmap'].forEach(tab => {
+          window.switchTab(tab);
+          expect(document.getElementById(`view-${tab}`).textContent.match(leftovers), tab).toBeNull();
+        });
+        window.openSettings();
+        const rail = document.getElementById('settings-rail');
+        window.SETTINGS_SECTIONS.forEach(section => {
+          rail.querySelector(`[data-section="${section.id}"]`).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          expect(document.getElementById('settings-overlay').textContent.match(leftovers), section.id).toBeNull();
+        });
+        expect(window.buildTextSummary('dashboard')).toContain(summary);
       });
-      window.openSettings();
-      const rail = document.getElementById('settings-rail');
-      window.SETTINGS_SECTIONS.forEach(section => {
-        rail.querySelector(`[data-section="${section.id}"]`).dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        expect(document.getElementById('settings-overlay').textContent.match(leftovers), section.id).toBeNull();
-      });
-      expect(window.buildTextSummary('dashboard')).toContain('效率摘要');
     });
 
     it('translates the heatmap: controls, title, legend, stats and row labels', async () => {

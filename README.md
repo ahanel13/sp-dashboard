@@ -61,6 +61,9 @@ The dashboard uses Super Productivity's built-in plugin translations, so it foll
 you've chosen in Super Productivity. Task, project and tag names are never translated, and CSV
 exports keep English column names so spreadsheets and scripts that read them don't break.
 
+Available in **English**, **Spanish** (`es`) and **Simplified Chinese** (`zh`). Any other language
+shows the dashboard in English.
+
 **Adding a language** needs no code changes:
 
 1. Copy `sp-dashboard/i18n/en.json` to `sp-dashboard/i18n/<code>.json`, where `<code>` is one of
