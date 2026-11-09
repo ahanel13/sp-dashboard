@@ -4,7 +4,7 @@
   "version": "{{VERSION}}",
   "description": "{{DESCRIPTION}}",
   "manifestVersion": 1,
-  "minSupVersion": "14.0.0",
+  "minSupVersion": "20.0.0",
   "author": "Douglas Cooper",
   "icon": "icon.svg",
   "iFrame": true,
