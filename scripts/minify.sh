@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Super Productivity serves a plugin's index.html to the iframe via srcdoc, so nothing
 # can be split into a sibling file, and it caps that file's size. The cap was 102400
-# bytes until super-productivity#11062 raised it to 1 MB; this plugin now needs a
-# release that includes that change. Everything below still keeps the file small,
+# bytes until super-productivity#11062 raised it to 1 MB in v20.0.0, which is why the
+# manifest's minSupVersion is 20.0.0. Everything below still keeps the file small,
 # and `make build` fails loudly if the result goes over. SP_INDEX_LIMIT=<bytes>
 # overrides the cap, e.g. to check a build against an older host's limit.
 

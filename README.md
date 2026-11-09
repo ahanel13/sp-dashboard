@@ -80,6 +80,9 @@ locale data, so they need no translation.
 
 ## Installation
 
+Requires **Super Productivity 20.0.0 or later**. Earlier versions reject the plugin
+(they cap a plugin's page at 100 KB); for those, use [v1.6.0](https://github.com/ahanel13/sp-dashboard/releases/tag/v1.6.0).
+
 1. Download `sp-dashboard.zip` from the latest [Release](https://github.com/ahanel13/sp-dashboard/releases)
 2. Open Super Productivity
 3. Go to **Settings → Plugins**
