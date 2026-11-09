@@ -169,6 +169,24 @@
     "SETTINGS_RESET": "Ajustes restablecidos a los valores predeterminados",
     "READ_FAILED": "No se pudo leer ese archivo"
   },
+  "UPDATE": {
+    "AVAILABLE": "La versión {{latest}} está disponible (tienes la {{current}}).",
+    "GET_IT": "Notas de la versión y descarga",
+    "DISMISS": "Descartar"
+  },
+  "WHATS_NEW": {
+    "TITLE": "Novedades de la versión {{version}}",
+    "NOTES": {
+      "POPUP": "Las notas de la versión ahora se abren aquí una vez tras cada actualización, para que veas qué ha cambiado sin salir de Super Productivity.",
+      "UPDATE_CHECK": "Nuevo y opcional: consulta a GitHub una vez al día si hay versiones nuevas y muestra un aviso cuando sale una. Actívalo abajo o en Ajustes › Avanzado.",
+      "PERMISSION": "La ficha del plugin ahora muestra api.github.com. Solo se contacta mientras la búsqueda de actualizaciones está activada, y no se envía nada sobre tus tareas."
+    },
+    "FULL_NOTES": "Notas completas de la versión en GitHub",
+    "CHECK_START": "Buscar versiones nuevas en GitHub",
+    "CHECK_KEEP": "Seguir buscando versiones nuevas en GitHub",
+    "DONT_SHOW": "No mostrar las notas de la versión tras actualizar",
+    "FOOT_NOTE": "Puedes cambiar ambas opciones más adelante en Ajustes › Avanzado"
+  },
   "SUMMARY": {
     "NO_DATA": "No hay datos disponibles.",
     "LINE": "{{label}}: {{value}}",
@@ -293,6 +311,10 @@
       "DAILY_TASK_GOAL_HINT": "Línea discontinua en el gráfico de barras cuando muestra Tareas completadas",
       "AUTO_REFRESH": "Actualización automática",
       "AUTO_REFRESH_HINT": "El panel también se actualiza cada vez que la aplicación avisa de un cambio, así que No no significa datos desactualizados",
+      "WHATS_NEW_POPUP": "Notas de la versión tras actualizar",
+      "WHATS_NEW_POPUP_HINT": "Se abren una vez, la primera vez que el panel se ejecuta tras actualizarse",
+      "UPDATE_CHECK": "Buscar actualizaciones",
+      "UPDATE_CHECK_HINT": "Una vez al día pregunta a GitHub (api.github.com) por la última versión. No se envía nada sobre tus tareas.",
       "DEBUG_LOGGING": "Registro de depuración",
       "DEBUG_LOGGING_HINT": "Desactivado por defecto: una línea de registro por tarea en cada actualización",
       "EXPORT_FILENAME": "Nombre del archivo exportado",

@@ -143,6 +143,12 @@ entityLabel(name)         → display name for the internal UNCATEGORIZED / UNTA
 - **New UI text = a key in `en.json`, then `npm run i18n:sync`.** Never a bare string. Static markup
   gets `data-i18n="KEY"` *and* its English text (a test checks the two match); dynamic text uses `t()`.
   `make build` fails if `index.html` is out of sync.
+- **Always update every language file when you add or change a string.** A new or reworded key in
+  `en.json` gets its translation in every other `i18n/<code>.json` in the same change (currently
+  `es.json` and `zh.json`), with the same `{{placeholders}}` and plural forms. The host would fall
+  back to English, but `es` and `zh` are held to "translates every string" and fail the suite on a
+  missing key. A reworded English string needs its translations reworded too: the test can't catch
+  a translation that is stale.
 - Settings labels are keys too: `labelKey` / `hintKey` / `subKey` / `unitKey` on `SETTINGS_SECTIONS`,
   and `sOpt(value, key, params)` in `SETTING_OPTIONS`. `sRaw` is for literal labels (format examples,
   product names), `sDay` for weekdays.
@@ -160,6 +166,62 @@ entityLabel(name)         → display name for the internal UNCATEGORIZED / UNTA
 Every diagnostic goes through `debugLog()` / `debugWarn()`, gated on the `debugLogging` setting and
 **off by default**. Do not add a bare `console.log` — the per-task diagnostics fire once per task per
 refresh. Genuine error paths still use `console.warn` / `console.error` unconditionally.
+
+### Update notices
+
+Two things, both outside every view node so no export includes them:
+
+- **What's new popup** (`#whats-new-overlay`, `openWhatsNew()`): on the first open after an update,
+  a modal with *this release's* notes. `noteRunningVersion()` compares `PLUGIN_VERSION` with
+  `lastSeenVersion`. An install with settings but no `lastSeenVersion` counts as an update, because
+  it came from a version older than the notice. A fresh install shows nothing. The popup also
+  carries two checkboxes that apply as they change:
+  - **Don't show release notes after updates**, which clears `whatsNewPopup` (also in Settings ›
+    Advanced).
+  - **The update check**, worded from where the user stands when the popup opens: "Check GitHub…"
+    if `updateCheck` is off, "Keep checking GitHub…" if it's on. Each release re-asks the opt-in
+    rather than leaving it buried in Settings. The label does not change while they toggle.
+- **Available banner** (`#update-notice`): `checkForUpdate()` is opt-in (`updateCheck`, off by
+  default), at most once a day, and the attempt is recorded *before* the request so being offline
+  doesn't retry on every open. It must go through `PluginAPI.request`, never `fetch`: the
+  manifest's `http` + `allowedHosts: ["api.github.com"]` + `dataSharing` is what lets the host
+  enforce the single host and show it on the plugin card. Only a `tag_name` that passes `isVersion`
+  is kept, and the link is built from that version, never taken from the response.
+
+The popup's notes **ship inside the plugin** (`WHATS_NEW_NOTES` → `WHATS_NEW.NOTES.*` in the i18n
+files). They are never fetched, because the popup appears before the user has agreed to any
+network access. Only the current release's notes ship, and `openWhatsNew` refuses any other
+version rather than describe the wrong release.
+
+`PLUGIN_VERSION` is the literal `'{{VERSION}}'` in source. `scripts/minify.sh` stamps it from
+`package.json` and refuses to build without exactly one placeholder. Because the placeholder isn't
+a version, nothing fires under file:// or in tests, so tests pass versions in explicitly (one runs a
+stamped copy through the real bootstrap). `lastSeenVersion` / `updateLatest` / `updateDismissed` /
+`updateCheckedAt` are `DEVICE_STATE_KEYS`: they describe this install rather than a preference, so
+import and reset skip them.
+
+### Releasing: update the What's new
+
+**Every version bump rewrites the What's new popup.** In the same change that bumps `package.json`:
+
+1. Set `WHATS_NEW_VERSION` in `index.html` to the new version, without any prerelease suffix (an
+   rc shows its release's notes). A test fails if it doesn't match `package.json`.
+2. Replace the `WHATS_NEW.NOTES.*` keys in `en.json` with this release's notes and update
+   `WHATS_NEW_NOTES` to list them. Drop the previous release's keys; the unused-key test enforces
+   it. Write for users, not reviewers: what they can now do, what changed, what was fixed. A few
+   short bullets, no PR titles, no `chore:` items, and nothing users can't see.
+3. Translate the notes into every language file (see Translations), then `npm run i18n:sync`.
+
+The popup links to `releases/tag/v<version>` for the full notes, so the GitHub release needs the
+same user-facing notes too. `make release` creates it with a generic line plus `--generate-notes`
+(a PR list), so straight after it run
+`/home/anthony/bin/gh release edit v<version> --notes-file <notes.md>`, keeping the generated list
+underneath as a "Changes for contributors" section.
+
+Each release also needs a Super Productivity catalog PR (`src/assets/community-plugins.json` in
+super-productivity/super-productivity) that bumps `release.version`, `downloadUrl` and `sha256`.
+Without it the in-app **Update** button never appears. Never re-upload or replace a release's zip
+once it's listed, or its checksum stops matching and **Install** refuses it.
 
 ### Mock data fallback
 
@@ -240,7 +302,7 @@ All colors are CSS custom properties (`--bg`, `--text-color`, `--c-primary`, etc
 
 ### Build pipeline
 
-`make build` runs: template substitution on `manifest.json.template` (injects VERSION/DESCRIPTION) → `scripts/minify.sh` (html-minifier-terser) → zip packaging. Version is the single source of truth in `package.json`.
+`make build` runs: template substitution on `manifest.json.template` (injects VERSION/DESCRIPTION) → `scripts/minify.sh` (stamps `PLUGIN_VERSION`, then html-minifier-terser) → zip packaging. Version is the single source of truth in `package.json`.
 
 ## Testing
 
@@ -251,4 +313,4 @@ Tests live in `tests/index.test.js` and use Vitest with a JSDOM environment. The
 - Keep `index.html` self-contained — no `import` statements, no external CDN links, no `require()`.
 - All user-visible strings in the UI must be sanitized before insertion into the DOM (use `textContent`, not `innerHTML`, for any data-derived content).
 - All user-visible strings come from `i18n/en.json` via `t()` — see Translations above.
-- Plugin permissions are declared in `manifest.json.template`; `persistDataSynced` / `loadSyncedData` are declared but currently unused.
+- Plugin permissions are declared in `manifest.json.template`; `persistDataSynced` / `loadSyncedData` are declared but currently unused. `http` exists only for the opt-in update check (see Update notices). Any new host must be added to both `allowedHosts` and `dataSharing`, or SP 20 rejects the manifest.

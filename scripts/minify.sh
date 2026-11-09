@@ -23,8 +23,18 @@ trap 'rm -f "$STAGE"' EXIT
 #   MOCK          — the file:// fallback data (host always provides PluginAPI)
 #   TEST-EXPORTS  — window.* assignments the JSDOM suite reads (tests run on source)
 # Both are marked in the source so this stays a delete, not a parse.
+# PLUGIN_VERSION is a placeholder in source and stamped here, the same way the Makefile
+# stamps manifest.json, so package.json stays the one place the version is written.
+# The update notices compare against it; left unstamped they silently never fire.
+VERSION="$(node -p "require('./package.json').version")"
+if [ "$(grep -c "const PLUGIN_VERSION = '{{VERSION}}';" "$SRC")" != "1" ]; then
+    echo "✗ $SRC must contain exactly one PLUGIN_VERSION = '{{VERSION}}' placeholder" >&2
+    exit 1
+fi
+
 sed -e '/BUILD:MOCK-START/,/BUILD:MOCK-END/d' \
     -e '/BUILD:TEST-EXPORTS-START/,/BUILD:TEST-EXPORTS-END/d' \
+    -e "s/const PLUGIN_VERSION = '{{VERSION}}';/const PLUGIN_VERSION = '$VERSION';/" \
     "$SRC" > "$STAGE"
 
 for MARKER in BUILD:MOCK-START BUILD:MOCK-END BUILD:TEST-EXPORTS-START BUILD:TEST-EXPORTS-END; do
