@@ -315,6 +315,31 @@
     .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
     .toast.toast-error { border-left-color: #f87171; }
 
+    /* --- UPDATE NOTICE --- */
+    .update-notice {
+      display: flex; align-items: center; flex-wrap: wrap; gap: var(--s, 0.5rem);
+      padding: var(--s, 0.5rem) var(--s2, 1rem);
+      border-bottom: 1px solid var(--divider-color, #333);
+      border-left: 3px solid var(--c-primary, #03a9f4);
+      font-size: 0.8125rem; color: var(--text-color, #fff);
+    }
+    .update-notice a { color: var(--c-primary, #03a9f4); }
+    .update-notice-dismiss {
+      margin-left: auto; background: none; border: none; cursor: pointer;
+      color: var(--text-color-muted, #9e9e9e); font-size: 1rem; line-height: 1; padding: 0 0.25rem;
+    }
+    .update-notice-dismiss:hover { color: var(--text-color, #fff); }
+
+    /* --- WHAT'S NEW --- (a short Settings modal: same head and foot) */
+    .settings-modal.whats-new-modal { max-width: 560px; height: auto; max-height: 90vh; }
+    .whats-new-body { padding: var(--s2, 1rem); overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; }
+    .whats-new-notes { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.45rem; font-size: 0.9rem; line-height: 1.45; }
+    .whats-new-link { color: var(--c-primary, #03a9f4); font-size: 0.85rem; align-self: flex-start; }
+    .whats-new-opts { display: flex; flex-direction: column; gap: 0.7rem; border-top: 1px solid var(--divider-color, #333); padding-top: 0.85rem; }
+    .whats-new-opt { display: flex; align-items: flex-start; gap: 0.6rem; font-size: 0.875rem; cursor: pointer; }
+    .whats-new-opt input { margin: 2px 0 0; accent-color: var(--c-primary, #03a9f4); }
+    .whats-new-opt .set-hint { display: block; }
+
     /* --- SETTINGS --- */
     .settings-btn {
       background: none; border: none; cursor: pointer;
@@ -587,7 +612,7 @@
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       .container { height: auto; max-width: none; gap: 0.75rem; }
-      .tabs, .bar-tooltip, .share-wrap, .toast, .settings-overlay { display: none !important; }
+      .tabs, .bar-tooltip, .share-wrap, .toast, .settings-overlay, .update-notice { display: none !important; }
       .main-card { box-shadow: none; border: none; }
       .view-content { overflow: visible !important; height: auto !important; flex: none !important; }
       .view-content.hidden { display: none !important; }
@@ -686,6 +711,10 @@
           </div>
         </div>
       </div>
+
+      <!-- Update notice. Outside every view, so Share / Print / Copy image never
+           include it; filled in by renderUpdateNotice(). -->
+      <div id="update-notice" class="update-notice hidden" role="status"></div>
 
       <!-- ========================================== -->
       <!-- VIEW 1: DASHBOARD                          -->
@@ -1001,6 +1030,40 @@
     </div>
   </div>
 
+  <!-- What's new: opens once, after an update (see UPDATE NOTICES). Filled in by
+       openWhatsNew(). A modal like Settings, so no export can include it. -->
+  <div id="whats-new-overlay" class="settings-overlay hidden">
+    <div class="settings-modal whats-new-modal" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
+      <div class="settings-head">
+        <h2 class="settings-title" id="whats-new-title"></h2>
+        <button class="settings-close" id="whats-new-close" title="Close" data-i18n-title="SETTINGS.CLOSE">
+          <svg class="ico" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M18 6L6 18M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="whats-new-body">
+        <ul class="whats-new-notes" id="whats-new-notes"></ul>
+        <a id="whats-new-link" class="whats-new-link" target="_blank" rel="noopener noreferrer" data-i18n="WHATS_NEW.FULL_NOTES">Full release notes on GitHub</a>
+        <div class="whats-new-opts">
+          <label class="whats-new-opt">
+            <input type="checkbox" id="whats-new-check">
+            <span>
+              <span id="whats-new-check-label"></span>
+              <span class="set-hint" data-i18n="SETTINGS.ROWS.UPDATE_CHECK_HINT">Once a day, asks GitHub (api.github.com) for the latest release. Nothing about your tasks is sent.</span>
+            </span>
+          </label>
+          <label class="whats-new-opt">
+            <input type="checkbox" id="whats-new-dont-show">
+            <span data-i18n="WHATS_NEW.DONT_SHOW">Don't show release notes after updates</span>
+          </label>
+        </div>
+      </div>
+      <div class="settings-foot">
+        <span class="settings-foot-note" data-i18n="WHATS_NEW.FOOT_NOTE">You can change both later in Settings › Advanced</span>
+        <button class="settings-done" id="whats-new-done" data-i18n="SETTINGS.DONE">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Off-screen picker used by Settings › Advanced › Import -->
   <input type="file" id="settings-import-input" accept="application/json,.json" style="display:none">
 
@@ -1014,6 +1077,13 @@
     const SETTINGS_KEY = 'sp-dashboard-settings';
     const SETTINGS_SCHEMA_VERSION = 1;
     const HOUR_MS = 3600000;
+
+    // Replaced with package.json's version by scripts/minify.sh. Source keeps the
+    // placeholder, which is not a version, so under file:// and in the test suite
+    // the update notices stay quiet.
+    const PLUGIN_VERSION = '{{VERSION}}';
+    const VERSION_RE = /^\d{1,4}\.\d{1,4}\.\d{1,6}(?:-[0-9A-Za-z.]{1,30})?$/;
+    const isVersion = (v) => typeof v === 'string' && VERSION_RE.test(v);
 
     const DEFAULT_SETTINGS = {
       schemaVersion: SETTINGS_SCHEMA_VERSION,
@@ -1075,10 +1145,19 @@
 
       // --- Advanced ---
       refreshMs: 30000,
+      whatsNewPopup: true,          // release notes once, after an update
+      updateCheck: false,           // asks api.github.com once a day; opt-in
       debugLogging: false,
       exportFilename: 'dashboard-{tab}-{date}',
-      summaryFormat: 'slack'        // slack | markdown | csv
+      summaryFormat: 'slack',       // slack | markdown | csv
+
+      // --- Update notices ---
+      // Bookkeeping about this install rather than preferences, so import and
+      // reset leave them alone (DEVICE_STATE_KEYS).
+      lastSeenVersion: '', updateLatest: '', updateDismissed: '', updateCheckedAt: 0
     };
+
+    const DEVICE_STATE_KEYS = ['lastSeenVersion', 'updateLatest', 'updateDismissed', 'updateCheckedAt'];
 
     // The keys this plugin wrote before the settings store existed. Folded in
     // once on first load, then removed so they can't drift.
@@ -1261,6 +1340,8 @@
 
       if (typeof def === 'number') {
         if (typeof val !== 'number' || !isFinite(val)) return def;
+        // A timestamp in the future would hold off the update check indefinitely.
+        if (key === 'updateCheckedAt') return Math.min(Date.now(), Math.max(0, Math.round(val)));
         const options = SETTING_OPTIONS[key];
         if (options) return options.some(o => o.v === val) ? val : def;
         const range = SETTING_RANGES[key];
@@ -1276,15 +1357,22 @@
       if (key === 'dateFromLast' || key === 'dateToLast') {
         return (val === '' || /^\d{4}-\d{2}-\d{2}$/.test(val)) ? val : def;
       }
+      if (DEVICE_STATE_KEYS.indexOf(key) !== -1) return (val === '' || isVersion(val)) ? val : def;
       if (key === 'drillEntityLast') return val.slice(0, MAX_EXCLUSION_LEN);
       if (key === 'exportFilename') return val.slice(0, MAX_FILENAME_PATTERN) || def;
       return val;
     };
 
+    // Whether this install already had settings when the page loaded. With no
+    // lastSeenVersion recorded, it is what separates a fresh install from an
+    // update off a version that predates the update notice.
+    let settingsFoundAtLoad = false;
+
     const readStoredSettings = () => {
       let stored = {};
       try {
         const raw = localStorage.getItem(SETTINGS_KEY);
+        settingsFoundAtLoad = !!raw;
         if (raw) stored = JSON.parse(raw);
       } catch (e) {
         console.warn('[sp-dashboard] settings unreadable, using defaults', e);
@@ -1643,6 +1731,24 @@
         "SETTINGS_RESET": "Settings reset to defaults",
         "READ_FAILED": "Could not read that file"
       },
+      "UPDATE": {
+        "AVAILABLE": "Version {{latest}} is available (you have {{current}}).",
+        "GET_IT": "Release notes and download",
+        "DISMISS": "Dismiss"
+      },
+      "WHATS_NEW": {
+        "TITLE": "What's new in {{version}}",
+        "NOTES": {
+          "POPUP": "Release notes now open here once after each update, so you can see what changed without leaving Super Productivity.",
+          "UPDATE_CHECK": "New, optional: check GitHub once a day for newer releases, with a banner when one is out. Turn it on below or in Settings › Advanced.",
+          "PERMISSION": "The plugin card now lists api.github.com. It is only contacted while the update check is on, and nothing about your tasks is sent."
+        },
+        "FULL_NOTES": "Full release notes on GitHub",
+        "CHECK_START": "Check GitHub for new releases",
+        "CHECK_KEEP": "Keep checking GitHub for new releases",
+        "DONT_SHOW": "Don't show release notes after updates",
+        "FOOT_NOTE": "You can change both later in Settings › Advanced"
+      },
       "SUMMARY": {
         "NO_DATA": "No data available.",
         "LINE": "{{label}}: {{value}}",
@@ -1767,6 +1873,10 @@
           "DAILY_TASK_GOAL_HINT": "Dashed line on the bar chart when it shows Tasks completed",
           "AUTO_REFRESH": "Auto-refresh",
           "AUTO_REFRESH_HINT": "The dashboard also refreshes whenever the host app reports a change, so Off is not the same as stale",
+          "WHATS_NEW_POPUP": "Release notes after an update",
+          "WHATS_NEW_POPUP_HINT": "Opens once, the first time the Dashboard runs after updating",
+          "UPDATE_CHECK": "Check for updates",
+          "UPDATE_CHECK_HINT": "Once a day, asks GitHub (api.github.com) for the latest release. Nothing about your tasks is sent.",
           "DEBUG_LOGGING": "Debug logging",
           "DEBUG_LOGGING_HINT": "Off by default: one log line per task, per refresh",
           "EXPORT_FILENAME": "Export filename",
@@ -4005,6 +4115,188 @@
       showToast._t = setTimeout(() => el.classList.remove('visible'), 2600);
     };
 
+    // ==========================================================
+    // UPDATE NOTICES
+    //  - What's new: a popup with this release's notes, once, on the first open
+    //    after an update. Local only. It also asks whether to (keep) check(ing)
+    //    GitHub, so the opt-in is put to the user rather than left in Settings.
+    //  - Available:  a banner when GitHub has a newer release. Opt-in and at most
+    //    once a day, through PluginAPI.request, so the host enforces the one host
+    //    in the manifest's allowedHosts and shows it on the plugin card; a bare
+    //    fetch would do neither.
+    // Both sit outside every view node, so no export can pick them up.
+    // ==========================================================
+    const RELEASES_API = 'https://api.github.com/repos/ahanel13/sp-dashboard/releases/latest';
+    const RELEASE_PAGE = 'https://github.com/ahanel13/sp-dashboard/releases/tag/v';
+    const UPDATE_CHECK_EVERY_MS = 24 * HOUR_MS;
+
+    // The popup's notes ship with the plugin, in every language, because it opens
+    // before the user has agreed to any network access. Only this release's notes
+    // ship: the popup is about the version just installed, and older notes live on
+    // GitHub. A test holds WHATS_NEW_VERSION to package.json's version, so a
+    // release cannot go out still showing the previous release's notes.
+    const WHATS_NEW_VERSION = '1.9.0';
+    const WHATS_NEW_NOTES = ['WHATS_NEW.NOTES.POPUP', 'WHATS_NEW.NOTES.UPDATE_CHECK', 'WHATS_NEW.NOTES.PERMISSION'];
+
+    // Semver precedence: numeric core first, then a release outranks its own
+    // prereleases (1.9.0 > 1.9.0-rc.2), then prerelease identifiers in turn.
+    const compareVersions = (a, b) => {
+      const [coreA, preA = ''] = a.split('-');
+      const [coreB, preB = ''] = b.split('-');
+      const na = coreA.split('.').map(Number);
+      const nb = coreB.split('.').map(Number);
+      for (let i = 0; i < 3; i++) {
+        if (na[i] !== nb[i]) return na[i] < nb[i] ? -1 : 1;
+      }
+      if (preA === preB) return 0;
+      if (!preA) return 1;
+      if (!preB) return -1;
+      const pa = preA.split('.');
+      const pb = preB.split('.');
+      for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        if (pa[i] === undefined) return -1;
+        if (pb[i] === undefined) return 1;
+        if (pa[i] === pb[i]) continue;
+        const numA = /^\d+$/.test(pa[i]);
+        const numB = /^\d+$/.test(pb[i]);
+        if (numA && numB) return Number(pa[i]) < Number(pb[i]) ? -1 : 1;
+        if (numA !== numB) return numA ? -1 : 1;
+        return pa[i] < pb[i] ? -1 : 1;
+      }
+      return 0;
+    };
+
+    // Records `version` as seen and says whether it is an update. Runs once per
+    // open, so "updated" shows on the first open after an update and not again.
+    const noteRunningVersion = (version) => {
+      if (!isVersion(version)) return null;
+      const last = getSetting('lastSeenVersion');
+      if (last !== version) rememberSetting('lastSeenVersion', version);
+      const updated = last ? compareVersions(version, last) > 0 : settingsFoundAtLoad;
+      return updated ? { kind: 'updated', version } : null;
+    };
+
+    const availableUpdate = (version) => {
+      if (!isVersion(version) || !getSetting('updateCheck')) return null;
+      const latest = getSetting('updateLatest');
+      if (!latest || latest === getSetting('updateDismissed')) return null;
+      if (compareVersions(latest, version) <= 0) return null;
+      return { kind: 'available', version: latest, current: version };
+    };
+
+    // Resolves true when it learned a release version. The attempt is recorded
+    // before the request, so an offline machine costs one try a day, not one
+    // per open.
+    let updateCheckInFlight = false;
+    const checkForUpdate = async (version, now = Date.now()) => {
+      if (!isVersion(version) || !getSetting('updateCheck') || updateCheckInFlight) return false;
+      if (!window.PluginAPI || typeof window.PluginAPI.request !== 'function') return false;
+      if (now - getSetting('updateCheckedAt') < UPDATE_CHECK_EVERY_MS) return false;
+      updateCheckInFlight = true;
+      rememberSetting('updateCheckedAt', now);
+      try {
+        const release = await window.PluginAPI.request(RELEASES_API, {
+          headers: { Accept: 'application/vnd.github+json' },
+          timeout: 10000
+        });
+        const tag = release && typeof release.tag_name === 'string' ? release.tag_name.replace(/^v/, '') : '';
+        if (!isVersion(tag)) {
+          debugWarn('[sp-dashboard] update check: no usable tag_name in the response');
+          return false;
+        }
+        rememberSetting('updateLatest', tag);
+        return true;
+      } catch (e) {
+        debugWarn('[sp-dashboard] update check failed', e);
+        return false;
+      } finally {
+        updateCheckInFlight = false;
+      }
+    };
+
+    // Every string here is ours or a version that passed isVersion, and the link
+    // is built from that version rather than taken from the response, but it
+    // still goes in as text.
+    const renderUpdateNotice = (notice) => {
+      const el = document.getElementById('update-notice');
+      if (!el) return;
+      el.textContent = '';
+      el.classList.toggle('hidden', !notice);
+      if (!notice) return;
+
+      const msg = document.createElement('span');
+      msg.textContent = t('UPDATE.AVAILABLE', { latest: notice.version, current: notice.current });
+
+      const link = document.createElement('a');
+      link.href = RELEASE_PAGE + notice.version;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = t('UPDATE.GET_IT');
+
+      const dismiss = document.createElement('button');
+      dismiss.type = 'button';
+      dismiss.className = 'update-notice-dismiss';
+      dismiss.textContent = '×';
+      dismiss.title = t('UPDATE.DISMISS');
+      dismiss.setAttribute('aria-label', t('UPDATE.DISMISS'));
+      dismiss.addEventListener('click', () => {
+        rememberSetting('updateDismissed', notice.version);
+        refreshUpdateNotice();
+      });
+
+      el.append(msg, link, dismiss);
+    };
+
+    const refreshUpdateNotice = () => renderUpdateNotice(availableUpdate(PLUGIN_VERSION));
+
+    const whatsNewOverlay = document.getElementById('whats-new-overlay');
+
+    // False when there are no notes for `version` — a build whose notes were not
+    // updated says nothing rather than describing the wrong release.
+    const openWhatsNew = (version) => {
+      if (!isVersion(version) || version.split('-')[0] !== WHATS_NEW_VERSION) return false;
+      document.getElementById('whats-new-title').textContent = t('WHATS_NEW.TITLE', { version });
+      const list = document.getElementById('whats-new-notes');
+      list.textContent = '';
+      WHATS_NEW_NOTES.forEach(key => {
+        const li = document.createElement('li');
+        li.textContent = t(key);
+        list.appendChild(li);
+      });
+      document.getElementById('whats-new-link').href = RELEASE_PAGE + version;
+
+      // Worded from where the user stands when it opens: someone already checking
+      // is asked to keep going, someone who isn't is offered it. The label stays
+      // put while they toggle, so the question doesn't change under them.
+      const check = document.getElementById('whats-new-check');
+      check.checked = !!getSetting('updateCheck');
+      document.getElementById('whats-new-check-label').textContent =
+        t(check.checked ? 'WHATS_NEW.CHECK_KEEP' : 'WHATS_NEW.CHECK_START');
+      document.getElementById('whats-new-dont-show').checked = !getSetting('whatsNewPopup');
+
+      whatsNewOverlay.classList.remove('hidden');
+      document.getElementById('whats-new-done').focus();
+      return true;
+    };
+
+    const closeWhatsNew = () => whatsNewOverlay.classList.add('hidden');
+
+    document.getElementById('whats-new-close').addEventListener('click', closeWhatsNew);
+    document.getElementById('whats-new-done').addEventListener('click', closeWhatsNew);
+    whatsNewOverlay.addEventListener('click', (e) => { if (e.target === whatsNewOverlay) closeWhatsNew(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !whatsNewOverlay.classList.contains('hidden')) closeWhatsNew();
+    });
+    // Both apply as they change, like everything in Settings — closing is not a Save.
+    document.getElementById('whats-new-check').addEventListener('change', (e) => setSetting('updateCheck', e.target.checked));
+    document.getElementById('whats-new-dont-show').addEventListener('change', (e) => setSetting('whatsNewPopup', !e.target.checked));
+
+    // Cheap to call often: checkForUpdate does nothing until a day has passed.
+    const runUpdateCheck = () => {
+      refreshUpdateNotice();
+      checkForUpdate(PLUGIN_VERSION).then(found => { if (found) refreshUpdateNotice(); });
+    };
+
     // Copy the computed styles of every node in `srcRoot` onto the matching node in the
     // detached clone `destRoot`. This resolves CSS custom properties (--bg, --c-primary, …)
     // and gradients to concrete values so the SVG <foreignObject> renders identically
@@ -4584,6 +4876,10 @@
         rows: [
           { labelKey: 'SETTINGS.ROWS.AUTO_REFRESH', hintKey: 'SETTINGS.ROWS.AUTO_REFRESH_HINT',
             controls: [{ type: 'select', key: 'refreshMs', numeric: true, options: SETTING_OPTIONS.refreshMs }] },
+          { labelKey: 'SETTINGS.ROWS.WHATS_NEW_POPUP', hintKey: 'SETTINGS.ROWS.WHATS_NEW_POPUP_HINT',
+            controls: [{ type: 'toggle', key: 'whatsNewPopup' }] },
+          { labelKey: 'SETTINGS.ROWS.UPDATE_CHECK', hintKey: 'SETTINGS.ROWS.UPDATE_CHECK_HINT',
+            controls: [{ type: 'toggle', key: 'updateCheck' }] },
           { labelKey: 'SETTINGS.ROWS.DEBUG_LOGGING', hintKey: 'SETTINGS.ROWS.DEBUG_LOGGING_HINT', hintWarn: true,
             controls: [{ type: 'toggle', key: 'debugLogging' }] },
           { labelKey: 'SETTINGS.ROWS.EXPORT_FILENAME', hintKey: 'SETTINGS.ROWS.EXPORT_FILENAME_HINT',
@@ -4866,6 +5162,7 @@
       if (reprocess) processData(cachedTasks, cachedProjects, cachedTags);
       else renderHeatmap({ onlyIfVisible: true });
       renderSettingsPanel();
+      runUpdateCheck(); // turning the check on runs it now; turning it off hides the banner
     };
 
     const setSetting = (key, value) => {
@@ -4909,6 +5206,7 @@
         return;
       }
       Object.keys(DEFAULT_SETTINGS).forEach(key => {
+        if (DEVICE_STATE_KEYS.indexOf(key) !== -1) return;
         SETTINGS[key] = coerceSetting(key, DEFAULT_SETTINGS[key], parsed[key]);
       });
       SETTINGS.schemaVersion = SETTINGS_SCHEMA_VERSION;
@@ -4920,6 +5218,7 @@
 
     const resetSettings = () => {
       Object.keys(DEFAULT_SETTINGS).forEach(key => {
+        if (DEVICE_STATE_KEYS.indexOf(key) !== -1) return;
         const def = DEFAULT_SETTINGS[key];
         SETTINGS[key] = Array.isArray(def) ? def.slice() : def;
       });
@@ -5101,6 +5400,15 @@
     window.getAllSettings = () => SETTINGS;
     window.resetSettings = resetSettings;
     window.importSettings = importSettings;
+    window.compareVersions = compareVersions;
+    window.noteRunningVersion = noteRunningVersion;
+    window.availableUpdate = availableUpdate;
+    window.checkForUpdate = checkForUpdate;
+    window.renderUpdateNotice = renderUpdateNotice;
+    window.openWhatsNew = openWhatsNew;
+    window.WHATS_NEW_VERSION = WHATS_NEW_VERSION;
+    window.RELEASES_API = RELEASES_API;
+    window.PLUGIN_VERSION = PLUGIN_VERSION;
     window.renderSettingsPanel = renderSettingsPanel;
     window.openSettings = openSettings;
     window.closeSettings = closeSettings;
@@ -5251,10 +5559,16 @@
     setTimeout(() => {
       debugLog("[sp-dashboard] bootstrap timeout fired; PluginAPI exists?", !!window.PluginAPI);
       if (window.PluginAPI) {
-        refreshLanguage();
+        const languageReady = refreshLanguage();
         listenForLanguageChange();
         pullDataFromSP();
         restartLiveUpdate();
+        const updated = noteRunningVersion(PLUGIN_VERSION);
+        // Once the language has loaded, so the notes open in it rather than in English.
+        if (updated && getSetting('whatsNewPopup')) {
+          languageReady.finally(() => openWhatsNew(updated.version));
+        }
+        runUpdateCheck();
       } else {
         /* BUILD:MOCK-START — stripped by scripts/minify.sh; only reachable on file:// */
         debugLog("[sp-dashboard] No PluginAPI detected. Loading mock data...");

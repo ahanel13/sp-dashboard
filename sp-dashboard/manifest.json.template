@@ -17,6 +17,15 @@
     "getArchivedTasks",
     "getAllProjects",
     "persistDataSynced",
-    "loadSyncedData"
+    "loadSyncedData",
+    "http"
+  ],
+  "allowedHosts": ["api.github.com"],
+  "dataSharing": [
+    {
+      "recipient": "GitHub",
+      "hosts": ["api.github.com"],
+      "data": []
+    }
   ]
 }

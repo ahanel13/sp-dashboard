@@ -169,6 +169,24 @@
     "SETTINGS_RESET": "Settings reset to defaults",
     "READ_FAILED": "Could not read that file"
   },
+  "UPDATE": {
+    "AVAILABLE": "Version {{latest}} is available (you have {{current}}).",
+    "GET_IT": "Release notes and download",
+    "DISMISS": "Dismiss"
+  },
+  "WHATS_NEW": {
+    "TITLE": "What's new in {{version}}",
+    "NOTES": {
+      "POPUP": "Release notes now open here once after each update, so you can see what changed without leaving Super Productivity.",
+      "UPDATE_CHECK": "New, optional: check GitHub once a day for newer releases, with a banner when one is out. Turn it on below or in Settings › Advanced.",
+      "PERMISSION": "The plugin card now lists api.github.com. It is only contacted while the update check is on, and nothing about your tasks is sent."
+    },
+    "FULL_NOTES": "Full release notes on GitHub",
+    "CHECK_START": "Check GitHub for new releases",
+    "CHECK_KEEP": "Keep checking GitHub for new releases",
+    "DONT_SHOW": "Don't show release notes after updates",
+    "FOOT_NOTE": "You can change both later in Settings › Advanced"
+  },
   "SUMMARY": {
     "NO_DATA": "No data available.",
     "LINE": "{{label}}: {{value}}",
@@ -293,6 +311,10 @@
       "DAILY_TASK_GOAL_HINT": "Dashed line on the bar chart when it shows Tasks completed",
       "AUTO_REFRESH": "Auto-refresh",
       "AUTO_REFRESH_HINT": "The dashboard also refreshes whenever the host app reports a change, so Off is not the same as stale",
+      "WHATS_NEW_POPUP": "Release notes after an update",
+      "WHATS_NEW_POPUP_HINT": "Opens once, the first time the Dashboard runs after updating",
+      "UPDATE_CHECK": "Check for updates",
+      "UPDATE_CHECK_HINT": "Once a day, asks GitHub (api.github.com) for the latest release. Nothing about your tasks is sent.",
       "DEBUG_LOGGING": "Debug logging",
       "DEBUG_LOGGING_HINT": "Off by default: one log line per task, per refresh",
       "EXPORT_FILENAME": "Export filename",

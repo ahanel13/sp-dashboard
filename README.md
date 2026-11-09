@@ -31,7 +31,7 @@ export, import, or reset from Settings › Advanced.
 | **Appearance** | Theme override, chart palette (incl. colourblind-safe), bar-chart grouping, "Other" grouping for small pie slices, density, which stat cards show, rows per page |
 | **Heatmap** | Span (the Heatmap tab keeps its own period), colour scale and number of steps, rows shown and their order, values printed in cells, the punchcard, what counts as a habit |
 | **Goals** | Daily time target and daily task target (dashed line on the bar chart), weekly time target (progress bar on the Total Time card) |
-| **Advanced** | Auto-refresh interval, debug logging, export filename pattern, text-summary format (Slack / Markdown / CSV), export / import / reset |
+| **Advanced** | Auto-refresh interval, release notes after an update, check for updates (opt-in, once a day via api.github.com), debug logging, export filename pattern, text-summary format (Slack / Markdown / CSV), export / import / reset |
 
 Two of these are worth knowing about even if you change nothing else: **Include archived tasks** is
 the biggest speed-up available on a vault with a long history, and everything under **Data &

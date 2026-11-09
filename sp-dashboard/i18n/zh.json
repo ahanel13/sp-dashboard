@@ -163,6 +163,24 @@
     "SETTINGS_RESET": "设置已恢复默认",
     "READ_FAILED": "无法读取文件"
   },
+  "UPDATE": {
+    "AVAILABLE": "{{latest}} 版已发布（当前为 {{current}}）。",
+    "GET_IT": "发布说明与下载",
+    "DISMISS": "关闭"
+  },
+  "WHATS_NEW": {
+    "TITLE": "{{version}} 版新功能",
+    "NOTES": {
+      "POPUP": "每次更新后，发布说明会在这里打开一次，无需离开 Super Productivity 即可了解有哪些变化。",
+      "UPDATE_CHECK": "新增可选功能：每天向 GitHub 查询一次是否有新版本，有新版本时显示提示。可在下方或“设置 › 高级”中开启。",
+      "PERMISSION": "插件卡片现在会列出 api.github.com。仅在开启检查更新时才会访问，且不会发送任何任务信息。"
+    },
+    "FULL_NOTES": "在 GitHub 上查看完整发布说明",
+    "CHECK_START": "在 GitHub 上检查新版本",
+    "CHECK_KEEP": "继续在 GitHub 上检查新版本",
+    "DONT_SHOW": "更新后不再显示发布说明",
+    "FOOT_NOTE": "之后可在“设置 › 高级”中更改这两项"
+  },
   "SUMMARY": {
     "NO_DATA": "暂无数据。",
     "LINE": "{{label}}：{{value}}",
@@ -287,6 +305,10 @@
       "DAILY_TASK_GOAL_HINT": "在已完成任务柱状图中显示目标线",
       "AUTO_REFRESH": "自动刷新",
       "AUTO_REFRESH_HINT": "应用数据发生变化时仪表盘仍会刷新",
+      "WHATS_NEW_POPUP": "更新后显示发布说明",
+      "WHATS_NEW_POPUP_HINT": "仪表盘更新后首次运行时打开一次",
+      "UPDATE_CHECK": "检查更新",
+      "UPDATE_CHECK_HINT": "每天一次向 GitHub（api.github.com）查询最新版本，不会发送任何任务信息。",
       "DEBUG_LOGGING": "调试日志",
       "DEBUG_LOGGING_HINT": "默认关闭；每次刷新为每项任务记录一行",
       "EXPORT_FILENAME": "导出文件名",

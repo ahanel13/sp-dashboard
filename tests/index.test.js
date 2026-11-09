@@ -2660,4 +2660,272 @@ describe('Date Range Reporter UI', () => {
       window.setHeatmapDim('total');
     });
   });
+
+  // ==========================================================
+  // UPDATE NOTICES
+  // The version is stamped in by scripts/minify.sh, so source runs with the
+  // placeholder and every helper takes the version as an argument.
+  // ==========================================================
+  describe('Update notices', () => {
+    const DAY_MS = 24 * 3600000;
+    const reboot = () => {
+      document.documentElement.innerHTML = html;
+      const script = Array.from(document.querySelectorAll('script'))
+        .find(s => !s.src && s.textContent.includes('processData'));
+      new Function(script.textContent).call(window);
+    };
+    const notice = () => document.getElementById('update-notice');
+
+    afterEach(() => { delete window.PluginAPI; });
+
+    it('stays quiet in source, where the version is still the build placeholder', () => {
+      expect(window.PLUGIN_VERSION).toBe('{{VERSION}}');
+      expect(window.noteRunningVersion(window.PLUGIN_VERSION)).toBeNull();
+      expect(window.getSetting('lastSeenVersion')).toBe('');
+    });
+
+    it('orders versions by semver precedence, prereleases below their release', () => {
+      const ordered = ['1.2.0-rc.1', '1.2.0-rc.2', '1.2.0-rc.10', '1.2.0', '1.2.1', '1.10.0', '2.0.0'];
+      for (let i = 0; i < ordered.length - 1; i++) {
+        expect(window.compareVersions(ordered[i], ordered[i + 1]), `${ordered[i]} < ${ordered[i + 1]}`).toBe(-1);
+        expect(window.compareVersions(ordered[i + 1], ordered[i])).toBe(1);
+      }
+      expect(window.compareVersions('1.8.0', '1.8.0')).toBe(0);
+    });
+
+    describe('Detecting an update', () => {
+      it('says nothing on a fresh install, but remembers the version', () => {
+        expect(window.noteRunningVersion('1.9.0')).toBeNull();
+        expect(window.getSetting('lastSeenVersion')).toBe('1.9.0');
+      });
+
+      it('fires once after an update, and not on the next open', () => {
+        window.noteRunningVersion('1.8.0');
+        expect(window.noteRunningVersion('1.9.0')).toEqual({ kind: 'updated', version: '1.9.0' });
+        expect(window.noteRunningVersion('1.9.0')).toBeNull();
+      });
+
+      it('does not call a downgrade an update', () => {
+        window.noteRunningVersion('1.9.0');
+        expect(window.noteRunningVersion('1.8.0')).toBeNull();
+        expect(window.getSetting('lastSeenVersion')).toBe('1.8.0');
+      });
+
+      it('treats existing settings without a recorded version as an update from before the notice existed', () => {
+        localStorage.setItem(window.SETTINGS_KEY, JSON.stringify({ tabLast: 'details' }));
+        reboot();
+        expect(window.noteRunningVersion('1.9.0')).toEqual({ kind: 'updated', version: '1.9.0' });
+      });
+
+    });
+
+    describe("What's new popup", () => {
+      const overlay = () => document.getElementById('whats-new-overlay');
+      const isOpen = () => !overlay().classList.contains('hidden');
+      const version = () => window.WHATS_NEW_VERSION;
+
+      it('carries the notes for the version package.json is about to ship', () => {
+        // Bumping the version without rewriting the notes fails here, rather than
+        // greeting everyone with the previous release's notes.
+        const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf8'));
+        expect(window.WHATS_NEW_VERSION).toBe(pkg.version.split('-')[0]);
+      });
+
+      it("opens with this release's notes and a link to the full notes", () => {
+        expect(window.openWhatsNew(version())).toBe(true);
+        expect(isOpen()).toBe(true);
+        expect(document.getElementById('whats-new-title').textContent).toBe(`What's new in ${version()}`);
+        expect(document.querySelectorAll('#whats-new-notes li').length).toBeGreaterThan(0);
+        document.querySelectorAll('#whats-new-notes li').forEach(li => expect(li.textContent).not.toMatch(/^[A-Z_]+\./));
+        const link = document.getElementById('whats-new-link');
+        expect(link.href).toBe(`https://github.com/ahanel13/sp-dashboard/releases/tag/v${version()}`);
+        expect(link.rel).toContain('noopener');
+      });
+
+      it('shows the notes to a prerelease of the same version, and nothing to any other version', () => {
+        expect(window.openWhatsNew(`${version()}-rc.1`)).toBe(true);
+        document.getElementById('whats-new-done').click();
+        expect(window.openWhatsNew('0.0.1')).toBe(false);
+        expect(window.openWhatsNew('{{VERSION}}')).toBe(false);
+        expect(isOpen()).toBe(false);
+      });
+
+      it('offers the update check to someone who has not turned it on', () => {
+        window.openWhatsNew(version());
+        const box = document.getElementById('whats-new-check');
+        expect(box.checked).toBe(false);
+        expect(document.getElementById('whats-new-check-label').textContent).toBe('Check GitHub for new releases');
+        box.checked = true;
+        box.dispatchEvent(new Event('change'));
+        expect(window.getSetting('updateCheck')).toBe(true);
+        // The question stays as it was asked.
+        expect(document.getElementById('whats-new-check-label').textContent).toBe('Check GitHub for new releases');
+      });
+
+      it('asks someone already checking whether to keep going', () => {
+        window.setSetting('updateCheck', true);
+        window.openWhatsNew(version());
+        const box = document.getElementById('whats-new-check');
+        expect(box.checked).toBe(true);
+        expect(document.getElementById('whats-new-check-label').textContent).toBe('Keep checking GitHub for new releases');
+        box.checked = false;
+        box.dispatchEvent(new Event('change'));
+        expect(window.getSetting('updateCheck')).toBe(false);
+      });
+
+      it('"Don\'t show" turns the popup off for future updates, and Settings can turn it back on', () => {
+        expect(window.getSetting('whatsNewPopup')).toBe(true);
+        window.openWhatsNew(version());
+        const box = document.getElementById('whats-new-dont-show');
+        expect(box.checked).toBe(false);
+        box.checked = true;
+        box.dispatchEvent(new Event('change'));
+        expect(window.getSetting('whatsNewPopup')).toBe(false);
+        window.setSetting('whatsNewPopup', true);
+        window.openWhatsNew(version());
+        expect(document.getElementById('whats-new-dont-show').checked).toBe(false);
+      });
+
+      it('closes from Done, the close button, Escape and the backdrop', () => {
+        const closers = [
+          () => document.getElementById('whats-new-done').click(),
+          () => document.getElementById('whats-new-close').click(),
+          () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })),
+          () => overlay().dispatchEvent(new MouseEvent('click', { bubbles: true }))
+        ];
+        closers.forEach(close => {
+          window.openWhatsNew(version());
+          close();
+          expect(isOpen()).toBe(false);
+        });
+      });
+
+      it('opens by itself on the first run after an update, and only then', async () => {
+        // Source never fires (its version is the placeholder), so run a stamped copy.
+        const stamped = html.replace("const PLUGIN_VERSION = '{{VERSION}}';", `const PLUGIN_VERSION = '${version()}';`);
+        const boot = async () => {
+          document.documentElement.innerHTML = stamped;
+          const script = Array.from(document.querySelectorAll('script'))
+            .find(s => !s.src && s.textContent.includes('processData'));
+          window.PluginAPI = { getTasks: () => new Promise(() => {}) };
+          new Function(script.textContent).call(window);
+          await new Promise(r => setTimeout(r, 700));
+        };
+        localStorage.setItem(window.SETTINGS_KEY, JSON.stringify({ lastSeenVersion: '1.0.0' }));
+        await boot();
+        expect(isOpen()).toBe(true);
+        await boot();
+        expect(isOpen()).toBe(false);
+      });
+    });
+
+    describe('"Available" notice', () => {
+      const fakeHost = (response) => {
+        const host = { request: vi.fn(async () => (typeof response === 'function' ? response() : response)) };
+        window.PluginAPI = host;
+        return host;
+      };
+
+      it('is off by default and never touches the network', async () => {
+        const host = fakeHost({ tag_name: 'v9.0.0' });
+        expect(window.getSetting('updateCheck')).toBe(false);
+        expect(await window.checkForUpdate('1.8.0', Date.now())).toBe(false);
+        expect(host.request).not.toHaveBeenCalled();
+      });
+
+      it('asks the one declared endpoint, at most once a day', async () => {
+        const host = fakeHost({ tag_name: 'v1.9.0' });
+        window.setSetting('updateCheck', true);
+        const now = Date.now();
+        expect(await window.checkForUpdate('1.8.0', now)).toBe(true);
+        expect(host.request).toHaveBeenCalledTimes(1);
+        expect(host.request.mock.calls[0][0]).toBe(window.RELEASES_API);
+        expect(window.getSetting('updateLatest')).toBe('1.9.0');
+
+        expect(await window.checkForUpdate('1.8.0', now + DAY_MS - 1)).toBe(false);
+        expect(host.request).toHaveBeenCalledTimes(1);
+        expect(await window.checkForUpdate('1.8.0', now + DAY_MS)).toBe(true);
+        expect(host.request).toHaveBeenCalledTimes(2);
+      });
+
+      it('counts a failed check as the day\'s attempt rather than retrying on every open', async () => {
+        const host = fakeHost(() => { throw new Error('offline'); });
+        window.setSetting('updateCheck', true);
+        const now = Date.now();
+        expect(await window.checkForUpdate('1.8.0', now)).toBe(false);
+        expect(await window.checkForUpdate('1.8.0', now + 1000)).toBe(false);
+        expect(host.request).toHaveBeenCalledTimes(1);
+      });
+
+      it('keeps nothing from a response whose tag is not a version', async () => {
+        window.setSetting('updateCheck', true);
+        for (const tag_name of ['<img src=x onerror=alert(1)>', '1.9', 'v1.9.0/../../evil', 42]) {
+          const host = fakeHost({ tag_name });
+          window.getAllSettings().updateCheckedAt = 0;
+          expect(await window.checkForUpdate('1.8.0', Date.now())).toBe(false);
+          expect(host.request).toHaveBeenCalledTimes(1);
+          expect(window.getSetting('updateLatest'), String(tag_name)).toBe('');
+        }
+      });
+
+      it('shows only a newer release, until it is dismissed or the check is turned off', () => {
+        window.setSetting('updateCheck', true);
+        const settings = window.getAllSettings();
+        settings.updateLatest = '1.8.0';
+        expect(window.availableUpdate('1.8.0')).toBeNull();
+        settings.updateLatest = '1.9.0';
+        expect(window.availableUpdate('1.8.0')).toEqual({ kind: 'available', version: '1.9.0', current: '1.8.0' });
+
+        window.renderUpdateNotice(window.availableUpdate('1.8.0'));
+        expect(notice().textContent).toContain('Version 1.9.0 is available (you have 1.8.0).');
+        notice().querySelector('button').click();
+        expect(window.getSetting('updateDismissed')).toBe('1.9.0');
+        expect(window.availableUpdate('1.8.0')).toBeNull();
+
+        settings.updateLatest = '1.9.1'; // a later release is news again
+        expect(window.availableUpdate('1.8.0')).not.toBeNull();
+        window.setSetting('updateCheck', false);
+        expect(window.availableUpdate('1.8.0')).toBeNull();
+      });
+    });
+
+    describe('Bookkeeping', () => {
+      it('survives import and reset, which are about preferences, not this install', () => {
+        window.noteRunningVersion('1.8.0');
+        window.importSettings(JSON.stringify({ lastSeenVersion: '0.0.1', updateDismissed: '9.9.9', updateCheckedAt: 0 }));
+        expect(window.getSetting('lastSeenVersion')).toBe('1.8.0');
+        expect(window.getSetting('updateDismissed')).toBe('');
+        window.resetSettings();
+        expect(window.getSetting('lastSeenVersion')).toBe('1.8.0');
+      });
+
+      it('repairs a stored version or timestamp that would mislead the check', () => {
+        localStorage.setItem(window.SETTINGS_KEY, JSON.stringify({
+          lastSeenVersion: '<b>1</b>', updateLatest: 'latest', updateCheckedAt: Date.now() + 365 * DAY_MS
+        }));
+        reboot();
+        expect(window.getSetting('lastSeenVersion')).toBe('');
+        expect(window.getSetting('updateLatest')).toBe('');
+        expect(window.getSetting('updateCheckedAt')).toBeLessThanOrEqual(Date.now());
+      });
+
+      it('declares the update host in the manifest, so the host app can enforce and disclose it', () => {
+        const manifest = JSON.parse(readFileSync(resolve(__dirname, '../sp-dashboard/manifest.json.template'), 'utf8'));
+        const host = new URL(window.RELEASES_API).hostname;
+        expect(manifest.permissions).toContain('http');
+        expect(manifest.allowedHosts).toEqual([host]);
+        expect(manifest.dataSharing.flatMap(d => d.hosts)).toContain(host);
+        expect(manifest.dataSharing.flatMap(d => [...d.data, ...(d.optionalData || [])])).toEqual([]);
+      });
+    });
+
+    it('keeps the banner and the popup out of every exported view', () => {
+      window.renderUpdateNotice({ kind: 'available', version: '9.0.0', current: '1.9.0' });
+      window.openWhatsNew(window.WHATS_NEW_VERSION);
+      document.querySelectorAll('.view-content').forEach(view => {
+        expect(view.contains(notice())).toBe(false);
+        expect(view.contains(document.getElementById('whats-new-overlay'))).toBe(false);
+      });
+    });
+  });
 });
