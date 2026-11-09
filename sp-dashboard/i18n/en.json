@@ -3,7 +3,6 @@
     "TITLE": "Dashboard"
   },
   "HEADER": {
-    "SUBTITLE": "Select a time period to view metrics",
     "FROM": "From",
     "TO": "To",
     "PERIOD": "Period",
@@ -216,7 +215,7 @@
       "APPEARANCE": "Appearance",
       "APPEARANCE_SUB": "Purely visual — nothing here changes a number",
       "HEATMAP": "Heatmap",
-      "HEATMAP_SUB": "The Heatmap tab keeps its own period, because the one in the header defaults to a single day",
+      "HEATMAP_SUB": "The Heatmap tab keeps its own period, because the main Period control defaults to a single day",
       "GOALS": "Goals",
       "GOALS_SUB": "Targets are drawn onto the Dashboard tab — a dashed line across the bar chart, a bar under the Total Time card",
       "ADVANCED": "Advanced",
