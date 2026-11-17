@@ -6,7 +6,8 @@
     "FROM": "Desde",
     "TO": "Hasta",
     "PERIOD": "Periodo",
-    "WEEKDAY": "Día de la semana"
+    "WEEKDAY": "Día de la semana",
+    "RANGE_TITLE": "Fechas que abarca este periodo"
   },
   "PERIOD": {
     "TODAY": "Hoy",
@@ -177,9 +178,8 @@
   "WHATS_NEW": {
     "TITLE": "Novedades de la versión {{version}}",
     "NOTES": {
-      "POPUP": "Las notas de la versión ahora se abren aquí una vez tras cada actualización, para que veas qué ha cambiado sin salir de Super Productivity.",
-      "UPDATE_CHECK": "Nuevo y opcional: consulta a GitHub una vez al día si hay versiones nuevas y muestra un aviso cuando sale una. Actívalo abajo o en Ajustes › Avanzado.",
-      "PERMISSION": "La ficha del plugin ahora muestra api.github.com. Solo se contacta mientras la búsqueda de actualizaciones está activada, y no se envía nada sobre tus tareas."
+      "PERIOD_DATES": "El cuadro Periodo ahora muestra las fechas que abarca, por ejemplo «9–11 nov» para Esta semana. Todos los periodos terminan hoy.",
+      "PRINT_RANGE": "Con «Ocultar días no laborables en los gráficos» activado, los informes impresos y los nombres de archivo exportados ahora indican el periodo elegido, no su primer y último día laborable."
     },
     "FULL_NOTES": "Notas completas de la versión en GitHub",
     "CHECK_START": "Buscar versiones nuevas en GitHub",

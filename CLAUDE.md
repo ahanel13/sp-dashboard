@@ -285,6 +285,12 @@ first tab's label), and the Period controls sit in the tab bar's `.tab-tools`. T
 `flex-wrap: wrap-reverse`, so on a narrow window the tools wrap onto a row *above* the tabs and the
 active tab's underline stays on the bar's bottom border.
 
+`#period-range` beside the Period select shows the dates the period covers (`formatDateRange`,
+Intl `formatRange`). Every preset ends *today*, which is what made "This Week" confusing (#19).
+It reads `metrics.rangeFrom` / `rangeTo`, the period as picked, *before* `hideNonWorkingDays`
+trims it, and so does `getRangeLabel()` (print header, export filenames, summaries). It is hidden
+for Custom, whose pickers already show the dates.
+
 - **Width and height are separate axes.** `max-width` breakpoints (900 / 560) decide what
   reflows; `max-height` breakpoints (820 / 640) trim vertical padding and chart height. All of them
   are `@media screen and (…)` so print keeps its own layout. Don't drop the `screen`: a printed

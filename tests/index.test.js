@@ -2928,4 +2928,80 @@ describe('Date Range Reporter UI', () => {
       });
     });
   });
+
+  describe('Period range label (issue #19)', () => {
+    const label = () => document.getElementById('period-range');
+    const pick = (value) => {
+      const preset = document.getElementById('date-preset');
+      preset.value = value;
+      preset.dispatchEvent(new Event('change'));
+      window.processData([], []);
+    };
+
+    beforeEach(() => {
+      vi.useFakeTimers({ now: new Date('2026-11-11T12:00:00').getTime() }); // a Wednesday
+      window.setSetting('dateFormat', 'us');
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it('shows the dates each preset covers, every one of which ends today', () => {
+      const expected = {
+        today: 'Wed, Nov 11',
+        'this-week': 'Nov 9 – 11',
+        week: 'Nov 5 – 11',
+        month: 'Nov 1 – 11',
+        year: 'Dec 1, 2025 – Nov 11, 2026'
+      };
+      for (const [value, text] of Object.entries(expected)) {
+        pick(value);
+        expect(label().textContent.replace(/\s+/g, ' ')).toBe(text);
+        expect(label().classList.contains('hidden')).toBe(false);
+      }
+    });
+
+    it('follows the weekday picked for "Starting from weekday"', () => {
+      document.getElementById('weekday-select').value = '5'; // Friday
+      pick('from-weekday');
+      expect(label().textContent.replace(/\s+/g, ' ')).toBe('Nov 6 – 11');
+    });
+
+    it('is hidden for a custom range, whose pickers already show the dates', () => {
+      pick('week');
+      document.getElementById('date-from').value = '2026-10-01';
+      document.getElementById('date-to').value = '2026-10-05';
+      pick('custom');
+      expect(label().classList.contains('hidden')).toBe(true);
+      expect(label().textContent).toBe('');
+    });
+
+    it('shows the period as picked, not as trimmed by hideNonWorkingDays', () => {
+      window.setSetting('hideNonWorkingDays', true);
+      pick('month'); // Nov 1 2026 is a Sunday
+      expect(window.latestMetrics.weeklyData.labels[0]).toBe('2026-11-02');
+      expect(label().textContent.replace(/\s+/g, ' ')).toBe('Nov 1 – 11');
+      // Print, export filenames and summaries say the same thing.
+      expect(window.getRangeLabel()).toBe(`${window.formatDateShort('2026-11-01')} – ${window.formatDateShort('2026-11-11')}`);
+    });
+
+    it('honours the date format setting', () => {
+      window.setSetting('dateFormat', 'iso');
+      pick('this-week');
+      expect(label().textContent).toBe('2026-11-09 – 2026-11-11');
+      window.setSetting('dateFormat', 'eu');
+      pick('this-week');
+      expect(label().textContent.replace(/\s+/g, ' ')).toBe('9–11 Nov');
+    });
+
+    it('does not rewrite unchanged text, so a live refresh is not re-announced', () => {
+      pick('week');
+      const node = label().firstChild;
+      window.processData([], []);
+      expect(label().firstChild).toBe(node);
+    });
+
+    it('describes the Period select, and stays out of every exported view', () => {
+      expect(document.getElementById('date-preset').getAttribute('aria-describedby')).toBe('period-range');
+      document.querySelectorAll('.view-content').forEach(view => expect(view.contains(label())).toBe(false));
+    });
+  });
 });
