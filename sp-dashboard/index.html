@@ -5513,7 +5513,7 @@
     /* BUILD:TEST-EXPORTS-END */
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
-    const pullDataFromSP = async () => {
+    const pullOnce = async () => {
       debugLog("[sp-dashboard] pullDataFromSP invoked, PluginAPI?", !!window.PluginAPI);
       // Serialising every done task is expensive on a large vault, so the whole
       // diagnostic block only runs when debug logging is on.
@@ -5579,6 +5579,34 @@
         console.error("[sp-dashboard] Dashboard failed to fetch SP data:", err);
       }
     };
+
+    // One reread at a time. A reread on a large archive can outlast the gap
+    // between triggers (host changes, auto-refresh), and overlapping ones would
+    // each fetch everything and could land out of order, older data last.
+    // A trigger that arrives mid-read is folded into one more read after it,
+    // so the last change is never missed; any number of them cost one read.
+    let pullInFlight = null;
+    let pullAgain = false;
+    const pullDataFromSP = () => {
+      if (pullInFlight) {
+        pullAgain = true;
+        return pullInFlight;
+      }
+      pullInFlight = (async () => {
+        try {
+          do {
+            pullAgain = false;
+            await pullOnce();
+          } while (pullAgain);
+        } finally {
+          pullInFlight = null;
+        }
+      })();
+      return pullInFlight;
+    };
+    /* BUILD:TEST-EXPORTS-START — defined after the main export block */
+    window.pullDataFromSP = pullDataFromSP;
+    /* BUILD:TEST-EXPORTS-END */
 
     // Listen for the light refresh trigger from plugin.js.
     //
