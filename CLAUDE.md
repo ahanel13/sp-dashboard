@@ -30,10 +30,10 @@ This is a **Super Productivity plugin** — a sandboxed iframe widget. All UI lo
 
 ### Two-file plugin model
 
-- **`sp-dashboard/plugin.js`** — runs in the host app context. Registers an ACTION Redux hook with `PluginAPI.addEventListener`, then fires a `postMessage` to the iframe on every state change. This is the only bridge between the host app and the UI.
-- **`sp-dashboard/index.html`** — runs in an isolated iframe. Receives `SP_STATE_CHANGED` messages and pulls fresh data via `PluginAPI.getTasks()` / `getArchivedTasks()` / `getAllProjects()`. All rendering, state, and logic lives here.
+- **`sp-dashboard/plugin.js`** — runs in the host app context. Registers the ACTION hook with `PluginAPI.registerHook` and posts `SP_STATE_CHANGED` (with the tag list) to the iframe. This is the only bridge between the host app and the UI. The hook fires for *every* Redux action, including one per second from a running timer, so the post is debounced (`QUIET_MS`, capped by `MAX_WAIT_MS` so a running timer still gets through) and skipped entirely while the dashboard is closed. Never forward actions one for one: each message costs the iframe a full reread.
+- **`sp-dashboard/index.html`** — runs in an isolated iframe. Receives `SP_STATE_CHANGED` messages and pulls fresh data via `PluginAPI.getTasks()` / `getArchivedTasks()` / `getAllProjects()`. All rendering, state, and logic lives here. `pullDataFromSP()` runs one reread at a time; triggers that land mid-read collapse into a single follow-up read (`pullOnce()` is the read itself).
 
-Available PluginAPI methods (beyond data fetching): `showSnack({ msg, ico })` for toast notifications, `getStorage()` / `setStorage(data)` for persistence (declared in manifest but currently unused).
+Available PluginAPI methods (beyond data fetching): `showSnack({ msg, ico })` for toast notifications. Settings live in `localStorage`, not the host's synced storage.
 
 ### Data flow inside index.html
 
@@ -319,4 +319,4 @@ Tests live in `tests/index.test.js` and use Vitest with a JSDOM environment. The
 - Keep `index.html` self-contained — no `import` statements, no external CDN links, no `require()`.
 - All user-visible strings in the UI must be sanitized before insertion into the DOM (use `textContent`, not `innerHTML`, for any data-derived content).
 - All user-visible strings come from `i18n/en.json` via `t()` — see Translations above.
-- Plugin permissions are declared in `manifest.json.template`; `persistDataSynced` / `loadSyncedData` are declared but currently unused. `http` exists only for the opt-in update check (see Update notices). Any new host must be added to both `allowedHosts` and `dataSharing`, or SP 20 rejects the manifest.
+- Plugin permissions are declared in `manifest.json.template` and list exactly the PluginAPI calls the plugin makes. SP 20 enforces only `http`, `nodeExecution` and `deleteProject`; the rest are shown on the plugin card as-is, so an unused one misleads users and a missing one hides a call. Keep the list in step with the code (a test checks it). `http` exists only for the opt-in update check (see Update notices). Any new host must be added to both `allowedHosts` and `dataSharing`, or SP 20 rejects the manifest.

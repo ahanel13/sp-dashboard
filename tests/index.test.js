@@ -3005,6 +3005,110 @@ describe('Date Range Reporter UI', () => {
     });
   });
 
+  describe('Host change notifications', () => {
+    const pluginSrc = readFileSync(resolve(__dirname, '../sp-dashboard/plugin.js'), 'utf8');
+    let api, onAction, frame, posted;
+
+    // plugin.js runs in the host page with PluginAPI as a global.
+    const loadPlugin = () => {
+      api = {
+        Hooks: { ACTION: 'action' },
+        registerHook: vi.fn((hook, fn) => { if (hook === 'action') onAction = fn; }),
+        getAllTags: vi.fn(async () => [{ id: 't1', title: 'Work' }])
+      };
+      new Function('PluginAPI', pluginSrc)(api);
+    };
+    const openDashboard = () => {
+      frame = document.createElement('iframe');
+      frame.setAttribute('data-plugin-id', 'sp-dashboard');
+      document.body.appendChild(frame);
+      posted = [];
+      frame.contentWindow.postMessage = vi.fn((msg) => posted.push(msg));
+    };
+    const act = () => onAction({ action: { type: '[TimeTracking] Add time spent' } });
+
+    beforeEach(() => { vi.useFakeTimers(); onAction = null; });
+    afterEach(() => { vi.useRealTimers(); delete window.PluginAPI; });
+
+    it('collapses a burst of actions into one message, with the tags', async () => {
+      loadPlugin();
+      openDashboard();
+      for (let i = 0; i < 20; i++) act();
+      await vi.advanceTimersByTimeAsync(1499);
+      expect(posted).toHaveLength(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(posted).toEqual([{ type: 'SP_STATE_CHANGED', tags: [{ id: 't1', title: 'Work' }] }]);
+      expect(api.getAllTags).toHaveBeenCalledTimes(1);
+    });
+
+    it('still gets through while a timer dispatches every second, at most every 5 s', async () => {
+      loadPlugin();
+      openDashboard();
+      for (let s = 0; s < 12; s++) {
+        act();
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      // A message per action would be 12. The cap lets two through, not none.
+      expect(posted.length).toBe(2);
+    });
+
+    it('does nothing while the dashboard is closed', async () => {
+      loadPlugin();
+      for (let i = 0; i < 5; i++) act();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(api.getAllTags).not.toHaveBeenCalled();
+    });
+
+    it('does not log to the host console on actions', async () => {
+      const log = vi.spyOn(console, 'log');
+      loadPlugin();
+      openDashboard();
+      act();
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(log).not.toHaveBeenCalled();
+      log.mockRestore();
+    });
+
+    it('runs one reread at a time, folding triggers that arrive mid-read into one more', async () => {
+      vi.useRealTimers();
+      // Let every earlier test's 500 ms bootstrap fire first, while there is no
+      // host, or each would start its own read against the mock below.
+      await new Promise(r => setTimeout(r, 600));
+      const pending = [];
+      window.PluginAPI = {
+        getTasks: vi.fn(() => new Promise(res => pending.push(res))),
+        getArchivedTasks: vi.fn(async () => []),
+        getAllProjects: vi.fn(async () => []),
+        getAllTags: vi.fn(async () => [])
+      };
+      const first = window.pullDataFromSP();
+      for (let i = 0; i < 5; i++) window.pullDataFromSP();
+      expect(window.PluginAPI.getTasks).toHaveBeenCalledTimes(1);
+      pending.shift()([]);
+      await vi.waitFor(() => expect(pending.length).toBe(1));
+      pending.shift()([]);
+      await first;
+      expect(window.PluginAPI.getTasks).toHaveBeenCalledTimes(2);
+      // Idle again: the next trigger starts a fresh read.
+      const next = window.pullDataFromSP();
+      expect(window.PluginAPI.getTasks).toHaveBeenCalledTimes(3);
+      pending.shift()([]);
+      await next;
+    });
+
+    it('declares exactly the PluginAPI calls the plugin makes', () => {
+      const manifest = JSON.parse(readFileSync(resolve(__dirname, '../sp-dashboard/manifest.json.template'), 'utf8'));
+      // Code only: commented-out examples don't count as calls.
+      const code = (pluginSrc + '\n' + html).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+      const used = new Set([...code.matchAll(/PluginAPI\.(\w+)\b/g)].map(m => m[1]));
+      // Not data or UI access: wiring, i18n, and the fallback name for getAllTags.
+      // `request` is covered by the `http` permission.
+      const plumbing = new Set(['Hooks', 'registerHook', 'translate', 'getCurrentLanguage', 'getTags', 'request']);
+      const expected = [...used].filter(m => !plumbing.has(m)).sort();
+      expect(manifest.permissions.filter(p => p !== 'http').sort()).toEqual(expected);
+    });
+  });
+
   describe('As built (test exports stripped)', () => {
     it('has no inline event-handler attributes, which the build cannot see', () => {
       // minify.sh renames top-level functions, so an onclick="fn()" in markup

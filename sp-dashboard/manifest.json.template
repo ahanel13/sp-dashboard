@@ -16,8 +16,8 @@
     "getTasks",
     "getArchivedTasks",
     "getAllProjects",
-    "persistDataSynced",
-    "loadSyncedData",
+    "getAllTags",
+    "showSnack",
     "http"
   ],
   "allowedHosts": ["api.github.com"],
