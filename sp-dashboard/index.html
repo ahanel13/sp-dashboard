@@ -882,7 +882,7 @@
           </div>
           <div class="control-box" style="flex-direction:row; align-items:center; gap:var(--s,0.5rem);">
             <label for="drill-entity-select" style="white-space:nowrap; font-size:0.875rem; color:var(--text-color-muted,#9e9e9e);" data-i18n="DRILL.SHOW">Show:</label>
-            <select id="drill-entity-select" class="chart-select" onchange="setDrillEntity(this.value)"></select>
+            <select id="drill-entity-select" class="chart-select"></select>
           </div>
         </div>
 
@@ -5439,6 +5439,11 @@
       const btn = document.getElementById(`drill-dim-${dim}`);
       if (btn) btn.addEventListener('click', () => setDrillDimension(dim));
     });
+    // Was an inline onchange="setDrillEntity(…)", which only ever worked in
+    // tests: the build renames setDrillEntity and strips its window export, so
+    // in the app every pick threw, and the next refresh put the old one back.
+    document.getElementById('drill-entity-select')
+      .addEventListener('change', (e) => setDrillEntity(e.target.value));
 
     /* BUILD:TEST-EXPORTS-START — stripped by scripts/minify.sh; tests run against source */
     // expose key utilities for testing (JSDOM environment won't execute script tags normally)

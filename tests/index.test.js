@@ -3108,4 +3108,47 @@ describe('Date Range Reporter UI', () => {
       expect(manifest.permissions.filter(p => p !== 'http').sort()).toEqual(expected);
     });
   });
+
+  describe('As built (test exports stripped)', () => {
+    it('has no inline event-handler attributes, which the build cannot see', () => {
+      // minify.sh renames top-level functions, so an onclick="fn()" in markup
+      // names a function that no longer exists in the shipped file.
+      const markup = html.replace(/<script[\s\S]*?<\/script>/g, '');
+      expect(markup.match(/\son[a-z]+\s*=/gi) || []).toEqual([]);
+    });
+
+    it('keeps the entity picked in By Project / Tag across a refresh', async () => {
+      vi.useFakeTimers();
+      try {
+        // Run the script the way it ships: without the window.* test exports,
+        // so nothing in markup can lean on a global the build removes.
+        document.documentElement.innerHTML = html;
+        const src = Array.from(document.querySelectorAll('script'))
+          .find(sc => !sc.src && sc.textContent.includes('processData')).textContent
+          .replace(/\/\* BUILD:TEST-EXPORTS-START[\s\S]*?BUILD:TEST-EXPORTS-END \*\//g, '');
+        expect(src).not.toContain('window.setDrillEntity');
+        const errors = [];
+        const onError = (e) => errors.push(e.error || e.message);
+        window.addEventListener('error', onError);
+        new Function(src).call(window);
+        await vi.advanceTimersByTimeAsync(600); // the file:// mock data loads
+
+        document.getElementById('tab-btn-drilldown').click();
+        const select = document.getElementById('drill-entity-select');
+        expect(select.options.length).toBeGreaterThan(1);
+        const pick = select.options[select.options.length - 1].value;
+        expect(select.value).not.toBe(pick);
+        select.value = pick;
+        select.dispatchEvent(new Event('change'));
+
+        // A refresh rebuilds the list from the current entity.
+        document.getElementById('drill-dim-project').click();
+        expect(select.value).toBe(pick);
+        window.removeEventListener('error', onError);
+        expect(errors).toEqual([]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
 });
