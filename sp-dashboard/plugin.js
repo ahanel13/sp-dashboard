@@ -8,8 +8,6 @@
 //   },
 // });
 
-console.log("[sp-dashboard plugin] Date Range Reporter plugin loaded!");
-
 // Must match the "id" field in manifest.json.template.
 const PLUGIN_ID = 'sp-dashboard';
 
@@ -45,17 +43,36 @@ window.addEventListener('message', (event) => {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    console.log("[sp-dashboard plugin] saved download", data.filename);
   } catch (e) {
     console.error("[sp-dashboard plugin] download failed", e);
   }
 });
 
-// We listen to the global Redux ACTION hook.
-// Whenever the user adds a task, tracks time, or changes a project, this fires.
-PluginAPI.registerHook(PluginAPI.Hooks.ACTION, async (action) => {
-  console.log("[sp-dashboard plugin] ACTION hook triggered", action.type);
-  const iframes = document.querySelectorAll(`iframe[data-plugin-id="${PLUGIN_ID}"]`);
+// Tell the dashboard the host's state changed, at most every so often.
+//
+// The ACTION hook fires for every Redux action in the app, and a running timer
+// dispatches one every second. Each message makes the dashboard reread every
+// task, the archive included, so forwarding them one for one meant a full
+// reread per second for as long as a timer ran.
+//
+// Trailing debounce: one message once the actions stop for QUIET_MS. It must
+// be longer than the timer's 1 s tick, or every tick counts as "stopped" and
+// goes through. A timer never stops, so MAX_WAIT_MS caps the wait and the view
+// still catches up while one runs. Nothing is fetched or sent while the
+// dashboard is closed.
+const QUIET_MS = 1500;
+const MAX_WAIT_MS = 5000;
+let notifyTimer = null;
+let firstPendingAt = 0;
+
+function dashboardFrames() {
+  return document.querySelectorAll(`iframe[data-plugin-id="${PLUGIN_ID}"]`);
+}
+
+async function notifyDashboard() {
+  notifyTimer = null;
+  firstPendingAt = 0;
+  const iframes = dashboardFrames();
   if (!iframes.length) return;
 
   // Fetch tags from host context (more API access than the sandboxed iframe)
@@ -71,11 +88,23 @@ PluginAPI.registerHook(PluginAPI.Hooks.ACTION, async (action) => {
 
   iframes.forEach((iframe) => {
     if (iframe.contentWindow) {
-      console.log("[sp-dashboard plugin] sending SP_STATE_CHANGED to dashboard iframe");
       iframe.contentWindow.postMessage({
         type: 'SP_STATE_CHANGED',
         tags
       }, '*');
     }
   });
-});
+}
+
+function scheduleNotify() {
+  if (!dashboardFrames().length) return;
+  const now = Date.now();
+  if (!firstPendingAt) firstPendingAt = now;
+  if (notifyTimer) clearTimeout(notifyTimer);
+  const wait = Math.max(0, Math.min(QUIET_MS, firstPendingAt + MAX_WAIT_MS - now));
+  notifyTimer = setTimeout(notifyDashboard, wait);
+}
+
+// The hook receives `{ action }`; the action itself isn't needed, only that
+// something changed.
+PluginAPI.registerHook(PluginAPI.Hooks.ACTION, scheduleNotify);

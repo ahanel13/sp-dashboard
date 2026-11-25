@@ -110,6 +110,9 @@
     .tab-tools .control-box { flex-direction: row; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem; }
     .tab-tools .control-box label { white-space: nowrap; }
     .tab-tools select, .tab-tools input[type="date"] { font-size: 0.875rem; }
+    /* The dates the period covers (#19). "This Week" ends today, not on Sunday,
+       and nothing else on screen said so. */
+    .period-range { font-size: 0.8125rem; color: var(--text-color-muted, #9e9e9e); white-space: nowrap; font-variant-numeric: tabular-nums; }
     
     .tab-btn {
       background: none;
@@ -666,7 +669,7 @@
             <!-- Preset Dropdown -->
             <div class="control-box">
               <label for="date-preset" class="period-label" data-i18n="HEADER.PERIOD">Period</label>
-              <select id="date-preset">
+              <select id="date-preset" aria-describedby="period-range">
                 <option value="today" selected data-i18n="PERIOD.TODAY">Today</option>
                 <option value="this-week" data-i18n="PERIOD.THIS_WEEK">This Week</option>
                 <option value="week" data-i18n="PERIOD.PAST_WEEK">Past Week</option>
@@ -675,6 +678,7 @@
                 <option value="custom" data-i18n="PERIOD.CUSTOM">Custom Range...</option>
                 <option value="from-weekday" data-i18n="PERIOD.FROM_WEEKDAY">Starting from weekday</option>
               </select>
+              <span id="period-range" class="period-range hidden" title="Dates this period covers" data-i18n-title="HEADER.RANGE_TITLE"></span>
             </div>
             <div id="weekday-picker-container" class="control-box hidden">
               <label for="weekday-select" class="period-label" data-i18n="HEADER.WEEKDAY">Weekday</label>
@@ -878,7 +882,7 @@
           </div>
           <div class="control-box" style="flex-direction:row; align-items:center; gap:var(--s,0.5rem);">
             <label for="drill-entity-select" style="white-space:nowrap; font-size:0.875rem; color:var(--text-color-muted,#9e9e9e);" data-i18n="DRILL.SHOW">Show:</label>
-            <select id="drill-entity-select" class="chart-select" onchange="setDrillEntity(this.value)"></select>
+            <select id="drill-entity-select" class="chart-select"></select>
           </div>
         </div>
 
@@ -1568,7 +1572,8 @@
         "FROM": "From",
         "TO": "To",
         "PERIOD": "Period",
-        "WEEKDAY": "Weekday"
+        "WEEKDAY": "Weekday",
+        "RANGE_TITLE": "Dates this period covers"
       },
       "PERIOD": {
         "TODAY": "Today",
@@ -1739,9 +1744,8 @@
       "WHATS_NEW": {
         "TITLE": "What's new in {{version}}",
         "NOTES": {
-          "POPUP": "Release notes now open here once after each update, so you can see what changed without leaving Super Productivity.",
-          "UPDATE_CHECK": "New, optional: check GitHub once a day for newer releases, with a banner when one is out. Turn it on below or in Settings › Advanced.",
-          "PERMISSION": "The plugin card now lists api.github.com. It is only contacted while the update check is on, and nothing about your tasks is sent."
+          "PERIOD_DATES": "The Period box now shows the dates it covers, such as “Nov 9 – 11” for This Week. Every period ends today.",
+          "PRINT_RANGE": "With “Hide non-working days in charts” on, printed reports and export filenames now name the period you picked, not its first and last working day."
         },
         "FULL_NOTES": "Full release notes on GitHub",
         "CHECK_START": "Check GitHub for new releases",
@@ -2120,6 +2124,30 @@
       return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
     };
 
+    // A period as the user picked it, e.g. "Nov 9 – 11". Intl.formatRange
+    // collapses the shared month and orders the parts per locale; the year
+    // appears only when the range crosses one or isn't this year's. A single
+    // day gets its weekday so it doesn't read as a bare date.
+    const formatDateRange = (fromStr, toStr) => {
+      if (!fromStr || !toStr) return '';
+      const fmt = getSetting('dateFormat');
+      if (fmt === 'iso') return fromStr === toStr ? fromStr : `${fromStr} – ${toStr}`;
+      const a = new Date(fromStr + 'T00:00:00');
+      const b = new Date(toStr + 'T00:00:00');
+      if (isNaN(a.getTime()) || isNaN(b.getTime())) return '';
+      const locale = fmt === 'eu' ? 'en-GB' : fmt === 'us' ? 'en-US' : dateLocale();
+      const opts = { month: 'short', day: 'numeric' };
+      if (a.getFullYear() !== b.getFullYear() || b.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
+      if (fromStr === toStr) opts.weekday = 'short';
+      try {
+        const f = new Intl.DateTimeFormat(locale, opts);
+        if (fromStr === toStr) return f.format(a);
+        return typeof f.formatRange === 'function' ? f.formatRange(a, b) : `${f.format(a)} – ${f.format(b)}`;
+      } catch (e) {
+        return '';
+      }
+    };
+
     // Days back from `d` to the most recent start-of-week, per the setting.
     const daysSinceWeekStart = (d) => (d.getDay() - Number(getSetting('weekStartsOn')) + 7) % 7;
 
@@ -2355,9 +2383,22 @@
     applyDefaultSelections();
 
     // --- RENDER LOGIC ---
+    // Beside the Period select. Hidden for Custom, whose From/To pickers
+    // already show the dates. Only rewritten when it changes, so a live
+    // refresh doesn't make a screen reader repeat it.
+    const renderPeriodRange = (metrics) => {
+      const el = document.getElementById('period-range');
+      if (!el) return;
+      const custom = document.getElementById('date-preset').value === 'custom';
+      const text = custom || !metrics ? '' : formatDateRange(metrics.rangeFrom, metrics.rangeTo);
+      if (el.textContent !== text) el.textContent = text;
+      el.classList.toggle('hidden', !text);
+    };
+
     const updateDashboardUI = (metrics) => {
       latestMetrics = metrics;
       window.latestMetrics = metrics;
+      renderPeriodRange(metrics);
 
       // render table with current sort order
       const sortedEntries = sortEntries(metrics.tableEntries, currentSort.key, currentSort.dir);
@@ -3121,7 +3162,10 @@
         tagLateData: {},
         tagDailyData: {},
         tableEntries: [],
-        overdueEntries: []
+        overdueEntries: [],
+        // The period as picked, before hideNonWorkingDays trims the days above.
+        rangeFrom: dateFromStr,
+        rangeTo: dateToStr
       };
 
       const now = Date.now();
@@ -4071,11 +4115,17 @@
     // --- SHARE / EXPORT ---
     // Human-readable label for the range currently in view (derived from metrics, so it
     // reflects whatever preset/custom range produced the data on screen).
+    // The picked period, the same one the on-screen label shows: untrimmed by
+    // hideNonWorkingDays, so a month starting on a Sunday still starts on the 1st.
     const getRangeLabel = () => {
       const m = window.latestMetrics || latestMetrics;
-      if (!m || !m.weeklyData || !m.weeklyData.labels || !m.weeklyData.labels.length) return '';
-      const labels = m.weeklyData.labels;
-      const from = labels[0], to = labels[labels.length - 1];
+      if (!m) return '';
+      let from = m.rangeFrom, to = m.rangeTo;
+      if (!from || !to) {
+        const labels = (m.weeklyData && m.weeklyData.labels) || [];
+        if (!labels.length) return '';
+        from = labels[0]; to = labels[labels.length - 1];
+      }
       return from === to ? formatDateShort(from) : `${formatDateShort(from)} – ${formatDateShort(to)}`;
     };
 
@@ -4135,8 +4185,8 @@
     // ship: the popup is about the version just installed, and older notes live on
     // GitHub. A test holds WHATS_NEW_VERSION to package.json's version, so a
     // release cannot go out still showing the previous release's notes.
-    const WHATS_NEW_VERSION = '1.9.0';
-    const WHATS_NEW_NOTES = ['WHATS_NEW.NOTES.POPUP', 'WHATS_NEW.NOTES.UPDATE_CHECK', 'WHATS_NEW.NOTES.PERMISSION'];
+    const WHATS_NEW_VERSION = '1.10.0';
+    const WHATS_NEW_NOTES = ['WHATS_NEW.NOTES.PERIOD_DATES', 'WHATS_NEW.NOTES.PRINT_RANGE'];
 
     // Semver precedence: numeric core first, then a release outranks its own
     // prereleases (1.9.0 > 1.9.0-rc.2), then prerelease identifiers in turn.
@@ -5389,6 +5439,11 @@
       const btn = document.getElementById(`drill-dim-${dim}`);
       if (btn) btn.addEventListener('click', () => setDrillDimension(dim));
     });
+    // Was an inline onchange="setDrillEntity(…)", which only ever worked in
+    // tests: the build renames setDrillEntity and strips its window export, so
+    // in the app every pick threw, and the next refresh put the old one back.
+    document.getElementById('drill-entity-select')
+      .addEventListener('change', (e) => setDrillEntity(e.target.value));
 
     /* BUILD:TEST-EXPORTS-START — stripped by scripts/minify.sh; tests run against source */
     // expose key utilities for testing (JSDOM environment won't execute script tags normally)
@@ -5417,6 +5472,7 @@
     window.daysSinceWeekStart = daysSinceWeekStart;
     window.formatTime = formatTime;
     window.formatDateShort = formatDateShort;
+    window.formatDateRange = formatDateRange;
     window.getDatesInRange = getDatesInRange;
     window.getDueBounds = getDueBounds;
     window.switchTab = switchTab;
@@ -5462,7 +5518,7 @@
     /* BUILD:TEST-EXPORTS-END */
 
     // --- SP INTEGRATION / NATIVE IFRAME COMMS ---
-    const pullDataFromSP = async () => {
+    const pullOnce = async () => {
       debugLog("[sp-dashboard] pullDataFromSP invoked, PluginAPI?", !!window.PluginAPI);
       // Serialising every done task is expensive on a large vault, so the whole
       // diagnostic block only runs when debug logging is on.
@@ -5528,6 +5584,34 @@
         console.error("[sp-dashboard] Dashboard failed to fetch SP data:", err);
       }
     };
+
+    // One reread at a time. A reread on a large archive can outlast the gap
+    // between triggers (host changes, auto-refresh), and overlapping ones would
+    // each fetch everything and could land out of order, older data last.
+    // A trigger that arrives mid-read is folded into one more read after it,
+    // so the last change is never missed; any number of them cost one read.
+    let pullInFlight = null;
+    let pullAgain = false;
+    const pullDataFromSP = () => {
+      if (pullInFlight) {
+        pullAgain = true;
+        return pullInFlight;
+      }
+      pullInFlight = (async () => {
+        try {
+          do {
+            pullAgain = false;
+            await pullOnce();
+          } while (pullAgain);
+        } finally {
+          pullInFlight = null;
+        }
+      })();
+      return pullInFlight;
+    };
+    /* BUILD:TEST-EXPORTS-START — defined after the main export block */
+    window.pullDataFromSP = pullDataFromSP;
+    /* BUILD:TEST-EXPORTS-END */
 
     // Listen for the light refresh trigger from plugin.js.
     //

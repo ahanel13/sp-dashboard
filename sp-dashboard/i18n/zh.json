@@ -6,7 +6,8 @@
     "FROM": "开始",
     "TO": "结束",
     "PERIOD": "时间范围",
-    "WEEKDAY": "星期"
+    "WEEKDAY": "星期",
+    "RANGE_TITLE": "此时间段包含的日期"
   },
   "PERIOD": {
     "TODAY": "今天",
@@ -171,9 +172,8 @@
   "WHATS_NEW": {
     "TITLE": "{{version}} 版新功能",
     "NOTES": {
-      "POPUP": "每次更新后，发布说明会在这里打开一次，无需离开 Super Productivity 即可了解有哪些变化。",
-      "UPDATE_CHECK": "新增可选功能：每天向 GitHub 查询一次是否有新版本，有新版本时显示提示。可在下方或“设置 › 高级”中开启。",
-      "PERMISSION": "插件卡片现在会列出 api.github.com。仅在开启检查更新时才会访问，且不会发送任何任务信息。"
+      "PERIOD_DATES": "“时间范围”旁现在会显示所涵盖的日期，例如“本周”显示“11月9日至11日”。所有时间范围都截止到今天。",
+      "PRINT_RANGE": "开启“图表中隐藏非工作日”后，打印的报告和导出的文件名现在显示你选择的时间范围，而不是其中第一个和最后一个工作日。"
     },
     "FULL_NOTES": "在 GitHub 上查看完整发布说明",
     "CHECK_START": "在 GitHub 上检查新版本",

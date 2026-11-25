@@ -2929,4 +2929,227 @@ describe('Date Range Reporter UI', () => {
       });
     });
   });
+
+  describe('Period range label (issue #19)', () => {
+    const label = () => document.getElementById('period-range');
+    const pick = (value) => {
+      const preset = document.getElementById('date-preset');
+      preset.value = value;
+      preset.dispatchEvent(new Event('change'));
+      window.processData([], []);
+    };
+
+    beforeEach(() => {
+      vi.useFakeTimers({ now: new Date('2026-11-11T12:00:00').getTime() }); // a Wednesday
+      window.setSetting('dateFormat', 'us');
+    });
+    afterEach(() => vi.useRealTimers());
+
+    it('shows the dates each preset covers, every one of which ends today', () => {
+      const expected = {
+        today: 'Wed, Nov 11',
+        'this-week': 'Nov 9 – 11',
+        week: 'Nov 5 – 11',
+        month: 'Nov 1 – 11',
+        year: 'Dec 1, 2025 – Nov 11, 2026'
+      };
+      for (const [value, text] of Object.entries(expected)) {
+        pick(value);
+        expect(label().textContent.replace(/\s+/g, ' ')).toBe(text);
+        expect(label().classList.contains('hidden')).toBe(false);
+      }
+    });
+
+    it('follows the weekday picked for "Starting from weekday"', () => {
+      document.getElementById('weekday-select').value = '5'; // Friday
+      pick('from-weekday');
+      expect(label().textContent.replace(/\s+/g, ' ')).toBe('Nov 6 – 11');
+    });
+
+    it('is hidden for a custom range, whose pickers already show the dates', () => {
+      pick('week');
+      document.getElementById('date-from').value = '2026-10-01';
+      document.getElementById('date-to').value = '2026-10-05';
+      pick('custom');
+      expect(label().classList.contains('hidden')).toBe(true);
+      expect(label().textContent).toBe('');
+    });
+
+    it('shows the period as picked, not as trimmed by hideNonWorkingDays', () => {
+      window.setSetting('hideNonWorkingDays', true);
+      pick('month'); // Nov 1 2026 is a Sunday
+      expect(window.latestMetrics.weeklyData.labels[0]).toBe('2026-11-02');
+      expect(label().textContent.replace(/\s+/g, ' ')).toBe('Nov 1 – 11');
+      // Print, export filenames and summaries say the same thing.
+      expect(window.getRangeLabel()).toBe(`${window.formatDateShort('2026-11-01')} – ${window.formatDateShort('2026-11-11')}`);
+    });
+
+    it('honours the date format setting', () => {
+      window.setSetting('dateFormat', 'iso');
+      pick('this-week');
+      expect(label().textContent).toBe('2026-11-09 – 2026-11-11');
+      window.setSetting('dateFormat', 'eu');
+      pick('this-week');
+      expect(label().textContent.replace(/\s+/g, ' ')).toBe('9–11 Nov');
+    });
+
+    it('does not rewrite unchanged text, so a live refresh is not re-announced', () => {
+      pick('week');
+      const node = label().firstChild;
+      window.processData([], []);
+      expect(label().firstChild).toBe(node);
+    });
+
+    it('describes the Period select, and stays out of every exported view', () => {
+      expect(document.getElementById('date-preset').getAttribute('aria-describedby')).toBe('period-range');
+      document.querySelectorAll('.view-content').forEach(view => expect(view.contains(label())).toBe(false));
+    });
+  });
+
+  describe('Host change notifications', () => {
+    const pluginSrc = readFileSync(resolve(__dirname, '../sp-dashboard/plugin.js'), 'utf8');
+    let api, onAction, frame, posted;
+
+    // plugin.js runs in the host page with PluginAPI as a global.
+    const loadPlugin = () => {
+      api = {
+        Hooks: { ACTION: 'action' },
+        registerHook: vi.fn((hook, fn) => { if (hook === 'action') onAction = fn; }),
+        getAllTags: vi.fn(async () => [{ id: 't1', title: 'Work' }])
+      };
+      new Function('PluginAPI', pluginSrc)(api);
+    };
+    const openDashboard = () => {
+      frame = document.createElement('iframe');
+      frame.setAttribute('data-plugin-id', 'sp-dashboard');
+      document.body.appendChild(frame);
+      posted = [];
+      frame.contentWindow.postMessage = vi.fn((msg) => posted.push(msg));
+    };
+    const act = () => onAction({ action: { type: '[TimeTracking] Add time spent' } });
+
+    beforeEach(() => { vi.useFakeTimers(); onAction = null; });
+    afterEach(() => { vi.useRealTimers(); delete window.PluginAPI; });
+
+    it('collapses a burst of actions into one message, with the tags', async () => {
+      loadPlugin();
+      openDashboard();
+      for (let i = 0; i < 20; i++) act();
+      await vi.advanceTimersByTimeAsync(1499);
+      expect(posted).toHaveLength(0);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(posted).toEqual([{ type: 'SP_STATE_CHANGED', tags: [{ id: 't1', title: 'Work' }] }]);
+      expect(api.getAllTags).toHaveBeenCalledTimes(1);
+    });
+
+    it('still gets through while a timer dispatches every second, at most every 5 s', async () => {
+      loadPlugin();
+      openDashboard();
+      for (let s = 0; s < 12; s++) {
+        act();
+        await vi.advanceTimersByTimeAsync(1000);
+      }
+      // A message per action would be 12. The cap lets two through, not none.
+      expect(posted.length).toBe(2);
+    });
+
+    it('does nothing while the dashboard is closed', async () => {
+      loadPlugin();
+      for (let i = 0; i < 5; i++) act();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(api.getAllTags).not.toHaveBeenCalled();
+    });
+
+    it('does not log to the host console on actions', async () => {
+      const log = vi.spyOn(console, 'log');
+      loadPlugin();
+      openDashboard();
+      act();
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(log).not.toHaveBeenCalled();
+      log.mockRestore();
+    });
+
+    it('runs one reread at a time, folding triggers that arrive mid-read into one more', async () => {
+      vi.useRealTimers();
+      // Let every earlier test's 500 ms bootstrap fire first, while there is no
+      // host, or each would start its own read against the mock below.
+      await new Promise(r => setTimeout(r, 600));
+      const pending = [];
+      window.PluginAPI = {
+        getTasks: vi.fn(() => new Promise(res => pending.push(res))),
+        getArchivedTasks: vi.fn(async () => []),
+        getAllProjects: vi.fn(async () => []),
+        getAllTags: vi.fn(async () => [])
+      };
+      const first = window.pullDataFromSP();
+      for (let i = 0; i < 5; i++) window.pullDataFromSP();
+      expect(window.PluginAPI.getTasks).toHaveBeenCalledTimes(1);
+      pending.shift()([]);
+      await vi.waitFor(() => expect(pending.length).toBe(1));
+      pending.shift()([]);
+      await first;
+      expect(window.PluginAPI.getTasks).toHaveBeenCalledTimes(2);
+      // Idle again: the next trigger starts a fresh read.
+      const next = window.pullDataFromSP();
+      expect(window.PluginAPI.getTasks).toHaveBeenCalledTimes(3);
+      pending.shift()([]);
+      await next;
+    });
+
+    it('declares exactly the PluginAPI calls the plugin makes', () => {
+      const manifest = JSON.parse(readFileSync(resolve(__dirname, '../sp-dashboard/manifest.json.template'), 'utf8'));
+      // Code only: commented-out examples don't count as calls.
+      const code = (pluginSrc + '\n' + html).split('\n').filter(l => !/^\s*\/\//.test(l)).join('\n');
+      const used = new Set([...code.matchAll(/PluginAPI\.(\w+)\b/g)].map(m => m[1]));
+      // Not data or UI access: wiring, i18n, and the fallback name for getAllTags.
+      // `request` is covered by the `http` permission.
+      const plumbing = new Set(['Hooks', 'registerHook', 'translate', 'getCurrentLanguage', 'getTags', 'request']);
+      const expected = [...used].filter(m => !plumbing.has(m)).sort();
+      expect(manifest.permissions.filter(p => p !== 'http').sort()).toEqual(expected);
+    });
+  });
+
+  describe('As built (test exports stripped)', () => {
+    it('has no inline event-handler attributes, which the build cannot see', () => {
+      // minify.sh renames top-level functions, so an onclick="fn()" in markup
+      // names a function that no longer exists in the shipped file.
+      const markup = html.replace(/<script[\s\S]*?<\/script>/g, '');
+      expect(markup.match(/\son[a-z]+\s*=/gi) || []).toEqual([]);
+    });
+
+    it('keeps the entity picked in By Project / Tag across a refresh', async () => {
+      vi.useFakeTimers();
+      try {
+        // Run the script the way it ships: without the window.* test exports,
+        // so nothing in markup can lean on a global the build removes.
+        document.documentElement.innerHTML = html;
+        const src = Array.from(document.querySelectorAll('script'))
+          .find(sc => !sc.src && sc.textContent.includes('processData')).textContent
+          .replace(/\/\* BUILD:TEST-EXPORTS-START[\s\S]*?BUILD:TEST-EXPORTS-END \*\//g, '');
+        expect(src).not.toContain('window.setDrillEntity');
+        const errors = [];
+        const onError = (e) => errors.push(e.error || e.message);
+        window.addEventListener('error', onError);
+        new Function(src).call(window);
+        await vi.advanceTimersByTimeAsync(600); // the file:// mock data loads
+
+        document.getElementById('tab-btn-drilldown').click();
+        const select = document.getElementById('drill-entity-select');
+        expect(select.options.length).toBeGreaterThan(1);
+        const pick = select.options[select.options.length - 1].value;
+        expect(select.value).not.toBe(pick);
+        select.value = pick;
+        select.dispatchEvent(new Event('change'));
+
+        // A refresh rebuilds the list from the current entity.
+        document.getElementById('drill-dim-project').click();
+        expect(select.value).toBe(pick);
+        window.removeEventListener('error', onError);
+        expect(errors).toEqual([]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
 });

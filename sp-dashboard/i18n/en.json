@@ -6,7 +6,8 @@
     "FROM": "From",
     "TO": "To",
     "PERIOD": "Period",
-    "WEEKDAY": "Weekday"
+    "WEEKDAY": "Weekday",
+    "RANGE_TITLE": "Dates this period covers"
   },
   "PERIOD": {
     "TODAY": "Today",
@@ -177,9 +178,8 @@
   "WHATS_NEW": {
     "TITLE": "What's new in {{version}}",
     "NOTES": {
-      "POPUP": "Release notes now open here once after each update, so you can see what changed without leaving Super Productivity.",
-      "UPDATE_CHECK": "New, optional: check GitHub once a day for newer releases, with a banner when one is out. Turn it on below or in Settings › Advanced.",
-      "PERMISSION": "The plugin card now lists api.github.com. It is only contacted while the update check is on, and nothing about your tasks is sent."
+      "PERIOD_DATES": "The Period box now shows the dates it covers, such as “Nov 9 – 11” for This Week. Every period ends today.",
+      "PRINT_RANGE": "With “Hide non-working days in charts” on, printed reports and export filenames now name the period you picked, not its first and last working day."
     },
     "FULL_NOTES": "Full release notes on GitHub",
     "CHECK_START": "Check GitHub for new releases",
