@@ -6,7 +6,8 @@
     "FROM": "Du",
     "TO": "Au",
     "PERIOD": "Période",
-    "WEEKDAY": "Jour de la semaine"
+    "WEEKDAY": "Jour de la semaine",
+    "RANGE_TITLE": "Dates couvertes par cette période"
   },
   "PERIOD": {
     "TODAY": "Aujourd’hui",
@@ -177,9 +178,8 @@
   "WHATS_NEW": {
     "TITLE": "Nouveautés de la version {{version}}",
     "NOTES": {
-      "POPUP": "Les notes de version s’ouvrent désormais ici une fois après chaque mise à jour, pour voir ce qui a changé sans quitter Super Productivity.",
-      "UPDATE_CHECK": "Nouveau, optionnel : interroge GitHub une fois par jour pour chercher de nouvelles versions, avec une bannière quand il y en a une. Activez-le ci-dessous ou dans Réglages › Avancé.",
-      "PERMISSION": "La fiche du plugin mentionne désormais api.github.com. Il n’est contacté que lorsque la recherche de mises à jour est activée, et rien de vos tâches n’est envoyé."
+      "PERIOD_DATES": "La zone Période affiche désormais les dates qu’elle couvre, par exemple « 9 – 11 nov. » pour Cette semaine. Chaque période se termine aujourd’hui.",
+      "PRINT_RANGE": "Quand « Masquer les jours non travaillés dans les graphiques » est activé, les rapports imprimés et les noms de fichiers d’export indiquent désormais la période choisie, et non son premier et son dernier jour travaillé."
     },
     "FULL_NOTES": "Notes de version complètes sur GitHub",
     "CHECK_START": "Rechercher les nouvelles versions sur GitHub",
@@ -291,7 +291,7 @@
       "HM_SPAN": "Plage",
       "HM_SPAN_HINT": "Jusqu’où la grille remonte. Suivre la période ci-dessus est possible mais rarement ce que l’on veut ici",
       "HM_SCALE": "Échelle de couleurs",
-      "HM_SCALE_HINT": "Quantile répartit la rampe uniformément sur les jours ayant des données, pour qu’un jour très long n’aplatissent pas le reste",
+      "HM_SCALE_HINT": "Quantile répartit la rampe uniformément sur les jours ayant des données, pour qu’un jour très long n’aplatisse pas le reste",
       "HM_STEPS": "Niveaux de couleur",
       "HM_ROWS": "Lignes affichées",
       "HM_ROWS_HINT": "Grilles projet, étiquette, tâche et habitude uniquement. Tout ce qui dépasse est sommé dans une ligne « Autres »",
@@ -370,15 +370,15 @@
       "SPAN_FOLLOW": "Suivre la période ci-dessus",
       "LAST_DAYS": {
         "one": "Dernier jour",
-        "other": "Derniers {{count}} jours"
+        "other": "Les {{count}} derniers jours"
       },
       "LAST_MONTHS": {
         "one": "Dernier mois",
-        "other": "Derniers {{count}} mois"
+        "other": "Les {{count}} derniers mois"
       },
       "LAST_YEARS": {
         "one": "Dernière année",
-        "other": "Dernières {{count}} années"
+        "other": "Les {{count}} dernières années"
       },
       "SCALE_QUANTILE": "Quantile — répartition uniforme",
       "SCALE_LINEAR": "Linéaire — valeurs réelles",

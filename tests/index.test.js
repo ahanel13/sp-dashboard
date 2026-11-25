@@ -2566,7 +2566,8 @@ describe('Date Range Reporter UI', () => {
     // Languages that must be complete, and a few strings to spot-check them with.
     const FULL_TRANSLATIONS = [
       { code: 'zh', name: 'Simplified Chinese', lang: 'zh-CN', heatmapTab: '热力图', totalSuffix: '/ 共 2 项', summary: '效率摘要' },
-      { code: 'es', name: 'Spanish', lang: 'es', heatmapTab: 'Mapa de calor', totalSuffix: '/ 2 en total', summary: 'Resumen de productividad' }
+      { code: 'es', name: 'Spanish', lang: 'es', heatmapTab: 'Mapa de calor', totalSuffix: '/ 2 en total', summary: 'Resumen de productividad' },
+      { code: 'fr', name: 'French', lang: 'fr', heatmapTab: 'Carte de chaleur', totalSuffix: '/ 2 au total', summary: 'Résumé de productivité' }
     ];
 
     FULL_TRANSLATIONS.forEach(({ code, name, lang, heatmapTab, totalSuffix, summary }) => {
